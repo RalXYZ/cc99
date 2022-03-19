@@ -26,8 +26,7 @@ jobs:
     - name: automated tests
       uses: actions-rs/cargo@v1
       with:
-        command: fmt
-        args: --all -- --check
+        command: test
 
     - name: clippy check
       uses: actions-rs/clippy-check@v1
