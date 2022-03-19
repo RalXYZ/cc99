@@ -22,15 +22,20 @@ jobs:
         profile: minimal
         toolchain: stable
         components: rustfmt, clippy
-      
+
     - name: automated tests
-      run: cargo test
-      
+      uses: actions-rs/cargo@v1
+      with:
+        command: fmt
+        args: --all -- --check
+
     - name: clippy check
       uses: actions-rs/clippy-check@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
         args: --all-features
-        
+
     - name: rustfmt check
-      run: cargo fmt --all -- --check
+      uses: mbrobbel/rustfmt-check@master
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
