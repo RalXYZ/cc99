@@ -1,0 +1,16 @@
+cc99 = { SOI ~ (char_literal | string_literal | comment | line_break | code)* ~ EOI }
+
+escape_sequence = {"\\'" | "\\\"" | "\\?" | "\\\\" | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v"
+                   | ("\\" ~ ASCII_OCT_DIGIT{1, 3}) | ("\\x" ~ ASCII_HEX_DIGIT{1, 2})
+                   | ("\\u" ~ ASCII_HEX_DIGIT{4}) | ("\\U" ~ ASCII_HEX_DIGIT{8})}
+char_literal = {"'" ~ ((!("'" | "\\" | NEWLINE) ~ ANY) | escape_sequence) ~ "'"}
+string_literal = {"\"" ~ ((!("\"" | "\\" | NEWLINE) ~ ANY) | escape_sequence)* ~ "\""}
+
+line_break = {"\\" ~ NEWLINE }
+
+comment = {
+    ("/*" ~ (!"*/" ~ ANY)* ~ "*/")
+    | ("//" ~ (line_break | (!NEWLINE ~ ANY))* ~ (NEWLINE | EOI))
+}
+
+code = {!"/*" ~ ANY}
