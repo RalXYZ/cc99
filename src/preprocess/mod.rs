@@ -17,7 +17,8 @@ pub fn preprocess(code: &str) -> String {
     for pair in pairs {
         match pair.as_rule() {
             Rule::line_break => {}
-            Rule::comment => result.push('\n'),
+            Rule::cpp_comment => result.push('\n'),
+            Rule::c_comment => result.push(' '),
             _ => result.push_str(pair.as_str()),
         }
     }
@@ -52,10 +53,8 @@ int main() {
 int main() {
     '"'; "//";
     
-    
-
-    
-
+     
+     
     return 0;
 }
 "#;
