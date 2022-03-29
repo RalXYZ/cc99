@@ -56,6 +56,8 @@ pub enum BinaryOperation {
     LessThanOrEqual,
     GreaterThan,
     GreaterThanOrEqual,
+    // member access
+    ArraySubscript,
     // other
     CommaOperator,
 }

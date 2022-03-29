@@ -96,6 +96,18 @@ pub enum Expression {
         Box<Expression>,
     ),
     Sizeof(Box<Expression>),
+    MemberOfObject(
+        /// object
+        Box<Expression>,
+        /// member name
+        String,
+    ),
+    MemberOfPointer(
+        /// pointer
+        Box<Expression>,
+        /// member name
+        String,
+    ),
 
     Identifier(String),
     BoolLiteral(bool),

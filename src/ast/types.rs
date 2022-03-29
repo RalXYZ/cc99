@@ -39,10 +39,28 @@ pub enum BasicType {
     Bool,
     Float,
     Pointer(Box<Type>),
+    Array(
+        /// element type
+        Box<Type>,
+        /// array length
+        u64,
+    ),
     Function(
         /// return type
         Box<Type>,
         /// parameters' types
         Vec<Type>,
     ),
+    Struct(
+        /// struct name
+        String,
+        /// struct members
+        Vec<StructMember>,
+    ),
+}
+
+#[derive(Serialize, Debug)]
+pub struct StructMember {
+    pub member_name: String,
+    pub member_type: Type,
 }
