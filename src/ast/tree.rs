@@ -5,7 +5,7 @@ use super::types::*;
 
 #[derive(Serialize, Debug)]
 pub enum AST {
-    GlobalDeclaration(Declaration),
+    GlobalDeclaration(Vec<Declaration>),
 }
 
 #[derive(Serialize, Debug)]
