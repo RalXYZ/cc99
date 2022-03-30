@@ -21,8 +21,28 @@ function_specifier = {"inline" | "_Noreturn"}
 type_specifier = {"void" | "char" | "int" | "_Bool" | "float" | "double" | identifier}
 
 // statement
-statement = {"TODO"}
+statement = {labeled_statement | case_statement | expression_statement | compound_statement | selection_statement | iteration_statement | jump_statement}
+labeled_statement = {identifier ~ ":" ~ statement}
+case_statement = {(("case" ~ expression) | default) ~ ":" ~ statement}
 compound_statement = {"{" ~ (statement | declaration)* ~ "}"}
+expression_statement = {expression? ~ ";"}
+selection_statement = {if_statement | switch_statement}
+iteration_statement = {for_statement | while_statement | do_while_statement}
+jump_statement = {break_statement | continue_statement | return_statement | goto_statement}
+
+if_statement = {"if" ~ "(" ~ expression ~ ")" ~ statement ~ ("else" ~ statement)?}
+switch_statement = {"switch" ~ "(" ~ expression ~ ")" ~ statement}
+
+for_statement = {"for" ~ "(" ~ for_init_clause? ~ ";" ~ expression? ~ ";" ~ expression? ~ ")" ~ statement}
+while_statement = {"while" ~ "(" ~ expression ~ ")" ~ statement}
+do_while_statement = {"do" ~ statement ~ "while" ~ "(" ~ expression ~ ")" ~ ";"}
+
+break_statement = {"break" ~ ";"}
+continue_statement = {"continue" ~ ";"}
+return_statement = {"return" ~ expression? ~ ";"}
+goto_statement = {"goto" ~ identifier ~ ";"}
+
+for_init_clause = {expression | (declaration_specifiers ~ declarator_and_initializer_list)}
 
 // expression
 expression = {"TODO"}
@@ -33,5 +53,6 @@ identifier = @{!keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")*}
 keyword = {"auto" | "break" | "case" | "char" | "const" | "continue" | "default" | "do" | "double" | "else" | "enum" | "extern" | "float" | "for" | "goto" | "if" | "int" | "long" | "register" | "return" | "short" | "signed" | "sizeof" | "static" | "struct" | "switch" | "typedef" | "union" | "unsigned" | "void" | "volatile" | "while" | "_Alignas" | "_Alignof" | "_Atomic" | "_Bool" | "_Complex" | "_Generic" | "_Imaginary" | "_Noreturn" | "_Static_assert" | "_Thread_local"}
 
 star = {"*"}
+default = {"default"}
 
 WHITESPACE = _{ " " | NEWLINE | "\t"}
