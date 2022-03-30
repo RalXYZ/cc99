@@ -15,7 +15,7 @@ pub enum Declaration {
         Type,
         String,
         /// parameters
-        Vec<String>,
+        Vec<Option<String>>,
         Vec<Statement>,
     ),
 }
