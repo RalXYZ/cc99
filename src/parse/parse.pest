@@ -1,0 +1,36 @@
+cc99 = { SOI ~ (declaration | function_definition)* ~ EOI }
+
+// declaration
+declaration = {variable_declaration | function_declaration}
+
+variable_declaration = {declaration_specifiers ~ declarator_and_initializer_list ~ ";"}
+declarator_and_initializer_list = {declarator_and_initializer ~ ("," ~ declarator_and_initializer)*}
+declarator_and_initializer = {(pointer ~ (type_qualifier)*)? ~ declarator ~ ("=" ~ expression)?}
+pointer = {"*"}
+declarator = {(identifier ~ "[" ~ expression ~ "]") | identifier}
+
+function_declaration = {"TODO"}
+
+function_definition = {"TODO"}
+
+declaration_specifiers = {(storage_class_specifier | function_specifier | type_qualifier)* ~ type_specifier ~ (storage_class_specifier | function_specifier | type_qualifier)*}
+
+storage_class_specifier = {"typedef" | "extern" | "static" | "auto" | "register"}
+
+type_qualifier = {"const" | "volatile" | "restrict" | "_Atomic"}
+
+function_specifier = {"inline" | "_Noreturn"}
+
+type_specifier = {"void" | "char" | "int" | "_Bool" | "float" | "double" | identifier}
+
+// statement
+
+// expression
+expression = {"TODO"}
+
+// basic component
+identifier = @{!keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")*}
+
+keyword = {"auto" | "break" | "case" | "char" | "const" | "continue" | "default" | "do" | "double" | "else" | "enum" | "extern" | "float" | "for" | "goto" | "if" | "int" | "long" | "register" | "return" | "short" | "signed" | "sizeof" | "static" | "struct" | "switch" | "typedef" | "union" | "unsigned" | "void" | "volatile" | "while" | "_Alignas" | "_Alignof" | "_Atomic" | "_Bool" | "_Complex" | "_Generic" | "_Imaginary" | "_Noreturn" | "_Static_assert" | "_Thread_local"}
+
+WHITESPACE = _{ " " | NEWLINE | "\t"}
