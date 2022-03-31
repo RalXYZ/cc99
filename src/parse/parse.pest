@@ -1,7 +1,7 @@
 cc99 = { SOI ~ (declaration | function_definition)* ~ EOI }
 
 // declaration and definition
-declaration = {declaration_specifiers ~ declarator_and_initializer_list ~ ";"}
+declaration = {declaration_specifiers ~ declarator_and_initializer_list? ~ ";"}
 declarator_and_initializer_list = {declarator_and_initializer ~ ("," ~ declarator_and_initializer)*}
 declarator_and_initializer = {declarator ~ ("=" ~ assignment_expression)?}
 pointer = {(star ~ (type_qualifier)*)+}
@@ -18,7 +18,9 @@ declaration_specifiers = {(storage_class_specifier | function_specifier | type_q
 storage_class_specifier = {"typedef" | "extern" | "static" | "auto" | "register"}
 type_qualifier = {"const" | "volatile" | "restrict" | "_Atomic"}
 function_specifier = {"inline" | "_Noreturn"}
-type_specifier = {"void" | "char" | "int" | "_Bool" | "float" | "double" | identifier}
+type_specifier = {"void" | "char" | "int" | "_Bool" | "float" | "double" | struct_specifier | identifier}
+struct_specifier = {(("struct" | "union") ~ identifier? ~ "{" ~ (struct_declaration)+ ~ "}") | (("struct" | "union") ~ identifier)}
+struct_declaration = {(declaration)+}
 
 // statement
 statement = {labeled_statement | case_statement | expression_statement | compound_statement | selection_statement | iteration_statement | jump_statement}
