@@ -1,0 +1,35 @@
+@import '~antd/dist/antd.css';
+
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+.App-header {
+  background-image: linear-gradient(to top, #4481eb 0%, #04befe 100%);
+  background:  linear-gradient(to top, #48c6ef 0%, #6f86d6 100%);
+  background-clip: text;
+  font-size: 30px;
+  font-weight: bolder;
+  color: transparent;
+}
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
