@@ -53,9 +53,9 @@ pub enum BasicType {
     ),
     Struct(
         /// struct name
-        String,
+        Option<String>,
         /// struct members
-        Vec<StructMember>,
+        Option<Vec<StructMember>>,
     ),
 }
 

@@ -10,7 +10,7 @@ pub enum AST {
 
 #[derive(Serialize, Debug)]
 pub enum Declaration {
-    Declaration(Type, Vec<DeclaratorAndInitializer>),
+    Declaration(Type, Vec<IdentifierAndInitializer>),
     FunctionDefinition(
         Type,
         String,
@@ -21,8 +21,8 @@ pub enum Declaration {
 }
 
 #[derive(Serialize, Debug)]
-pub struct DeclaratorAndInitializer {
-    pub declarator: String,
+pub struct IdentifierAndInitializer {
+    pub identifier: String,
     pub initializer: Option<Box<Expression>>,
 }
 
