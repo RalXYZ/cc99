@@ -4,10 +4,10 @@ cc99 = { SOI ~ (declaration | function_definition)* ~ EOI }
 declaration = {declaration_specifiers ~ declarator_and_initializer_list? ~ ";"}
 declarator_and_initializer_list = {declarator_and_initializer ~ ("," ~ declarator_and_initializer)*}
 declarator_and_initializer = {declarator ~ ("=" ~ assignment_expression)?}
-pointer = {(star ~ (type_qualifier)*)+}
+pointer = {(star_ ~ (type_qualifier)*)+}
 declarator = {pointer? ~ raw_declarator}
 raw_declarator = {(identifier ~ ("[" ~ assignment_expression ~ "]")+) | (identifier ~ "(" ~ function_parameter_list ~ ")") | identifier}
-function_parameter_list = {function_parameter? ~ ("," ~ function_parameter)* ~ ("," ~ "...")?}
+function_parameter_list = {function_parameter? ~ ("," ~ function_parameter)* ~ ("," ~ variadic_argument_)?}
 function_parameter = {declaration_specifiers ~ function_parameter_declarator}
 function_parameter_declarator = {pointer? ~ function_parameter_raw_declarator}
 function_parameter_raw_declarator = {(identifier? ~ ("[" ~ assignment_expression ~ "]")+) | (identifier? ~ "(" ~ function_parameter_list ~ ")") | identifier?}
@@ -15,36 +15,38 @@ function_parameter_raw_declarator = {(identifier? ~ ("[" ~ assignment_expression
 function_definition = {declaration_specifiers ~ pointer? ~ identifier ~ "(" ~ function_parameter_list ~ ")" ~ compound_statement}
 
 declaration_specifiers = {(storage_class_specifier | function_specifier | type_qualifier)* ~ type_specifier ~ (storage_class_specifier | function_specifier | type_qualifier)*}
-storage_class_specifier = {"typedef" | "extern" | "static" | "auto" | "register"}
-type_qualifier = {"const" | "volatile" | "restrict" | "_Atomic"}
-function_specifier = {"inline" | "_Noreturn"}
-type_specifier = {"void" | "char" | "int" | "_Bool" | "float" | "double" | struct_specifier | identifier}
-struct_specifier = {(("struct" | "union") ~ identifier? ~ "{" ~ (struct_declaration)+ ~ "}") | (("struct" | "union") ~ identifier)}
+storage_class_specifier = {typedef_ | extern_ | static_ | auto_ | register_}
+type_qualifier = {const_ | volatile_ | restrict_ | atomic_}
+function_specifier = {inline_ | noreturn_}
+type_specifier = {void_ | char_ | int_ | bool_ | float_ | double_ | struct_specifier | identifier}
+struct_specifier = {((struct_ | union_) ~ identifier? ~ "{" ~ (struct_declaration)+ ~ "}") | ((struct_ | union_) ~ identifier)}
 struct_declaration = {(declaration)+}
 
 // statement
 statement = {labeled_statement | case_statement | expression_statement | compound_statement | selection_statement | iteration_statement | jump_statement}
 labeled_statement = {identifier ~ ":" ~ statement}
-case_statement = {(("case" ~ assignment_expression) | default) ~ ":" ~ statement}
+case_statement = {((case_ ~ assignment_expression) | default_) ~ ":" ~ statement}
 compound_statement = {"{" ~ (statement | declaration)* ~ "}"}
 expression_statement = {expression? ~ ";"}
 selection_statement = {if_statement | switch_statement}
 iteration_statement = {for_statement | while_statement | do_while_statement}
 jump_statement = {break_statement | continue_statement | return_statement | goto_statement}
 
-if_statement = {"if" ~ "(" ~ expression ~ ")" ~ statement ~ ("else" ~ statement)?}
-switch_statement = {"switch" ~ "(" ~ expression ~ ")" ~ statement}
+if_statement = {if_ ~ "(" ~ expression ~ ")" ~ statement ~ (else_ ~ statement)?}
+switch_statement = {switch_ ~ "(" ~ expression ~ ")" ~ statement}
 
-for_statement = {"for" ~ "(" ~ for_init_clause? ~ ";" ~ expression? ~ ";" ~ expression? ~ ")" ~ statement}
-while_statement = {"while" ~ "(" ~ expression ~ ")" ~ statement}
-do_while_statement = {"do" ~ statement ~ "while" ~ "(" ~ expression ~ ")" ~ ";"}
+for_statement = {for_ ~ "(" ~ for_init_clause? ~ ";" ~ for_cond_expression? ~ ";" ~ for_iteration_expression? ~ ")" ~ statement}
+while_statement = {while_ ~ "(" ~ expression ~ ")" ~ statement}
+do_while_statement = {do_ ~ statement ~ while_ ~ "(" ~ expression ~ ")" ~ ";"}
 
-break_statement = {"break" ~ ";"}
-continue_statement = {"continue" ~ ";"}
-return_statement = {"return" ~ expression? ~ ";"}
-goto_statement = {"goto" ~ identifier ~ ";"}
+break_statement = {break_ ~ ";"}
+continue_statement = {continue_ ~ ";"}
+return_statement = {return_ ~ expression? ~ ";"}
+goto_statement = {goto_ ~ identifier ~ ";"}
 
 for_init_clause = {expression | (declaration_specifiers ~ declarator_and_initializer_list)}
+for_cond_expression = {expression}
+for_iteration_expression = {expression}
 
 // expression
 expression = {assignment_expression ~ ("," ~ assignment_expression)*}
@@ -52,22 +54,23 @@ expression = {assignment_expression ~ ("," ~ assignment_expression)*}
 assignment_expression = {(unary_expression ~ assignment_operator ~ assignment_expression) | conditional_expression}
 
 conditional_expression = {logical_or_expression ~ ("?" ~ expression ~ ":" ~ expression)?}
-logical_or_expression = {bitwise_or_expression ~ ("||" ~ bitwise_or_expression)*}
-bitwise_or_expression = {bitwise_xor_expression ~ ("|" ~ bitwise_xor_expression)*}
-bitwise_xor_expression = {bitwise_and_expression ~ ("^" ~ bitwise_and_expression)*}
-bitwise_and_expression = {equal_expression ~ ("&" ~ equal_expression)*}
-equal_expression = {relational_expression ~ (("=="|"!=") ~ relational_expression)*}
-relational_expression = {shift_expression ~ (("<="|">="|"<"|">") ~ shift_expression)*}
-shift_expression = {add_expression ~ (("<<"|">>") ~ add_expression)*}
-add_expression = {mul_expression ~ (("+"|"-") ~ mul_expression)*}
-mul_expression = {unary_expression ~ (("*"|"/"|"%") ~ unary_expression)*}
+logical_or_expression = {logical_and_expression ~ (logical_or_op ~ logical_and_expression)*}
+logical_and_expression = {bitwise_or_expression ~ (logical_and_op ~ bitwise_or_expression)*}
+bitwise_or_expression = {bitwise_xor_expression ~ (bitwise_or_op ~ bitwise_xor_expression)*}
+bitwise_xor_expression = {bitwise_and_expression ~ (bitwise_xor_op ~ bitwise_and_expression)*}
+bitwise_and_expression = {equal_expression ~ (bitwise_and_op ~ equal_expression)*}
+equal_expression = {relational_expression ~ ((equal_op |  not_equal_op) ~ relational_expression)*}
+relational_expression = {shift_expression ~ ((less_than_or_equal_op | greater_than_or_equal_op | less_than_op | greater_than_op) ~ shift_expression)*}
+shift_expression = {add_expression ~ ((left_shift_op | right_shift_op) ~ add_expression)*}
+add_expression = {mul_expression ~ ((add_op | sub_op) ~ mul_expression)*}
+mul_expression = {unary_expression ~ ((mul_op | div_op | mod_op) ~ unary_expression)*}
 
-unary_expression = {("sizeof" ~ "(" ~ type_name ~ ")") | (prefix_unary_operator ~ unary_expression) | postfix_unary_expression}
-postfix_unary_expression = {primary_expression ~ ("++" | "--" | ("(" ~ argument_list? ~ ")") | ("[" ~ expression ~ "]") | (("." | "->") ~ identifier))*}
+unary_expression = {(sizeof_ ~ "(" ~ type_name ~ ")") | (prefix_unary_operator ~ unary_expression) | postfix_unary_expression}
+postfix_unary_expression = {primary_expression ~ (postfix_inc_op| postfix_dec_op | ("(" ~ argument_list? ~ ")") | ("[" ~ expression ~ "]") | (("." | "->") ~ identifier))*}
 primary_expression = {identifier | constant | string_literal | ("(" ~ expression ~ ")")}
 
-assignment_operator = {"=" | "*=" | "/=" | "%=" | "+=" | "-=" | "<<=" | ">>=" | "&=" | "^=" | "|="}
-prefix_unary_operator = {"++" | "--" | "+" | "-" | "!" | "~" | "(" ~ type_name ~ ")" | "*" | "&" | "sizeof"}
+assignment_operator = {assign_naive_op | assign_add_op | assign_sub_op | assign_mul_op | assign_div_op | assign_mod_op | assign_bitwise_and_op | assign_bitwise_or_op | assign_bitwise_xor_op | assign_left_shift_op | assign_right_shift}
+prefix_unary_operator = {prefix_inc_op | prefix_dec_op | unary_plus_op | unary_minus_op | logical_not_op | bitwise_not_op | "(" ~ type_name ~ ")" | dereference_op | reference_op | sizeof_}
 type_name = {declaration_specifiers ~ pointer? ~ (("[" ~ assignment_expression ~ "]")+) | ("(" ~ function_parameter_list ~ ")")}
 argument_list = {assignment_expression ~ ("," ~ assignment_expression)*}
 
@@ -75,7 +78,7 @@ argument_list = {assignment_expression ~ ("," ~ assignment_expression)*}
 constant = {integer_constant | floating_constant | character_constant}
 
 integer_constant = @{(decimal_constant | octal_constant | hex_constant | binary_constant) ~ integer_suffix?}
-integer_suffix = {"u" | "U" | "ll" | "l" | "LL" | "L"}
+integer_suffix = {ull_ | ll_ | l_ | u_}
 decimal_constant = @{ASCII_NONZERO_DIGIT ~ (ASCII_DIGIT)*}
 octal_constant = @{"0" ~ (ASCII_OCT_DIGIT)*}
 hex_constant = @{"0" ~ ("x" | "X") ~ (ASCII_HEX_DIGIT)*}
@@ -98,9 +101,101 @@ escape_sequence = {"\\'" | "\\\"" | "\\?" | "\\\\" | "\\a" | "\\b" | "\\f" | "\\
 // other
 identifier = @{!keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")*}
 
-keyword = {"auto" | "break" | "case" | "char" | "const" | "continue" | "default" | "do" | "double" | "else" | "enum" | "extern" | "float" | "for" | "goto" | "if" | "int" | "long" | "register" | "return" | "short" | "signed" | "sizeof" | "static" | "struct" | "switch" | "typedef" | "union" | "unsigned" | "void" | "volatile" | "while" | "_Alignas" | "_Alignof" | "_Atomic" | "_Bool" | "_Complex" | "_Generic" | "_Imaginary" | "_Noreturn" | "_Static_assert" | "_Thread_local"}
+keyword = {auto_ | break_ | case_ | char_ | const_ | continue_ | default_ | do_ | double_ | else_ | enum_ | extern_ | float_ | for_ | goto_ | if_ | inline_ | int_ | long_ | register_ | restrict_ | return_ | short_ | signed_ | sizeof_ | static_ | struct_ | switch_ | typedef_ | union_ | unsigned_ | void_ | volatile_ | while_ | alignas_ | alignof_ | atomic_ | bool_ | complex_ | generic_ | imaginary_ | noreturn_ | static_assert_ | thread_local_}
 
-star = {"*"}
-default = {"default"}
+auto_ = {"auto"}
+break_ = {"break"}
+case_ = {"case"}
+char_ = {"char"}
+const_ = {"const"}
+continue_ = {"continue"}
+default_ = {"default"}
+do_ = {"do"}
+double_ = {"double"}
+else_ = {"else"}
+enum_ = {"enum"}
+extern_ = {"extern"}
+float_ = {"float"}
+for_ = {"for"}
+goto_ = {"goto"}
+if_ = {"if"}
+inline_ = {"inline"}
+int_ = {"int"}
+long_ = {"long"}
+register_ = {"register"}
+restrict_ = {"restrict"}
+return_ = {"return"}
+short_ = {"short"}
+signed_ = {"signed"}
+sizeof_ = {"sizeof"}
+static_ = {"static"}
+struct_ = {"struct"}
+switch_ = {"switch"}
+typedef_ = {"typedef"}
+union_ = {"union"}
+unsigned_ = {"unsigned"}
+void_ = {"void"}
+volatile_ = {"volatile"}
+while_ = {"while"}
+alignas_ = {"_Alignas"}
+alignof_ = {"_Alignof"}
+atomic_ = {"_Atomic"}
+bool_ = {"_Bool"}
+complex_ = {"_Complex"}
+generic_ = {"_Generic"}
+imaginary_ = {"_Imaginary"}
+noreturn_ = {"_Noreturn"}
+static_assert_ = {"_Static_assert"}
+thread_local_ = {"_Thread_local"}
+
+assign_naive_op = {"="}
+assign_add_op = {"+="}
+assign_sub_op = {"-="}
+assign_mul_op = {"*="}
+assign_div_op = {"/="}
+assign_mod_op = {"%="}
+assign_bitwise_and_op = {"&="}
+assign_bitwise_or_op = {"|="}
+assign_bitwise_xor_op = {"^="}
+assign_left_shift_op = {"<<="}
+assign_right_shift = {">>="}
+
+prefix_inc_op = {"++"}
+prefix_dec_op = {"--"}
+postfix_inc_op = {"++"}
+postfix_dec_op = {"--"}
+unary_plus_op = {"+"}
+unary_minus_op = {"-"}
+bitwise_not_op = {"~"}
+logical_not_op = {"!"}
+reference_op = {"&"}
+dereference_op = {"*"}
+
+add_op = {"+"}
+sub_op = {"-"}
+mul_op = {"*"}
+div_op = {"/"}
+mod_op = {"%"}
+bitwise_and_op = {"&"}
+bitwise_or_op = {"|"}
+bitwise_xor_op = {"^"}
+left_shift_op = {"<<"}
+right_shift_op = {">>"}
+logical_and_op = {"&&"}
+logical_or_op = {"||"}
+equal_op = {"=="}
+not_equal_op = {"!="}
+less_than_op = {"<"}
+less_than_or_equal_op = {"<="}
+greater_than_op = {">"}
+greater_than_or_equal_op = {">="}
+
+star_ = {"*"}
+variadic_argument_ = {"..."}
+u_ = {^"u"}
+l_ = {^"l"}
+ll_ = {"ll" | "LL"}
+ull_ = {"ull" | "ULL"}
+
 
 WHITESPACE = _{ " " | NEWLINE | "\t"}
