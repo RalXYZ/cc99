@@ -7,7 +7,7 @@ declarator_and_initializer = {declarator ~ ("=" ~ assignment_expression)?}
 pointer = {(star ~ (type_qualifier)*)+}
 declarator = {pointer? ~ raw_declarator}
 raw_declarator = {(identifier ~ ("[" ~ assignment_expression ~ "]")+) | (identifier ~ "(" ~ function_parameter_list ~ ")") | identifier}
-function_parameter_list = {function_parameter? ~ ("," ~ function_parameter)*}
+function_parameter_list = {function_parameter? ~ ("," ~ function_parameter)* ~ ("," ~ "...")?}
 function_parameter = {declaration_specifiers ~ function_parameter_declarator}
 function_parameter_declarator = {pointer? ~ function_parameter_raw_declarator}
 function_parameter_raw_declarator = {(identifier? ~ ("[" ~ assignment_expression ~ "]")+) | (identifier? ~ "(" ~ function_parameter_list ~ ")") | identifier?}
