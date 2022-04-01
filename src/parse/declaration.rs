@@ -71,7 +71,7 @@ pub fn build_declaration_specifiers(pair: Pair<'_, Rule>) -> Type {
         storage_class_specifier: if !storage_class_specifier.is_empty() {
             storage_class_specifier[0].to_owned()
         } else {
-            StorageClassSpecifier::Auto
+            Default::default()
         },
         basic_type: BasicType {
             qualifier,
@@ -127,6 +127,8 @@ pub fn build_declarator_and_initializer(
             _ => unreachable!(),
         }
     }
+    // TODO(TO/GA): throw error if derived_type is not a function but have a function specifier
+    // TODO(TO/GA): throw error if derived_type is a function that return sth. but has noreturn specifier
     ast.push(Declaration::Declaration(
         derived_type,
         identifier,
@@ -164,16 +166,86 @@ pub fn build_raw_declarator(
                 *identifier = token.as_str().to_string();
             }
             Rule::assignment_expression => {
-                // TODO(TO/GA)
-                unreachable!()
+                derived_type.basic_type.base_type = BaseType::Array(
+                    Box::new(derived_type.basic_type.to_owned()),
+                    Box::new(build_assignment_expression(token)),
+                );
+                derived_type.basic_type.qualifier = Default::default();
             }
             Rule::function_parameter_list => {
-                // TODO(TO/GA)
-                unreachable!()
+                build_function_parameter_list(derived_type, token);
             }
             _ => unreachable!(),
         }
     }
+}
+
+pub fn build_function_parameter_list(derived_type: &mut Type, pair: Pair<'_, Rule>) -> Vec<String> {
+    let mut is_variadic = false;
+    let mut parameter_list: Vec<BasicType> = Default::default();
+    let mut parameter_name: Vec<String> = Default::default();
+    for token in pair.into_inner() {
+        match token.as_rule() {
+            Rule::function_parameter => {
+                let parameter = build_function_parameter(token);
+                parameter_list.push(parameter.0);
+                parameter_name.push(parameter.1);
+            }
+            Rule::variadic_argument_ => {
+                is_variadic = true;
+            }
+            _ => unreachable!(),
+        }
+    }
+    derived_type.basic_type.base_type = BaseType::Function(
+        Box::new(derived_type.basic_type.to_owned()),
+        parameter_list,
+        is_variadic,
+    );
+    derived_type.basic_type.qualifier = Default::default();
+    parameter_name
+}
+
+pub fn build_function_parameter(pair: Pair<'_, Rule>) -> (BasicType, String) {
+    let mut basic_type: BasicType = Default::default();
+    let mut identifier: String = Default::default();
+    for token in pair.into_inner() {
+        match token.as_rule() {
+            Rule::declaration_specifiers => {
+                basic_type = build_declaration_specifiers(token).basic_type;
+            }
+            Rule::function_parameter_declarator => {
+                build_function_parameter_declarator(&mut basic_type, &mut identifier, token);
+            }
+            _ => unreachable!(),
+        }
+    }
+    (basic_type, identifier)
+}
+
+pub fn build_function_parameter_declarator(
+    basic_type: &mut BasicType,
+    identifier: &mut String,
+    pair: Pair<'_, Rule>,
+) {
+    let mut derived_type = Type {
+        function_specifier: Default::default(),
+        storage_class_specifier: Default::default(),
+        basic_type: basic_type.to_owned(),
+    };
+    let mut identifier: String = Default::default();
+    for token in pair.into_inner() {
+        match token.as_rule() {
+            Rule::pointer => {
+                build_pointer(&mut derived_type, token);
+            }
+            Rule::function_parameter_raw_declarator => {
+                build_raw_declarator(&mut derived_type, &mut identifier, token);
+            }
+            _ => unreachable!(),
+        }
+    }
+    *basic_type = derived_type.basic_type;
 }
 
 pub fn build_type_qualifier(pair: Pair<'_, Rule>) -> TypeQualifier {

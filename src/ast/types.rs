@@ -1,6 +1,8 @@
+use super::*;
+
 use serde::Serialize;
 
-#[derive(Serialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Debug, PartialEq, Clone, Default)]
 pub struct Type {
     pub function_specifier: Vec<FunctionSpecifier>,
     pub storage_class_specifier: StorageClassSpecifier,
@@ -31,7 +33,7 @@ pub enum FunctionSpecifier {
     Noreturn,
 }
 
-#[derive(Serialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Debug, PartialEq, Clone, Default)]
 pub struct BasicType {
     pub qualifier: Vec<TypeQualifier>,
     pub base_type: BaseType,
@@ -50,13 +52,15 @@ pub enum BaseType {
         /// element type
         Box<BasicType>,
         /// array length
-        u64,
+        Box<Expression>,
     ),
     Function(
         /// return type
         Box<BasicType>,
         /// parameters' types
         Vec<BasicType>,
+        /// is variadic or not
+        bool,
     ),
     Struct(
         /// struct name
@@ -74,27 +78,14 @@ pub struct StructMember {
     pub member_type: Type,
 }
 
-impl Default for Type {
-    fn default() -> Self {
-        Type {
-            function_specifier: Default::default(),
-            storage_class_specifier: StorageClassSpecifier::Auto,
-            basic_type: Default::default(),
-        }
-    }
-}
-
-impl Default for BasicType {
-    fn default() -> Self {
-        BasicType {
-            qualifier: Default::default(),
-            base_type: BaseType::Int,
-        }
-    }
-}
-
 impl Default for BaseType {
     fn default() -> Self {
         BaseType::Int
+    }
+}
+
+impl Default for StorageClassSpecifier {
+    fn default() -> Self {
+        StorageClassSpecifier::Auto
     }
 }

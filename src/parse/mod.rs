@@ -78,4 +78,43 @@ mod tests {
             ]))
         );
     }
+
+    #[test]
+    fn function_declaration() {
+        let code = r#"inline static const int foo(const int x, float *, ...);"#;
+        assert_eq!(
+            parse(code).unwrap(),
+            Box::new(AST::GlobalDeclaration(vec![Declaration::Declaration(
+                Type {
+                    function_specifier: vec!(FunctionSpecifier::Inline),
+                    storage_class_specifier: StorageClassSpecifier::Static,
+                    basic_type: BasicType {
+                        qualifier: vec![],
+                        base_type: BaseType::Function(
+                            Box::new(BasicType {
+                                qualifier: vec![TypeQualifier::Const],
+                                base_type: BaseType::Int,
+                            }),
+                            vec![
+                                BasicType {
+                                    qualifier: vec![TypeQualifier::Const],
+                                    base_type: BaseType::Int,
+                                },
+                                BasicType {
+                                    qualifier: vec![],
+                                    base_type: BaseType::Pointer(Box::new(BasicType {
+                                        qualifier: vec![],
+                                        base_type: BaseType::Float,
+                                    })),
+                                },
+                            ],
+                            true
+                        ),
+                    },
+                },
+                "foo".to_string(),
+                None
+            ),]))
+        );
+    }
 }

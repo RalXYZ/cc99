@@ -3,12 +3,12 @@ use serde::Serialize;
 use super::operations::*;
 use super::types::*;
 
-#[derive(Serialize, Debug, PartialEq)]
+#[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum AST {
     GlobalDeclaration(Vec<Declaration>),
 }
 
-#[derive(Serialize, Debug, PartialEq)]
+#[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum Declaration {
     Declaration(
         Type,
@@ -27,7 +27,7 @@ pub enum Declaration {
     ),
 }
 
-#[derive(Serialize, Debug, PartialEq)]
+#[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum Statement {
     // labeled statement
     Labeled(String, Box<Statement>),
@@ -69,7 +69,7 @@ pub enum Statement {
     Goto(String),
 }
 
-#[derive(Serialize, Debug, PartialEq)]
+#[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum Expression {
     Assignment(
         AssignOperation,
@@ -117,13 +117,13 @@ pub enum Expression {
     StringLiteral(String),
 }
 
-#[derive(Serialize, Debug, PartialEq)]
+#[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum ForInitClause {
     Expression(Expression),
     Declaration(Declaration),
 }
 
-#[derive(Serialize, Debug, PartialEq)]
+#[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum StatementOrDeclaration {
     Statement(Statement),
     Declaration(Declaration),
