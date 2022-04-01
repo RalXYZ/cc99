@@ -1,13 +1,14 @@
 use serde::Serialize;
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq, Clone)]
 pub struct Type {
-    pub qualifier: Option<TypeQualifier>,
-    pub specifier: StorageClassSpecifier,
+    pub qualifier: Vec<TypeQualifier>, // TODO(TO/GA): move it into basic type
+    pub function_specifier: Vec<FunctionSpecifier>,
+    pub storage_class_specifier: StorageClassSpecifier,
     pub basic_type: BasicType,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum StorageClassSpecifier {
     Typedef,
     Extern,
@@ -17,7 +18,7 @@ pub enum StorageClassSpecifier {
     Register,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum TypeQualifier {
     Const,
     Volatile,
@@ -25,19 +26,20 @@ pub enum TypeQualifier {
     Atomic,
 }
 
-#[derive(Serialize, Debug)]
-pub enum FunctionSpecifiers {
+#[derive(Serialize, Debug, PartialEq, Clone)]
+pub enum FunctionSpecifier {
     Inline,
     Noreturn,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum BasicType {
     Void,
     Char,
     Int,
     Bool,
     Float,
+    Double,
     Pointer(Box<Type>),
     Array(
         /// element type
@@ -61,8 +63,25 @@ pub enum BasicType {
     Identifier(String),
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq, Clone)]
 pub struct StructMember {
     pub member_name: String,
     pub member_type: Type,
+}
+
+impl Default for Type {
+    fn default() -> Self {
+        Type {
+            qualifier: Default::default(),
+            function_specifier: Default::default(),
+            storage_class_specifier: StorageClassSpecifier::Auto,
+            basic_type: Default::default(),
+        }
+    }
+}
+
+impl Default for BasicType {
+    fn default() -> Self {
+        BasicType::Int
+    }
 }

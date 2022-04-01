@@ -3,16 +3,23 @@ use serde::Serialize;
 use super::operations::*;
 use super::types::*;
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq)]
 pub enum AST {
     GlobalDeclaration(Vec<Declaration>),
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq)]
 pub enum Declaration {
-    Declaration(Type, Vec<IdentifierAndInitializer>),
+    Declaration(
+        Type,
+        /// identifier
+        String,
+        /// initializer
+        Option<Box<Expression>>,
+    ),
     FunctionDefinition(
         Type,
+        /// identifier
         String,
         /// parameters
         Vec<Option<String>>,
@@ -20,13 +27,7 @@ pub enum Declaration {
     ),
 }
 
-#[derive(Serialize, Debug)]
-pub struct IdentifierAndInitializer {
-    pub identifier: String,
-    pub initializer: Option<Box<Expression>>,
-}
-
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq)]
 pub enum Statement {
     // labeled statement
     Labeled(String, Box<Statement>),
@@ -68,7 +69,7 @@ pub enum Statement {
     Goto(String),
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq)]
 pub enum Expression {
     Assignment(
         AssignOperation,
@@ -116,13 +117,13 @@ pub enum Expression {
     StringLiteral(String),
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq)]
 pub enum ForInitClause {
     Expression(Expression),
     Declaration(Declaration),
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq)]
 pub enum StatementOrDeclaration {
     Statement(Statement),
     Declaration(Declaration),

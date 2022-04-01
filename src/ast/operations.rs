@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq)]
 pub enum AssignOperation {
     Naive,
     Addition,
@@ -15,7 +15,7 @@ pub enum AssignOperation {
     RightShift,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq)]
 pub enum UnaryOperation {
     // increment, decrement
     PrefixIncrement,
@@ -33,7 +33,7 @@ pub enum UnaryOperation {
     Dereference,
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq)]
 pub enum BinaryOperation {
     // arithmetic
     Addition,

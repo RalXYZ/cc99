@@ -1,57 +1,79 @@
+mod declaration;
+mod function_definition;
+
 use pest::Parser;
 use serde::Serialize;
 use std::error::Error;
 
 use super::ast::*;
+use declaration::*;
+use function_definition::*;
 
 #[derive(Parser, Serialize)]
 #[grammar = "./parse/parse.pest"]
 pub struct CC99Parser;
 
-// TODO 使用自己的错误类型
+// TODO(TO/GA): error handling
 pub fn parse(code: &str) -> Result<Box<AST>, Box<dyn Error>> {
-    Ok(Box::new(AST::GlobalDeclaration(vec![])))
+    let tokens = match CC99Parser::parse(Rule::cc99, code)
+        .unwrap_or_else(|e| panic!("{}", e))
+        .next()
+    {
+        Some(p) => p.into_inner(),
+        None => panic!("Fail to parse an empty file"),
+    };
+    let mut ast = Vec::new();
+    for token in tokens {
+        match token.as_rule() {
+            Rule::declaration => {
+                build_declaration(&mut ast, token);
+            }
+            Rule::function_definition => {
+                build_function_definition(&mut ast, token);
+            }
+            Rule::EOI => {}
+            _ => unreachable!(),
+        }
+    }
+    Ok(Box::new(AST::GlobalDeclaration(ast)))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::preprocess::preprocess;
-    use std::fs::File;
-    use std::io::Read;
-    use walkdir::WalkDir;
 
-    //请使用cargo test -- --nocapture 开启输出
     #[test]
-    fn process_test_file() {
-        for entry in WalkDir::new("./tests")
-            .into_iter()
-            .filter_map(Result::ok)
-            .filter(|e| !e.file_type().is_dir())
-        {
-            let raw_path = entry.path().to_str();
-            if raw_path.is_none() {
-                continue;
-            }
-
-            let source_path = raw_path.unwrap();
-            if !source_path.ends_with(".c") {
-                continue;
-            }
-            println!(">>> {} {} <<<", "Start compiling", source_path);
-
-            let mut source_file = File::open(source_path).expect("Unable to open source file!");
-            let mut source_content: String = String::new();
-
-            source_file
-                .read_to_string(&mut source_content)
-                .expect("Unable to read source file!");
-
-            let res = preprocess(&source_content).unwrap();
-            let res = parse(&res).unwrap_or_else(|e| panic!("{}", e));
-            //直接打印出来看看
-            println!("{:?}", res);
-            println!(">>> {} <<<", "Finish PreProcess");
-        }
+    fn variable_declaration() {
+        let code = r#"static int const *const x, y;"#;
+        assert_eq!(
+            parse(code).unwrap(),
+            Box::new(AST::GlobalDeclaration(vec![
+                Declaration::Declaration(
+                    Type {
+                        qualifier: vec![TypeQualifier::Const],
+                        function_specifier: vec![],
+                        storage_class_specifier: StorageClassSpecifier::Static,
+                        basic_type: BasicType::Pointer(Box::new(Type {
+                            qualifier: vec![TypeQualifier::Const],
+                            function_specifier: vec![],
+                            storage_class_specifier: StorageClassSpecifier::Auto,
+                            basic_type: BasicType::Int,
+                        })),
+                    },
+                    "x".to_string(),
+                    None,
+                ),
+                Declaration::Declaration(
+                    Type {
+                        qualifier: vec![TypeQualifier::Const],
+                        function_specifier: vec![],
+                        storage_class_specifier: StorageClassSpecifier::Static,
+                        basic_type: BasicType::Int,
+                    },
+                    "y".to_string(),
+                    None,
+                ),
+            ]))
+        );
     }
 }
