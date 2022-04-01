@@ -57,6 +57,8 @@ pub enum BasicType {
         /// struct members
         Option<Vec<StructMember>>,
     ),
+    /// a name introduced by typedef/struct...
+    Identifier(String),
 }
 
 #[derive(Serialize, Debug)]
