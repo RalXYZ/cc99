@@ -2,7 +2,6 @@ use serde::Serialize;
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub struct Type {
-    pub qualifier: Vec<TypeQualifier>, // TODO(TO/GA): move it into basic type
     pub function_specifier: Vec<FunctionSpecifier>,
     pub storage_class_specifier: StorageClassSpecifier,
     pub basic_type: BasicType,
@@ -33,25 +32,31 @@ pub enum FunctionSpecifier {
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum BasicType {
+pub struct BasicType {
+    pub qualifier: Vec<TypeQualifier>,
+    pub base_type: BaseType,
+}
+
+#[derive(Serialize, Debug, PartialEq, Clone)]
+pub enum BaseType {
     Void,
     Char,
     Int,
     Bool,
     Float,
     Double,
-    Pointer(Box<Type>),
+    Pointer(Box<BasicType>),
     Array(
         /// element type
-        Box<Type>,
+        Box<BasicType>,
         /// array length
         u64,
     ),
     Function(
         /// return type
-        Box<Type>,
+        Box<BasicType>,
         /// parameters' types
-        Vec<Type>,
+        Vec<BasicType>,
     ),
     Struct(
         /// struct name
@@ -72,7 +77,6 @@ pub struct StructMember {
 impl Default for Type {
     fn default() -> Self {
         Type {
-            qualifier: Default::default(),
             function_specifier: Default::default(),
             storage_class_specifier: StorageClassSpecifier::Auto,
             basic_type: Default::default(),
@@ -82,6 +86,15 @@ impl Default for Type {
 
 impl Default for BasicType {
     fn default() -> Self {
-        BasicType::Int
+        BasicType {
+            qualifier: Default::default(),
+            base_type: BaseType::Int,
+        }
+    }
+}
+
+impl Default for BaseType {
+    fn default() -> Self {
+        BaseType::Int
     }
 }

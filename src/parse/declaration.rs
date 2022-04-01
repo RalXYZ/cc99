@@ -28,7 +28,7 @@ pub fn build_declaration_specifiers(pair: Pair<'_, Rule>) -> Type {
     let mut qualifier: Vec<TypeQualifier> = Default::default();
     let mut storage_class_specifier: Vec<StorageClassSpecifier> = Default::default();
     let mut function_specifier: Vec<FunctionSpecifier> = Default::default();
-    let mut basic_type: BasicType = Default::default();
+    let mut base_type: BaseType = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::storage_class_specifier => match token.into_inner().next().unwrap().as_rule() {
@@ -60,34 +60,36 @@ pub fn build_declaration_specifiers(pair: Pair<'_, Rule>) -> Type {
             },
             Rule::type_qualifier => qualifier.push(build_type_qualifier(token)),
             Rule::type_specifier => {
-                basic_type = build_type_specifier(token);
+                base_type = build_type_specifier(token);
             }
             _ => unreachable!(),
         }
     }
     assert!(storage_class_specifier.len() <= 1);
     Type {
-        qualifier,
         function_specifier,
         storage_class_specifier: if !storage_class_specifier.is_empty() {
             storage_class_specifier[0].to_owned()
         } else {
             StorageClassSpecifier::Auto
         },
-        basic_type,
+        basic_type: BasicType {
+            qualifier,
+            base_type,
+        },
     }
 }
 
-pub fn build_type_specifier(pair: Pair<'_, Rule>) -> BasicType {
+pub fn build_type_specifier(pair: Pair<'_, Rule>) -> BaseType {
     let token = pair.into_inner().next().unwrap();
     match token.as_rule() {
-        Rule::void_ => BasicType::Void,
-        Rule::char_ => BasicType::Char,
-        Rule::int_ => BasicType::Int,
-        Rule::bool_ => BasicType::Bool,
-        Rule::float_ => BasicType::Float,
-        Rule::double_ => BasicType::Double,
-        Rule::identifier => BasicType::Identifier(token.as_str().to_string()),
+        Rule::void_ => BaseType::Void,
+        Rule::char_ => BaseType::Char,
+        Rule::int_ => BaseType::Int,
+        Rule::bool_ => BaseType::Bool,
+        Rule::float_ => BaseType::Float,
+        Rule::double_ => BaseType::Double,
+        Rule::identifier => BaseType::Identifier(token.as_str().to_string()),
         Rule::struct_specifier => {
             // TODO(TO/GA)
             unreachable!()
@@ -136,17 +138,15 @@ pub fn build_pointer(derived_type: &mut Type, pair: Pair<'_, Rule>) {
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::star_ => {
-                let function_specifier = derived_type.function_specifier.to_owned();
-                derived_type.function_specifier = Vec::new();
-                let storage_class_specifier = derived_type.storage_class_specifier.to_owned();
-                derived_type.storage_class_specifier = StorageClassSpecifier::Auto;
-                derived_type.basic_type = BasicType::Pointer(Box::new((*derived_type).clone()));
-                derived_type.qualifier = Vec::new();
-                derived_type.function_specifier = function_specifier;
-                derived_type.storage_class_specifier = storage_class_specifier;
+                derived_type.basic_type.base_type =
+                    BaseType::Pointer(Box::new(derived_type.basic_type.to_owned()));
+                derived_type.basic_type.qualifier = Default::default();
             }
             Rule::type_qualifier => {
-                derived_type.qualifier.push(build_type_qualifier(token));
+                derived_type
+                    .basic_type
+                    .qualifier
+                    .push(build_type_qualifier(token));
             }
             _ => unreachable!(),
         }

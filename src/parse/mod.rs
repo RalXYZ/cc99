@@ -50,25 +50,27 @@ mod tests {
             Box::new(AST::GlobalDeclaration(vec![
                 Declaration::Declaration(
                     Type {
-                        qualifier: vec![TypeQualifier::Const],
                         function_specifier: vec![],
                         storage_class_specifier: StorageClassSpecifier::Static,
-                        basic_type: BasicType::Pointer(Box::new(Type {
+                        basic_type: BasicType {
                             qualifier: vec![TypeQualifier::Const],
-                            function_specifier: vec![],
-                            storage_class_specifier: StorageClassSpecifier::Auto,
-                            basic_type: BasicType::Int,
-                        })),
+                            base_type: BaseType::Pointer(Box::new(BasicType {
+                                qualifier: vec![TypeQualifier::Const],
+                                base_type: BaseType::Int,
+                            })),
+                        },
                     },
                     "x".to_string(),
                     None,
                 ),
                 Declaration::Declaration(
                     Type {
-                        qualifier: vec![TypeQualifier::Const],
                         function_specifier: vec![],
                         storage_class_specifier: StorageClassSpecifier::Static,
-                        basic_type: BasicType::Int,
+                        basic_type: BasicType {
+                            qualifier: vec![TypeQualifier::Const],
+                            base_type: BaseType::Int,
+                        },
                     },
                     "y".to_string(),
                     None,
