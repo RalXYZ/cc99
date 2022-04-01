@@ -12,8 +12,8 @@ pub enum AST {
 pub enum Declaration {
     Declaration(
         Type,
-        /// identifier
-        String,
+        /// identifier (if it's a struct/union declaration, it might be None)
+        Option<String>,
         /// initializer
         Option<Box<Expression>>,
     ),

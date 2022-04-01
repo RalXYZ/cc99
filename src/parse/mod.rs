@@ -60,7 +60,7 @@ mod tests {
                             })),
                         },
                     },
-                    "x".to_string(),
+                    Some("x".to_string()),
                     None,
                 ),
                 Declaration::Declaration(
@@ -72,7 +72,7 @@ mod tests {
                             base_type: BaseType::Int,
                         },
                     },
-                    "y".to_string(),
+                    Some("y".to_string()),
                     None,
                 ),
             ]))
@@ -112,9 +112,59 @@ mod tests {
                         ),
                     },
                 },
-                "foo".to_string(),
+                Some("foo".to_string()),
                 None
             ),]))
+        );
+    }
+
+    #[test]
+    fn typedef_struct_declaration() {
+        let code = r#"typedef struct Xxx{const int y; float z;} x;"#;
+        let basic_type = BasicType {
+            qualifier: vec![],
+            base_type: BaseType::Struct(
+                Some("Xxx".to_string()),
+                Some(vec![
+                    StructMember {
+                        member_name: "y".to_string(),
+                        member_type: BasicType {
+                            qualifier: vec![TypeQualifier::Const],
+                            base_type: BaseType::Int,
+                        },
+                    },
+                    StructMember {
+                        member_name: "z".to_string(),
+                        member_type: BasicType {
+                            qualifier: vec![],
+                            base_type: BaseType::Float,
+                        },
+                    },
+                ]),
+            ),
+        };
+        assert_eq!(
+            parse(code).unwrap(),
+            Box::new(AST::GlobalDeclaration(vec![
+                Declaration::Declaration(
+                    Type {
+                        function_specifier: vec!(),
+                        storage_class_specifier: StorageClassSpecifier::Auto,
+                        basic_type: basic_type.clone()
+                    },
+                    None,
+                    None
+                ),
+                Declaration::Declaration(
+                    Type {
+                        function_specifier: vec!(),
+                        storage_class_specifier: StorageClassSpecifier::Typedef,
+                        basic_type
+                    },
+                    Some("x".to_string()),
+                    None
+                )
+            ]))
         );
     }
 }

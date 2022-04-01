@@ -68,6 +68,12 @@ pub enum BaseType {
         /// struct members
         Option<Vec<StructMember>>,
     ),
+    Union(
+        /// union name
+        Option<String>,
+        /// union members
+        Option<Vec<StructMember>>,
+    ),
     /// a name introduced by typedef/struct...
     Identifier(String),
 }
@@ -75,7 +81,7 @@ pub enum BaseType {
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub struct StructMember {
     pub member_name: String,
-    pub member_type: Type,
+    pub member_type: BasicType,
 }
 
 impl Default for BaseType {

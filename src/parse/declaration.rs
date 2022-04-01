@@ -7,7 +7,7 @@ pub fn build_declaration(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) {
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::declaration_specifiers => {
-                basic_type = build_declaration_specifiers(token);
+                basic_type = build_declaration_specifiers(ast, token);
             }
             Rule::declarator_and_initializer_list => {
                 for list_entry in token.into_inner() {
@@ -24,7 +24,7 @@ pub fn build_declaration(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) {
     }
 }
 
-pub fn build_declaration_specifiers(pair: Pair<'_, Rule>) -> Type {
+pub fn build_declaration_specifiers(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) -> Type {
     let mut qualifier: Vec<TypeQualifier> = Default::default();
     let mut storage_class_specifier: Vec<StorageClassSpecifier> = Default::default();
     let mut function_specifier: Vec<FunctionSpecifier> = Default::default();
@@ -60,7 +60,7 @@ pub fn build_declaration_specifiers(pair: Pair<'_, Rule>) -> Type {
             },
             Rule::type_qualifier => qualifier.push(build_type_qualifier(token)),
             Rule::type_specifier => {
-                base_type = build_type_specifier(token);
+                base_type = build_type_specifier(ast, token);
             }
             _ => unreachable!(),
         }
@@ -80,7 +80,7 @@ pub fn build_declaration_specifiers(pair: Pair<'_, Rule>) -> Type {
     }
 }
 
-pub fn build_type_specifier(pair: Pair<'_, Rule>) -> BaseType {
+pub fn build_type_specifier(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) -> BaseType {
     let token = pair.into_inner().next().unwrap();
     match token.as_rule() {
         Rule::void_ => BaseType::Void,
@@ -90,10 +90,7 @@ pub fn build_type_specifier(pair: Pair<'_, Rule>) -> BaseType {
         Rule::float_ => BaseType::Float,
         Rule::double_ => BaseType::Double,
         Rule::identifier => BaseType::Identifier(token.as_str().to_string()),
-        Rule::struct_specifier => {
-            // TODO(TO/GA)
-            unreachable!()
-        }
+        Rule::struct_specifier => build_struct_specifier(ast, token),
         _ => unreachable!(),
     }
 }
@@ -115,7 +112,12 @@ pub fn build_declarator_and_initializer(
                             build_pointer(&mut derived_type, sub_token);
                         }
                         Rule::raw_declarator => {
-                            build_raw_declarator(&mut derived_type, &mut identifier, sub_token);
+                            build_raw_declarator(
+                                ast,
+                                &mut derived_type,
+                                &mut identifier,
+                                sub_token,
+                            );
                         }
                         _ => unreachable!(),
                     }
@@ -131,7 +133,7 @@ pub fn build_declarator_and_initializer(
     // TODO(TO/GA): throw error if derived_type is a function that return sth. but has noreturn specifier
     ast.push(Declaration::Declaration(
         derived_type,
-        identifier,
+        Some(identifier),
         initializer,
     ));
 }
@@ -156,6 +158,7 @@ pub fn build_pointer(derived_type: &mut Type, pair: Pair<'_, Rule>) {
 }
 
 pub fn build_raw_declarator(
+    ast: &mut Vec<Declaration>,
     derived_type: &mut Type,
     identifier: &mut String,
     pair: Pair<'_, Rule>,
@@ -173,21 +176,25 @@ pub fn build_raw_declarator(
                 derived_type.basic_type.qualifier = Default::default();
             }
             Rule::function_parameter_list => {
-                build_function_parameter_list(derived_type, token);
+                build_function_parameter_list(ast, derived_type, token);
             }
             _ => unreachable!(),
         }
     }
 }
 
-pub fn build_function_parameter_list(derived_type: &mut Type, pair: Pair<'_, Rule>) -> Vec<String> {
+pub fn build_function_parameter_list(
+    ast: &mut Vec<Declaration>,
+    derived_type: &mut Type,
+    pair: Pair<'_, Rule>,
+) -> Vec<String> {
     let mut is_variadic = false;
     let mut parameter_list: Vec<BasicType> = Default::default();
     let mut parameter_name: Vec<String> = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::function_parameter => {
-                let parameter = build_function_parameter(token);
+                let parameter = build_function_parameter(ast, token);
                 parameter_list.push(parameter.0);
                 parameter_name.push(parameter.1);
             }
@@ -206,16 +213,19 @@ pub fn build_function_parameter_list(derived_type: &mut Type, pair: Pair<'_, Rul
     parameter_name
 }
 
-pub fn build_function_parameter(pair: Pair<'_, Rule>) -> (BasicType, String) {
+pub fn build_function_parameter(
+    ast: &mut Vec<Declaration>,
+    pair: Pair<'_, Rule>,
+) -> (BasicType, String) {
     let mut basic_type: BasicType = Default::default();
     let mut identifier: String = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::declaration_specifiers => {
-                basic_type = build_declaration_specifiers(token).basic_type;
+                basic_type = build_declaration_specifiers(ast, token).basic_type;
             }
             Rule::function_parameter_declarator => {
-                build_function_parameter_declarator(&mut basic_type, &mut identifier, token);
+                build_function_parameter_declarator(ast, &mut basic_type, &mut identifier, token);
             }
             _ => unreachable!(),
         }
@@ -224,6 +234,7 @@ pub fn build_function_parameter(pair: Pair<'_, Rule>) -> (BasicType, String) {
 }
 
 pub fn build_function_parameter_declarator(
+    ast: &mut Vec<Declaration>,
     basic_type: &mut BasicType,
     identifier: &mut String,
     pair: Pair<'_, Rule>,
@@ -240,12 +251,101 @@ pub fn build_function_parameter_declarator(
                 build_pointer(&mut derived_type, token);
             }
             Rule::function_parameter_raw_declarator => {
-                build_raw_declarator(&mut derived_type, &mut identifier, token);
+                build_raw_declarator(ast, &mut derived_type, &mut identifier, token);
             }
             _ => unreachable!(),
         }
     }
     *basic_type = derived_type.basic_type;
+}
+
+pub fn build_struct_specifier(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) -> BaseType {
+    let mut is_struct = true;
+    let mut identifier: Option<String> = None;
+    let mut struct_members: Vec<StructMember> = Default::default();
+
+    for token in pair.into_inner() {
+        match token.as_rule() {
+            Rule::struct_ => {
+                is_struct = true;
+            }
+            Rule::union_ => {
+                is_struct = false;
+            }
+            Rule::identifier => {
+                identifier = Some(token.as_str().to_string());
+            }
+            Rule::struct_declaration => {
+                for sub_token in token.into_inner() {
+                    match sub_token.as_rule() {
+                        Rule::declaration => {
+                            let mut sub_ast = Vec::new();
+                            build_declaration(&mut sub_ast, sub_token);
+                            for declaration in sub_ast {
+                                match declaration {
+                                    Declaration::Declaration(
+                                        member_type,
+                                        member_name,
+                                        member_initializer,
+                                    ) => {
+                                        let member_name = match member_name {
+                                            Some(name) => name,
+                                            None => panic!("struct member name is None"), // TODO(TO/GA): throw error
+                                        };
+                                        if member_initializer.is_some() {
+                                            panic!("struct member initializer is not None");
+                                            // TODO(TO/GA): throw error
+                                        }
+                                        struct_members.push(StructMember {
+                                            member_type: member_type.basic_type, // TODO(TO/GA): throw error if it has StorageClassSpecifier
+                                            member_name,
+                                        });
+                                    }
+                                    Declaration::FunctionDefinition(_, _, _, _) => {
+                                        // TODO(TO/GA): throw error
+                                        unreachable!();
+                                    }
+                                }
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    let ret = match is_struct {
+        true => BaseType::Struct(
+            identifier,
+            match struct_members.is_empty() {
+                true => None,
+                false => Some(struct_members),
+            },
+        ),
+        false => BaseType::Union(
+            identifier,
+            match struct_members.is_empty() {
+                true => None,
+                false => Some(struct_members),
+            },
+        ),
+    };
+
+    ast.push(Declaration::Declaration(
+        Type {
+            function_specifier: Default::default(),
+            storage_class_specifier: Default::default(),
+            basic_type: BasicType {
+                qualifier: Default::default(),
+                base_type: ret.clone(),
+            },
+        },
+        None,
+        None,
+    ));
+    ret
 }
 
 pub fn build_type_qualifier(pair: Pair<'_, Rule>) -> TypeQualifier {
