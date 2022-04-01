@@ -1,15 +1,13 @@
 use pest::Parser;
 use serde::Serialize;
+use std::error::Error;
 
 #[derive(Parser, Serialize)]
 #[grammar = "./preprocess/preprocess.pest"]
 pub struct PreprocessParser;
 
-pub fn preprocess(code: &str) -> String {
-    let pairs = match PreprocessParser::parse(Rule::cc99, code)
-        .unwrap_or_else(|e| panic!("{}", e))
-        .next()
-    {
+pub fn preprocess(code: &str) -> Result<String, Box<dyn Error>> {
+    let pairs = match PreprocessParser::parse(Rule::cc99, code)?.next() {
         Some(p) => p.into_inner(),
         None => panic!("Fail to parse an empty file"),
     };
@@ -22,7 +20,7 @@ pub fn preprocess(code: &str) -> String {
             _ => result.push_str(pair.as_str()),
         }
     }
-    result
+    Ok(result)
 }
 
 #[cfg(test)]
@@ -35,7 +33,7 @@ mod tests {
     #[should_panic]
     fn process_comments_fail() {
         let code = r#"/* "#;
-        println!("result: {}", preprocess(code));
+        println!("result: {}", preprocess(code).unwrap());
     }
 
     #[test]
@@ -60,7 +58,7 @@ int main() {
     return 0;
 }
 "#;
-        assert_eq!(expected, preprocess(code));
+        assert_eq!(expected, preprocess(code).unwrap());
     }
 
     #[test]
@@ -72,7 +70,7 @@ int main() { \
         let expected = r#"
 int main() { }
 "#;
-        assert_eq!(expected, preprocess(code));
+        assert_eq!(expected, preprocess(code).unwrap());
     }
 
     #[test]
@@ -90,7 +88,7 @@ int main() {
     return 0;
 }
 "#;
-        assert_eq!(expected, preprocess(code));
+        assert_eq!(expected, preprocess(code).unwrap());
     }
 
     //如果要看输出，请使用cargo test -- --nocapture 开启输出
@@ -119,7 +117,7 @@ int main() {
                 .read_to_string(&mut source_content)
                 .expect("Unable to read source file!");
 
-            let res = preprocess(&source_content);
+            let res = preprocess(&source_content).unwrap();
 
             println!("{}", res);
             println!(">>> {} <<<", "Finish PreProcess");
