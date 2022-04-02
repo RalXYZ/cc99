@@ -23,7 +23,8 @@ pub enum Declaration {
         String,
         /// parameters
         Vec<Option<String>>,
-        Vec<Statement>,
+        /// body
+        Statement,
     ),
 }
 
@@ -115,6 +116,7 @@ pub enum Expression {
     IntLiteral(i32),
     FloatLiteral(f32),
     StringLiteral(String),
+    Empty,
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
@@ -127,4 +129,16 @@ pub enum ForInitClause {
 pub enum StatementOrDeclaration {
     Statement(Statement),
     Declaration(Declaration),
+}
+
+impl Default for Statement {
+    fn default() -> Self {
+        Statement::Expression(Default::default())
+    }
+}
+
+impl Default for Expression {
+    fn default() -> Self {
+        Expression::Empty
+    }
 }

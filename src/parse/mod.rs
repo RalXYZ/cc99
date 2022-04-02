@@ -167,4 +167,46 @@ mod tests {
             ]))
         );
     }
+
+    #[test]
+    fn function_definition() {
+        let code = r#"_Noreturn int *const bar(int x, float) {}"#;
+        assert_eq!(
+            parse(code).unwrap(),
+            Box::new(AST::GlobalDeclaration(vec![
+                Declaration::FunctionDefinition(
+                    Type {
+                        function_specifier: vec![FunctionSpecifier::Noreturn],
+                        storage_class_specifier: StorageClassSpecifier::Auto,
+                        basic_type: BasicType {
+                            qualifier: vec![],
+                            base_type: BaseType::Function(
+                                Box::new(BasicType {
+                                    qualifier: vec![TypeQualifier::Const],
+                                    base_type: BaseType::Pointer(Box::new(BasicType {
+                                        qualifier: vec![],
+                                        base_type: BaseType::Int,
+                                    })),
+                                }),
+                                vec![
+                                    BasicType {
+                                        qualifier: vec![],
+                                        base_type: BaseType::Int,
+                                    },
+                                    BasicType {
+                                        qualifier: vec![],
+                                        base_type: BaseType::Float,
+                                    },
+                                ],
+                                false
+                            ),
+                        },
+                    },
+                    "bar".to_string(),
+                    vec![Some("x".to_string()), None],
+                    Statement::Expression(Box::new(Expression::Empty)),
+                ),
+            ]))
+        );
+    }
 }

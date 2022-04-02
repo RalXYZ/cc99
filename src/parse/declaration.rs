@@ -187,10 +187,10 @@ pub fn build_function_parameter_list(
     ast: &mut Vec<Declaration>,
     derived_type: &mut Type,
     pair: Pair<'_, Rule>,
-) -> Vec<String> {
+) -> Vec<Option<String>> {
     let mut is_variadic = false;
     let mut parameter_list: Vec<BasicType> = Default::default();
-    let mut parameter_name: Vec<String> = Default::default();
+    let mut parameter_name: Vec<Option<String>> = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::function_parameter => {
@@ -216,9 +216,9 @@ pub fn build_function_parameter_list(
 pub fn build_function_parameter(
     ast: &mut Vec<Declaration>,
     pair: Pair<'_, Rule>,
-) -> (BasicType, String) {
+) -> (BasicType, Option<String>) {
     let mut basic_type: BasicType = Default::default();
-    let mut identifier: String = Default::default();
+    let mut identifier: Option<String> = None;
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::declaration_specifiers => {
@@ -236,7 +236,7 @@ pub fn build_function_parameter(
 pub fn build_function_parameter_declarator(
     ast: &mut Vec<Declaration>,
     basic_type: &mut BasicType,
-    identifier: &mut String,
+    identifier: &mut Option<String>,
     pair: Pair<'_, Rule>,
 ) {
     let mut derived_type = Type {
@@ -244,14 +244,17 @@ pub fn build_function_parameter_declarator(
         storage_class_specifier: Default::default(),
         basic_type: basic_type.to_owned(),
     };
-    let mut identifier: String = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::pointer => {
                 build_pointer(&mut derived_type, token);
             }
             Rule::function_parameter_raw_declarator => {
-                build_raw_declarator(ast, &mut derived_type, &mut identifier, token);
+                let mut identifier_: String = Default::default();
+                build_raw_declarator(ast, &mut derived_type, &mut identifier_, token);
+                if !identifier_.is_empty() {
+                    *identifier = Some(identifier_.to_string());
+                }
             }
             _ => unreachable!(),
         }
