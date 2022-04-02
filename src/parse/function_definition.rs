@@ -344,7 +344,7 @@ pub fn build_expression(pair: Pair<'_, Rule>) -> Expression {
     let mut expression: Option<Expression> = None;
     for token in pair.into_inner() {
         match token.as_rule() {
-            Rule::expression => {
+            Rule::assignment_expression => {
                 expression = Some(match expression {
                     Some(e) => Expression::Binary(
                         BinaryOperation::Comma,
@@ -388,7 +388,7 @@ pub fn build_assignment_expression(pair: Pair<'_, Rule>) -> Expression {
                     _ => unreachable!(),
                 };
             }
-            Rule::expression => {
+            Rule::assignment_expression => {
                 rhs = build_assignment_expression(token);
             }
             _ => unreachable!(),
@@ -494,7 +494,8 @@ pub fn build_binary_expression(pair: Pair<'_, Rule>) -> Expression {
             | Rule::relational_expression
             | Rule::shift_expression
             | Rule::add_expression
-            | Rule::mul_expression => {
+            | Rule::mul_expression
+            | Rule::unary_expression => {
                 expression = Some(match expression {
                     Some(e) => Expression::Binary(
                         operation.clone(),
@@ -684,7 +685,9 @@ pub fn build_escape_sequence(pair: Pair<'_, Rule>) -> char {
         "\\t" => '\t',
         "\\v" => '\x0b',
         _ => {
-            // TODO(TO/GA)
+            if escape_sequence == "\\0" {
+                return '\0';
+            }
             unimplemented!();
         }
     }

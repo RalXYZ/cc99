@@ -75,7 +75,7 @@ type_name = {declaration_specifiers ~ pointer? ~ (("[" ~ assignment_expression ~
 argument_list = {assignment_expression ~ ("," ~ assignment_expression)*}
 
 // literal
-constant = {integer_constant | floating_constant | character_constant}
+constant = {floating_constant | character_constant | integer_constant}
 
 integer_constant = @{(decimal_constant | octal_constant | hex_constant | binary_constant) ~ integer_suffix?}
 integer_suffix = {ull_ | ll_ | l_ | u_}
@@ -104,7 +104,7 @@ escape_sequence = {"\\'" | "\\\"" | "\\?" | "\\\\" | "\\a" | "\\b" | "\\f" | "\\
 // other
 identifier = @{!keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")*}
 
-keyword = {auto_ | break_ | case_ | char_ | const_ | continue_ | default_ | do_ | double_ | else_ | enum_ | extern_ | float_ | for_ | goto_ | if_ | inline_ | int_ | long_ | register_ | restrict_ | return_ | short_ | signed_ | sizeof_ | static_ | struct_ | switch_ | typedef_ | union_ | unsigned_ | void_ | volatile_ | while_ | alignas_ | alignof_ | atomic_ | bool_ | complex_ | generic_ | imaginary_ | noreturn_ | static_assert_ | thread_local_}
+keyword = {(auto_ | break_ | case_ | char_ | const_ | continue_ | default_ | do_ | double_ | else_ | enum_ | extern_ | float_ | for_ | goto_ | if_ | inline_ | int_ | long_ | register_ | restrict_ | return_ | short_ | signed_ | sizeof_ | static_ | struct_ | switch_ | typedef_ | union_ | unsigned_ | void_ | volatile_ | while_ | alignas_ | alignof_ | atomic_ | bool_ | complex_ | generic_ | imaginary_ | noreturn_ | static_assert_ | thread_local_) ~ !(ASCII_ALPHA | "_")}
 
 auto_ = {"auto"}
 break_ = {"break"}

@@ -36,8 +36,6 @@ mod tests {
             let res = preprocess(&source_content).unwrap();
             let ast = parse(&res).unwrap();
             println!("{}", serde_json::to_string(&ast).unwrap());
-
-            println!("{}", res);
             println!(">>> {} <<<", "Finish PreProcess");
         }
     }
