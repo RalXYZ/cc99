@@ -85,16 +85,19 @@ hex_constant = @{"0" ~ ("x" | "X") ~ (ASCII_HEX_DIGIT)*}
 binary_constant = @{"0" ~ ("b" | "B") ~ (ASCII_BIN_DIGIT)*}
 
 floating_constant = {decimal_floating_constant | hex_floating_constant}
-decimal_floating_constant = @{decimal_significand ~ decimal_exponent? ~ floating_suffix?}
+decimal_floating_constant = @{decimal_floating_constant_no_suffix ~ floating_suffix?}
+decimal_floating_constant_no_suffix = @{decimal_significand ~ decimal_exponent?}
 decimal_significand = @{((ASCII_NONZERO_DIGIT ~ (ASCII_DIGIT)*) ~ "."? ~ ((ASCII_DIGIT)+)?) | ((ASCII_NONZERO_DIGIT? ~ (ASCII_DIGIT)*) ~ "."? ~ ((ASCII_DIGIT)+))}
 decimal_exponent = @{(^"e" ~ ("+"|"-")? ~ ASCII_DIGIT+)}
-hex_floating_constant = @{hex_significand ~ hex_exponent? ~ floating_suffix?}
+hex_floating_constant = @{hex_floating_constant_no_suffix ~ floating_suffix?}
+hex_floating_constant_no_suffix = @{hex_significand ~ hex_exponent?}
 hex_significand = @{"0" ~ ("x" | "X") ~ (((ASCII_HEX_DIGIT) ~ "."? ~ ((ASCII_HEX_DIGIT)+)?) | ((ASCII_HEX_DIGIT)? ~ "."? ~ ((ASCII_HEX_DIGIT)+)))}
 hex_exponent = @{(^"p" ~ ("+"|"-")? ~ ASCII_DIGIT+)}
-floating_suffix = @{"f" | "F" | "l" | "L"}
+floating_suffix = {f_ | l_}
 
-character_constant = {"'" ~ ((!("'" | "\\" | NEWLINE) ~ ANY) | escape_sequence) ~ "'"}
-string_literal = {"\"" ~ ((!("\"" | "\\" | NEWLINE) ~ ANY) | escape_sequence)* ~ "\""}
+character_constant = {PUSH("'") ~ (char_no_escape | escape_sequence) ~ POP}
+string_literal = {PUSH("\"") ~ (char_no_escape | escape_sequence)* ~ POP}
+char_no_escape = {!(PEEK | "\\" | NEWLINE) ~ ANY}
 
 escape_sequence = {"\\'" | "\\\"" | "\\?" | "\\\\" | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | ("\\" ~ ASCII_OCT_DIGIT{1, 3}) | ("\\x" ~ ASCII_HEX_DIGIT{1, 2}) | ("\\u" ~ ASCII_HEX_DIGIT{4}) | ("\\U" ~ ASCII_HEX_DIGIT{8})}
 
@@ -199,6 +202,7 @@ u_ = {^"u"}
 l_ = {^"l"}
 ll_ = {"ll" | "LL"}
 ull_ = {"ull" | "ULL"}
+f_ = {^"f"}
 
 
 WHITESPACE = _{ " " | NEWLINE | "\t"}

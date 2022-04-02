@@ -511,7 +511,7 @@ pub fn build_binary_expression(pair: Pair<'_, Rule>) -> Expression {
 }
 
 pub fn build_unary_expression(pair: Pair<'_, Rule>) -> Expression {
-    let mut cast_type: Option<Type> = None;
+    let mut cast_type: Option<BasicType> = None;
     let mut unary_operation: UnaryOperation = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
@@ -623,17 +623,168 @@ pub fn build_primary_expression(pair: Pair<'_, Rule>) -> Expression {
     }
 }
 
-pub fn build_type_name(pair: Pair<'_, Rule>) -> Type {
-    // TODO(TO/GA)
-    unimplemented!();
+pub fn build_type_name(pair: Pair<'_, Rule>) -> BasicType {
+    let mut fake_ast: Vec<Declaration> = Default::default();
+    let mut derived_type: Type = Default::default();
+    for token in pair.into_inner() {
+        match token.as_rule() {
+            Rule::declaration_specifiers => {
+                derived_type = build_declaration_specifiers(&mut fake_ast, token);
+            }
+            Rule::pointer => {
+                build_pointer(&mut derived_type, token);
+            }
+            Rule::function_parameter_list => {
+                build_function_parameter_list(&mut fake_ast, &mut derived_type, token);
+            }
+            Rule::assignment_expression => {
+                derived_type.basic_type = BasicType {
+                    qualifier: vec![],
+                    base_type: BaseType::Array(
+                        Box::new(derived_type.basic_type),
+                        Box::new(build_assignment_expression(token)),
+                    ),
+                };
+            }
+            _ => unreachable!(),
+        }
+    }
+    // TODO:(TO/GA) throw error if storage_class_specifier is not empty
+    derived_type.basic_type
 }
 
 pub fn build_string_literal(pair: Pair<'_, Rule>) -> Expression {
-    // TODO(TO/GA)
-    unimplemented!();
+    let mut string_literal: String = Default::default();
+    for token in pair.into_inner() {
+        match token.as_rule() {
+            Rule::char_no_escape => {
+                string_literal.push_str(token.as_str());
+            }
+            Rule::escape_sequence => {
+                string_literal.push(build_escape_sequence(token));
+            }
+            _ => unreachable!(),
+        }
+    }
+    Expression::StringLiteral(string_literal)
+}
+
+pub fn build_escape_sequence(pair: Pair<'_, Rule>) -> char {
+    let escape_sequence = pair.as_str();
+    match escape_sequence {
+        "\\'" => '\'',
+        "\\\"" => '\"',
+        "\\?" => '?',
+        "\\\\" => '\\',
+        "\\a" => '\x07',
+        "\\b" => '\x08',
+        "\\f" => '\x0c',
+        "\\n" => '\n',
+        "\\r" => '\r',
+        "\\t" => '\t',
+        "\\v" => '\x0b',
+        _ => {
+            // TODO(TO/GA)
+            unimplemented!();
+        }
+    }
 }
 
 pub fn build_constant(pair: Pair<'_, Rule>) -> Expression {
+    let token = pair.into_inner().next().unwrap();
+    match token.as_rule() {
+        Rule::integer_constant => build_integer_constant(token),
+        Rule::character_constant => build_character_constant(token),
+        Rule::floating_constant => build_floating_constant(token),
+        _ => unreachable!(),
+    }
+}
+
+pub fn build_integer_constant(pair: Pair<'_, Rule>) -> Expression {
+    let mut number: i128 = Default::default();
+    for token in pair.into_inner() {
+        match token.as_rule() {
+            Rule::decimal_constant => {
+                number = token.as_str().to_string().parse::<i128>().unwrap();
+            }
+            Rule::octal_constant => {
+                let number_str = token.as_str();
+                number = i128::from_str_radix(&number_str[1..number_str.len()], 8).unwrap()
+            }
+            Rule::hex_constant => {
+                let number_str = token.as_str();
+                number = i128::from_str_radix(&number_str[2..number_str.len()], 16).unwrap()
+            }
+            Rule::binary_constant => {
+                let number_str = token.as_str();
+                number = i128::from_str_radix(&number_str[2..number_str.len()], 2).unwrap()
+            }
+            Rule::integer_suffix => match token.into_inner().next().unwrap().as_rule() {
+                Rule::ull_ => {
+                    return Expression::UnsignedLongLongConstant(number as u64);
+                }
+                Rule::ll_ => {
+                    return Expression::LongLongConstant(number as i64);
+                }
+                Rule::l_ => {
+                    return Expression::LongConstant(number as i64);
+                }
+                Rule::u_ => {
+                    return Expression::UnsignedIntegerConstant(number as u32);
+                }
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
+        }
+    }
+    Expression::IntegerConstant(number as i32)
+}
+
+pub fn build_character_constant(pair: Pair<'_, Rule>) -> Expression {
+    let token = pair.into_inner().next().unwrap();
+    match token.as_rule() {
+        Rule::char_no_escape => {
+            Expression::CharacterConstant(token.as_str().chars().next().unwrap())
+        }
+        Rule::escape_sequence => Expression::CharacterConstant(build_escape_sequence(token)),
+        _ => unreachable!(),
+    }
+}
+
+pub fn build_floating_constant(pair: Pair<'_, Rule>) -> Expression {
+    let token = pair.into_inner().next().unwrap();
+    match token.as_rule() {
+        Rule::decimal_floating_constant => build_decimal_floating_constant(token),
+        Rule::hex_floating_constant => build_hex_floating_constant(token),
+        _ => unreachable!(),
+    }
+}
+
+pub fn build_decimal_floating_constant(pair: Pair<'_, Rule>) -> Expression {
+    let mut number: f64 = Default::default();
+    let mut is_double = true;
+    for token in pair.into_inner() {
+        match token.as_rule() {
+            Rule::decimal_floating_constant_no_suffix => {
+                number = token.as_str().to_string().parse::<f64>().unwrap(); // TODO(TO/GA): test
+            }
+            Rule::floating_suffix => {
+                is_double = match token.into_inner().next().unwrap().as_rule() {
+                    Rule::f_ => false,
+                    Rule::l_ => true,
+                    _ => unreachable!(),
+                };
+            }
+            _ => {}
+        }
+    }
+    match is_double {
+        false => Expression::FloatConstant(number as f32),
+        true => Expression::DoubleConstant(number),
+    }
+}
+
+pub fn build_hex_floating_constant(pair: Pair<'_, Rule>) -> Expression {
     // TODO(TO/GA)
     unimplemented!();
 }

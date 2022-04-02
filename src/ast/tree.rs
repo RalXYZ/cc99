@@ -93,7 +93,7 @@ pub enum Expression {
         /// arguments
         Vec<Expression>,
     ),
-    TypeCast(Type, Box<Expression>),
+    TypeCast(BasicType, Box<Expression>),
     Conditional(
         /// condition
         Box<Expression>,
@@ -102,7 +102,7 @@ pub enum Expression {
         /// false expression
         Box<Expression>,
     ),
-    SizeofType(Type),
+    SizeofType(BasicType),
     MemberOfObject(
         /// object
         Box<Expression>,
@@ -123,9 +123,15 @@ pub enum Expression {
     ),
 
     Identifier(String),
-    BoolLiteral(bool),
-    IntLiteral(i32),
-    FloatLiteral(f32),
+    IntegerConstant(i32),
+    UnsignedIntegerConstant(u32),
+    LongConstant(i64),
+    UnsignedLongConstant(u64),
+    LongLongConstant(i64),
+    UnsignedLongLongConstant(u64),
+    CharacterConstant(char),
+    FloatConstant(f32),
+    DoubleConstant(f64),
     StringLiteral(String),
     Empty,
 }
