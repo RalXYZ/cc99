@@ -31,6 +31,8 @@ pub enum UnaryOperation {
     // member access
     Reference,
     Dereference,
+    // other
+    SizeofExpr,
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
@@ -56,8 +58,24 @@ pub enum BinaryOperation {
     LessThanOrEqual,
     GreaterThan,
     GreaterThanOrEqual,
-    // member access
-    ArraySubscript,
     // other
-    CommaOperator,
+    Comma,
+}
+
+impl Default for AssignOperation {
+    fn default() -> Self {
+        AssignOperation::Naive
+    }
+}
+
+impl Default for UnaryOperation {
+    fn default() -> Self {
+        UnaryOperation::PrefixIncrement
+    }
+}
+
+impl Default for BinaryOperation {
+    fn default() -> Self {
+        BinaryOperation::Comma
+    }
 }

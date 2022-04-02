@@ -66,10 +66,10 @@ add_expression = {mul_expression ~ ((add_op | sub_op) ~ mul_expression)*}
 mul_expression = {unary_expression ~ ((mul_op | div_op | mod_op) ~ unary_expression)*}
 
 unary_expression = {(sizeof_ ~ "(" ~ type_name ~ ")") | (prefix_unary_operator ~ unary_expression) | postfix_unary_expression}
-postfix_unary_expression = {primary_expression ~ (postfix_inc_op| postfix_dec_op | ("(" ~ argument_list? ~ ")") | ("[" ~ expression ~ "]") | (("." | "->") ~ identifier))*}
+postfix_unary_expression = {primary_expression ~ (postfix_inc_op| postfix_dec_op | ("(" ~ argument_list? ~ ")") | ("[" ~ expression ~ "]") | ((member_of_object_op | member_of_pointer_op) ~ identifier))*}
 primary_expression = {identifier | constant | string_literal | ("(" ~ expression ~ ")")}
 
-assignment_operator = {assign_naive_op | assign_add_op | assign_sub_op | assign_mul_op | assign_div_op | assign_mod_op | assign_bitwise_and_op | assign_bitwise_or_op | assign_bitwise_xor_op | assign_left_shift_op | assign_right_shift}
+assignment_operator = {assign_naive_op | assign_add_op | assign_sub_op | assign_mul_op | assign_div_op | assign_mod_op | assign_bitwise_and_op | assign_bitwise_or_op | assign_bitwise_xor_op | assign_left_shift_op | assign_right_shift_op}
 prefix_unary_operator = {prefix_inc_op | prefix_dec_op | unary_plus_op | unary_minus_op | logical_not_op | bitwise_not_op | "(" ~ type_name ~ ")" | dereference_op | reference_op | sizeof_}
 type_name = {declaration_specifiers ~ pointer? ~ (("[" ~ assignment_expression ~ "]")+) | ("(" ~ function_parameter_list ~ ")")}
 argument_list = {assignment_expression ~ ("," ~ assignment_expression)*}
@@ -158,7 +158,7 @@ assign_bitwise_and_op = {"&="}
 assign_bitwise_or_op = {"|="}
 assign_bitwise_xor_op = {"^="}
 assign_left_shift_op = {"<<="}
-assign_right_shift = {">>="}
+assign_right_shift_op = {">>="}
 
 prefix_inc_op = {"++"}
 prefix_dec_op = {"--"}
@@ -189,6 +189,9 @@ less_than_op = {"<"}
 less_than_or_equal_op = {"<="}
 greater_than_op = {">"}
 greater_than_or_equal_op = {">="}
+
+member_of_object_op = {"."}
+member_of_pointer_op = {"->"}
 
 star_ = {"*"}
 variadic_argument_ = {"..."}

@@ -204,7 +204,7 @@ mod tests {
                     },
                     "bar".to_string(),
                     vec![Some("x".to_string()), None],
-                    Statement::Expression(Box::new(Expression::Empty)),
+                    Statement::Compound(vec![]),
                 ),
             ]))
         );

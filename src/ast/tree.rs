@@ -49,7 +49,7 @@ pub enum Statement {
         /// false statement
         Option<Box<Statement>>,
     ),
-    Switch(Box<Expression>, Vec<Statement>),
+    Switch(Box<Expression>, Box<Statement>),
     // iteration statement
     While(Box<Expression>, Box<Statement>),
     DoWhile(Box<Statement>, Box<Expression>),
@@ -87,7 +87,12 @@ pub enum Expression {
         /// right hand side
         Box<Expression>,
     ),
-    FunctionCall(String, Vec<Expression>),
+    FunctionCall(
+        /// function
+        Box<Expression>,
+        /// arguments
+        Vec<Expression>,
+    ),
     TypeCast(Type, Box<Expression>),
     Conditional(
         /// condition
@@ -97,7 +102,7 @@ pub enum Expression {
         /// false expression
         Box<Expression>,
     ),
-    Sizeof(Box<Expression>),
+    SizeofType(Type),
     MemberOfObject(
         /// object
         Box<Expression>,
@@ -109,6 +114,12 @@ pub enum Expression {
         Box<Expression>,
         /// member name
         String,
+    ),
+    ArraySubscript(
+        /// array
+        Box<Expression>,
+        /// index
+        Box<Expression>,
     ),
 
     Identifier(String),
@@ -122,7 +133,7 @@ pub enum Expression {
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum ForInitClause {
     Expression(Expression),
-    Declaration(Declaration),
+    Declaration(Vec<Declaration>),
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
