@@ -18,7 +18,7 @@ declaration_specifiers = {(storage_class_specifier | function_specifier | type_q
 storage_class_specifier = {typedef_ | extern_ | static_ | auto_ | register_}
 type_qualifier = {const_ | volatile_ | restrict_ | atomic_}
 function_specifier = {inline_ | noreturn_}
-type_specifier = {void_ | char_ | int_ | bool_ | float_ | double_ | struct_specifier | identifier}
+type_specifier = {void_ | ((unsigned_ | signed_)? ~ (char_ | short_ | int_ | (long_ ~ long_) | long_)) | signed_ | unsigned_ | bool_ | float_ | double_ | struct_specifier | identifier}
 struct_specifier = {((struct_ | union_) ~ identifier? ~ "{" ~ (struct_declaration)+ ~ "}") | ((struct_ | union_) ~ identifier)}
 struct_declaration = {(declaration)+}
 
@@ -71,13 +71,13 @@ primary_expression = {identifier | constant | string_literal | ("(" ~ expression
 
 assignment_operator = {assign_naive_op | assign_add_op | assign_sub_op | assign_mul_op | assign_div_op | assign_mod_op | assign_bitwise_and_op | assign_bitwise_or_op | assign_bitwise_xor_op | assign_left_shift_op | assign_right_shift_op}
 prefix_unary_operator = {prefix_inc_op | prefix_dec_op | unary_plus_op | unary_minus_op | logical_not_op | bitwise_not_op | "(" ~ type_name ~ ")" | dereference_op | reference_op | sizeof_}
-type_name = {declaration_specifiers ~ pointer? ~ (("[" ~ assignment_expression ~ "]")+) | ("(" ~ function_parameter_list ~ ")")}
+type_name = {declaration_specifiers ~ pointer? ~ ((("[" ~ assignment_expression ~ "]")+) | ("(" ~ function_parameter_list ~ ")"))?}
 argument_list = {assignment_expression ~ ("," ~ assignment_expression)*}
 
 // literal
-constant = {floating_constant | character_constant | integer_constant}
+constant = {integer_constant | floating_constant | character_constant}
 
-integer_constant = @{(decimal_constant | octal_constant | hex_constant | binary_constant) ~ integer_suffix?}
+integer_constant = @{(hex_constant | binary_constant | octal_constant | decimal_constant) ~ integer_suffix? ~ !("." | ^"e" | ^"p")}
 integer_suffix = {ull_ | ll_ | l_ | u_}
 decimal_constant = @{ASCII_NONZERO_DIGIT ~ (ASCII_DIGIT)*}
 octal_constant = @{"0" ~ (ASCII_OCT_DIGIT)*}
@@ -104,7 +104,7 @@ escape_sequence = {"\\'" | "\\\"" | "\\?" | "\\\\" | "\\a" | "\\b" | "\\f" | "\\
 // other
 identifier = @{!keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")*}
 
-keyword = {(auto_ | break_ | case_ | char_ | const_ | continue_ | default_ | do_ | double_ | else_ | enum_ | extern_ | float_ | for_ | goto_ | if_ | inline_ | int_ | long_ | register_ | restrict_ | return_ | short_ | signed_ | sizeof_ | static_ | struct_ | switch_ | typedef_ | union_ | unsigned_ | void_ | volatile_ | while_ | alignas_ | alignof_ | atomic_ | bool_ | complex_ | generic_ | imaginary_ | noreturn_ | static_assert_ | thread_local_) ~ !(ASCII_ALPHA | "_")}
+keyword = @{(auto_ | break_ | case_ | char_ | const_ | continue_ | default_ | do_ | double_ | else_ | enum_ | extern_ | float_ | for_ | goto_ | if_ | inline_ | int_ | long_ | register_ | restrict_ | return_ | short_ | signed_ | sizeof_ | static_ | struct_ | switch_ | typedef_ | union_ | unsigned_ | void_ | volatile_ | while_ | alignas_ | alignof_ | atomic_ | bool_ | complex_ | generic_ | imaginary_ | noreturn_ | static_assert_ | thread_local_) ~ !(ASCII_ALPHA | "_")}
 
 auto_ = {"auto"}
 break_ = {"break"}

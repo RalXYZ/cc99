@@ -42,8 +42,8 @@ pub struct BasicType {
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum BaseType {
     Void,
-    Char,
-    Int,
+    SignedInteger(IntegerType),
+    UnsignedInteger(IntegerType),
     Bool,
     Float,
     Double,
@@ -79,6 +79,15 @@ pub enum BaseType {
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
+pub enum IntegerType {
+    Short,
+    Char,
+    Int,
+    Long,
+    LongLong,
+}
+
+#[derive(Serialize, Debug, PartialEq, Clone)]
 pub struct StructMember {
     pub member_name: String,
     pub member_type: BasicType,
@@ -86,7 +95,7 @@ pub struct StructMember {
 
 impl Default for BaseType {
     fn default() -> Self {
-        BaseType::Int
+        BaseType::SignedInteger(IntegerType::Int)
     }
 }
 

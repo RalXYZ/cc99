@@ -81,17 +81,34 @@ pub fn build_declaration_specifiers(ast: &mut Vec<Declaration>, pair: Pair<'_, R
 }
 
 pub fn build_type_specifier(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) -> BaseType {
+    let mut is_signed = true;
+    let mut integer_type = IntegerType::Int;
     let token = pair.into_inner().next().unwrap();
     match token.as_rule() {
-        Rule::void_ => BaseType::Void,
-        Rule::char_ => BaseType::Char,
-        Rule::int_ => BaseType::Int,
-        Rule::bool_ => BaseType::Bool,
-        Rule::float_ => BaseType::Float,
-        Rule::double_ => BaseType::Double,
-        Rule::identifier => BaseType::Identifier(token.as_str().to_string()),
-        Rule::struct_specifier => build_struct_specifier(ast, token),
+        Rule::void_ => return BaseType::Void,
+        Rule::signed_ => is_signed = true,
+        Rule::unsigned_ => is_signed = false,
+        Rule::char_ => integer_type = IntegerType::Char,
+        Rule::short_ => integer_type = IntegerType::Short,
+        Rule::int_ => integer_type = IntegerType::Int,
+        Rule::long_ => {
+            integer_type = match integer_type {
+                IntegerType::Int => IntegerType::Long,
+                IntegerType::Long => IntegerType::LongLong,
+                _ => unreachable!(),
+            }
+        }
+        Rule::bool_ => return BaseType::Bool,
+        Rule::float_ => return BaseType::Float,
+        Rule::double_ => return BaseType::Double,
+        Rule::identifier => return BaseType::Identifier(token.as_str().to_string()),
+        Rule::struct_specifier => return build_struct_specifier(ast, token),
         _ => unreachable!(),
+    }
+    if is_signed {
+        BaseType::SignedInteger(integer_type)
+    } else {
+        BaseType::UnsignedInteger(integer_type)
     }
 }
 

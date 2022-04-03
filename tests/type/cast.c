@@ -8,12 +8,10 @@ int cast(){
 
 
     int c=(int)a;
-    int d=int(b);
 
     float e=1.2;
     float f=1.3f;
 
     c=(int)e;
-    d=int(f);
 
 }

@@ -56,7 +56,7 @@ mod tests {
                             qualifier: vec![TypeQualifier::Const],
                             base_type: BaseType::Pointer(Box::new(BasicType {
                                 qualifier: vec![TypeQualifier::Const],
-                                base_type: BaseType::Int,
+                                base_type: Default::default(),
                             })),
                         },
                     },
@@ -69,7 +69,7 @@ mod tests {
                         storage_class_specifier: StorageClassSpecifier::Static,
                         basic_type: BasicType {
                             qualifier: vec![TypeQualifier::Const],
-                            base_type: BaseType::Int,
+                            base_type: Default::default(),
                         },
                     },
                     Some("y".to_string()),
@@ -93,12 +93,12 @@ mod tests {
                         base_type: BaseType::Function(
                             Box::new(BasicType {
                                 qualifier: vec![TypeQualifier::Const],
-                                base_type: BaseType::Int,
+                                base_type: Default::default(),
                             }),
                             vec![
                                 BasicType {
                                     qualifier: vec![TypeQualifier::Const],
-                                    base_type: BaseType::Int,
+                                    base_type: Default::default(),
                                 },
                                 BasicType {
                                     qualifier: vec![],
@@ -130,7 +130,7 @@ mod tests {
                         member_name: "y".to_string(),
                         member_type: BasicType {
                             qualifier: vec![TypeQualifier::Const],
-                            base_type: BaseType::Int,
+                            base_type: Default::default(),
                         },
                     },
                     StructMember {
@@ -185,13 +185,13 @@ mod tests {
                                     qualifier: vec![TypeQualifier::Const],
                                     base_type: BaseType::Pointer(Box::new(BasicType {
                                         qualifier: vec![],
-                                        base_type: BaseType::Int,
+                                        base_type: Default::default(),
                                     })),
                                 }),
                                 vec![
                                     BasicType {
                                         qualifier: vec![],
-                                        base_type: BaseType::Int,
+                                        base_type: Default::default(),
                                     },
                                     BasicType {
                                         qualifier: vec![],
