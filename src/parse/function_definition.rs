@@ -578,10 +578,12 @@ pub fn build_postfix_unary_expression(pair: Pair<'_, Rule>) -> Expression {
                 expression =
                     Expression::Unary(UnaryOperation::PostfixDecrement, Box::new(expression));
             }
-            Rule::argument_list => {
+            Rule::function_call => {
                 let mut arguments: Vec<Expression> = Default::default();
-                for argument in token.into_inner() {
-                    arguments.push(build_assignment_expression(argument));
+                for argument_list in token.into_inner() {
+                    for argument in argument_list.into_inner() {
+                        arguments.push(build_assignment_expression(argument));
+                    }
                 }
                 expression = Expression::FunctionCall(Box::new(expression), arguments);
             }
@@ -712,7 +714,11 @@ pub fn build_integer_constant(pair: Pair<'_, Rule>) -> Expression {
             }
             Rule::octal_constant => {
                 let number_str = token.as_str();
-                number = i128::from_str_radix(&number_str[1..number_str.len()], 8).unwrap()
+                number = match number_str.len() {
+                    0 => unreachable!(),
+                    1 => 0,
+                    _ => i128::from_str_radix(&number_str[1..number_str.len()], 8).unwrap(),
+                }
             }
             Rule::hex_constant => {
                 let number_str = token.as_str();
@@ -740,7 +746,7 @@ pub fn build_integer_constant(pair: Pair<'_, Rule>) -> Expression {
             _ => unreachable!(),
         }
     }
-    Expression::IntegerConstant(number as i32)
+    Expression::IntegerConstant(number as i32) // TODO(TO/GA): throw error if overflow
 }
 
 pub fn build_character_constant(pair: Pair<'_, Rule>) -> Expression {

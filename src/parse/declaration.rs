@@ -180,23 +180,27 @@ pub fn build_raw_declarator(
     identifier: &mut String,
     pair: Pair<'_, Rule>,
 ) {
+    let mut dimensions: Vec<Expression> = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::identifier => {
                 *identifier = token.as_str().to_string();
             }
             Rule::assignment_expression => {
-                derived_type.basic_type.base_type = BaseType::Array(
-                    Box::new(derived_type.basic_type.to_owned()),
-                    Box::new(build_assignment_expression(token)),
-                );
-                derived_type.basic_type.qualifier = Default::default();
+                dimensions.push(build_assignment_expression(token));
             }
             Rule::function_parameter_list => {
                 build_function_parameter_list(ast, derived_type, token);
             }
             _ => unreachable!(),
         }
+    }
+    while !dimensions.is_empty() {
+        derived_type.basic_type.base_type = BaseType::Array(
+            Box::new(derived_type.basic_type.to_owned()),
+            Box::new(dimensions.pop().unwrap()),
+        );
+        derived_type.basic_type.qualifier = Default::default();
     }
 }
 
@@ -282,6 +286,7 @@ pub fn build_function_parameter_declarator(
 pub fn build_struct_specifier(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) -> BaseType {
     let mut is_struct = true;
     let mut identifier: Option<String> = None;
+    let mut struct_declaration = false;
     let mut struct_members: Vec<StructMember> = Default::default();
 
     for token in pair.into_inner() {
@@ -296,6 +301,7 @@ pub fn build_struct_specifier(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) 
                 identifier = Some(token.as_str().to_string());
             }
             Rule::struct_declaration => {
+                struct_declaration = true;
                 for sub_token in token.into_inner() {
                     match sub_token.as_rule() {
                         Rule::declaration => {
@@ -339,32 +345,34 @@ pub fn build_struct_specifier(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) 
     let ret = match is_struct {
         true => BaseType::Struct(
             identifier,
-            match struct_members.is_empty() {
-                true => None,
-                false => Some(struct_members),
+            match struct_declaration {
+                false => None,
+                true => Some(struct_members),
             },
         ),
         false => BaseType::Union(
             identifier,
-            match struct_members.is_empty() {
-                true => None,
-                false => Some(struct_members),
+            match struct_declaration {
+                false => None,
+                true => Some(struct_members),
             },
         ),
     };
 
-    ast.push(Declaration::Declaration(
-        Type {
-            function_specifier: Default::default(),
-            storage_class_specifier: Default::default(),
-            basic_type: BasicType {
-                qualifier: Default::default(),
-                base_type: ret.clone(),
+    if struct_declaration {
+        ast.push(Declaration::Declaration(
+            Type {
+                function_specifier: Default::default(),
+                storage_class_specifier: Default::default(),
+                basic_type: BasicType {
+                    qualifier: Default::default(),
+                    base_type: ret.clone(),
+                },
             },
-        },
-        None,
-        None,
-    ));
+            None,
+            None,
+        ));
+    }
     ret
 }
 
