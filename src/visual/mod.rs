@@ -26,7 +26,7 @@ pub fn compile_result(code: &str) -> String {
         ast: Box::new(AST::GlobalDeclaration(vec![])),
     };
     match preprocess(code) {
-        Ok(mut code) => match parse(&code) {
+        Ok(code) => match parse(&code) {
             Ok(ast) => {
                 result.ast = ast;
             }

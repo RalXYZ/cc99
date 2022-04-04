@@ -1,10 +1,17 @@
 use pest::Parser;
 use serde::Serialize;
 use std::error::Error;
+use std::fs;
 
 #[derive(Parser, Serialize)]
 #[grammar = "./preprocess/preprocess.pest"]
 pub struct PreprocessParser;
+
+pub fn preprocess_file(path: &str) -> Result<String, Box<dyn Error>> {
+    let source_content =
+        fs::read_to_string(path).unwrap_or_else(|_| panic!("Unable to read source file {}", path));
+    preprocess(&source_content)
+}
 
 pub fn preprocess(code: &str) -> Result<String, Box<dyn Error>> {
     let pairs = match PreprocessParser::parse(Rule::cc99, code)?.next() {

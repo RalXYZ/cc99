@@ -41,6 +41,9 @@ pub fn build_declaration_specifiers(ast: &mut Vec<Declaration>, pair: Pair<'_, R
                 Rule::static_ => {
                     storage_class_specifier.push(StorageClassSpecifier::Static);
                 }
+                Rule::thread_local_ => {
+                    storage_class_specifier.push(StorageClassSpecifier::ThreadLocal);
+                }
                 Rule::auto_ => {
                     storage_class_specifier.push(StorageClassSpecifier::Auto);
                 }

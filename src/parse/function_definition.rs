@@ -735,6 +735,9 @@ pub fn build_integer_constant(pair: Pair<'_, Rule>) -> Expression {
                 Rule::ll_ => {
                     return Expression::LongLongConstant(number as i64);
                 }
+                Rule::ul_ => {
+                    return Expression::UnsignedLongConstant(number as u64);
+                }
                 Rule::l_ => {
                     return Expression::LongConstant(number as i64);
                 }
@@ -793,7 +796,7 @@ pub fn build_decimal_floating_constant(pair: Pair<'_, Rule>) -> Expression {
     }
 }
 
-pub fn build_hex_floating_constant(pair: Pair<'_, Rule>) -> Expression {
+pub fn build_hex_floating_constant(_pair: Pair<'_, Rule>) -> Expression {
     // TODO(TO/GA)
     unimplemented!();
 }

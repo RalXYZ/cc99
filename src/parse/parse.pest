@@ -15,7 +15,7 @@ function_parameter_raw_declarator = {(identifier? ~ ("[" ~ assignment_expression
 function_definition = {declaration_specifiers ~ pointer? ~ identifier ~ "(" ~ function_parameter_list ~ ")" ~ compound_statement}
 
 declaration_specifiers = {(storage_class_specifier | function_specifier | type_qualifier)* ~ type_specifier ~ (storage_class_specifier | function_specifier | type_qualifier)*}
-storage_class_specifier = {typedef_ | extern_ | static_ | auto_ | register_}
+storage_class_specifier = {typedef_ | extern_ | static_ | thread_local_ | auto_ | register_}
 type_qualifier = {const_ | volatile_ | restrict_ | atomic_}
 function_specifier = {inline_ | noreturn_}
 type_specifier = {void_ | ((unsigned_ | signed_)? ~ (char_ | short_ | int_ | (long_ ~ long_) | long_)) | signed_ | unsigned_ | bool_ | float_ | double_ | struct_specifier | identifier}
@@ -79,7 +79,7 @@ argument_list = {assignment_expression ~ ("," ~ assignment_expression)*}
 constant = {integer_constant | floating_constant | character_constant}
 
 integer_constant = ${(hex_constant | binary_constant | octal_constant | decimal_constant) ~ integer_suffix? ~ !("." | ^"e" | ^"p")}
-integer_suffix = {ull_ | ll_ | l_ | u_}
+integer_suffix = {ull_ | ll_ | ul_ | l_ | u_}
 decimal_constant = @{ASCII_NONZERO_DIGIT ~ (ASCII_DIGIT)*}
 octal_constant = @{"0" ~ (ASCII_OCT_DIGIT)*}
 hex_constant = @{"0" ~ ("x" | "X") ~ (ASCII_HEX_DIGIT)*}
@@ -201,6 +201,7 @@ star_ = {"*"}
 variadic_argument_ = {"..."}
 u_ = {^"u"}
 l_ = {^"l"}
+ul_ = {"ul" | "UL"}
 ll_ = {"ll" | "LL"}
 ull_ = {"ull" | "ULL"}
 f_ = {^"f"}

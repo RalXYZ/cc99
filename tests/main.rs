@@ -3,9 +3,6 @@ extern crate cc99;
 #[cfg(test)]
 mod tests {
     use cc99::*;
-    use serde::Serialize;
-    use std::fs::File;
-    use std::io::Read;
     use walkdir::WalkDir;
 
     #[test]
@@ -26,14 +23,7 @@ mod tests {
             }
             println!(">>> {} {} <<<", "Start compiling", source_path);
 
-            let mut source_file = File::open(source_path).expect("Unable to open source file!");
-            let mut source_content: String = String::new();
-
-            source_file
-                .read_to_string(&mut source_content)
-                .expect("Unable to read source file!");
-
-            let res = preprocess(&source_content).unwrap();
+            let res = preprocess_file(&source_path).unwrap();
             let ast = parse(&res).unwrap();
             println!("{}", serde_json::to_string(&ast).unwrap());
             println!(">>> {} <<<", "Finish Parsing");
