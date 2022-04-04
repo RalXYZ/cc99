@@ -51,9 +51,11 @@ for_iteration_expression = {expression}
 // expression
 expression = {assignment_expression ~ ("," ~ assignment_expression)*}
 
+// https://en.cppreference.com/w/c/language/operator_precedence#cite_ref-4
 assignment_expression = {(unary_expression ~ assignment_operator ~ assignment_expression) | conditional_expression}
 
-conditional_expression = {logical_or_expression ~ ("?" ~ expression ~ ":" ~ expression)?}
+// https://en.cppreference.com/w/c/language/operator_precedence#cite_ref-3
+conditional_expression = {logical_or_expression ~ ("?" ~ expression ~ ":" ~ conditional_expression)?}
 logical_or_expression = {logical_and_expression ~ (logical_or_op ~ logical_and_expression)*}
 logical_and_expression = {bitwise_or_expression ~ (logical_and_op ~ bitwise_or_expression)*}
 bitwise_or_expression = {bitwise_xor_expression ~ (bitwise_or_op ~ bitwise_xor_expression)*}

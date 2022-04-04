@@ -407,6 +407,9 @@ pub fn build_conditional_expression(pair: Pair<'_, Rule>) -> Expression {
             Rule::expression => {
                 expressions.push(build_expression(token));
             }
+            Rule::conditional_expression => {
+                expressions.push(build_conditional_expression(token));
+            }
             _ => unreachable!(),
         }
     }
