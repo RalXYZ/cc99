@@ -1,6 +1,9 @@
 cc99 = { SOI ~ (declaration | function_definition)* ~ EOI }
 
-// declaration and definition
+
+//>>>>>>>>>>>>>>>>>>>>>>>
+//      DECLARATION
+//<<<<<<<<<<<<<<<<<<<<<<<
 declaration = {declaration_specifiers ~ declarator_and_initializer_list? ~ ";"}
 declarator_and_initializer_list = {declarator_and_initializer ~ ("," ~ declarator_and_initializer)*}
 declarator_and_initializer = {declarator ~ ("=" ~ assignment_expression)?}
@@ -22,7 +25,10 @@ type_specifier = {void_ | ((unsigned_ | signed_)? ~ (char_ | short_ | int_ | (lo
 struct_specifier = {((struct_ | union_) ~ identifier? ~ "{" ~ (struct_declaration)+ ~ "}") | ((struct_ | union_) ~ identifier)}
 struct_declaration = {(declaration)+}
 
-// statement
+
+//>>>>>>>>>>>>>>>>>>>>>>>
+//       STATEMENT
+//<<<<<<<<<<<<<<<<<<<<<<<
 statement = {labeled_statement | case_statement | expression_statement | compound_statement | selection_statement | iteration_statement | jump_statement}
 labeled_statement = {identifier ~ ":" ~ statement}
 case_statement = {((case_ ~ assignment_expression) | default_) ~ ":" ~ statement}
@@ -48,7 +54,10 @@ for_init_clause = {expression | (declaration_specifiers ~ declarator_and_initial
 for_cond_expression = {expression}
 for_iteration_expression = {expression}
 
-// expression
+
+//>>>>>>>>>>>>>>>>>>>>>>>
+//      EXPRESSION
+//<<<<<<<<<<<<<<<<<<<<<<<
 expression = {assignment_expression ~ ("," ~ assignment_expression)*}
 
 // https://en.cppreference.com/w/c/language/operator_precedence#cite_ref-4
@@ -77,7 +86,10 @@ type_name = {declaration_specifiers ~ pointer? ~ ((("[" ~ assignment_expression 
 function_call = {"(" ~ argument_list? ~ ")"}
 argument_list = {assignment_expression ~ ("," ~ assignment_expression)*}
 
-// literal
+
+//>>>>>>>>>>>>>>>>>>>>>>>
+//       LITERAL
+//<<<<<<<<<<<<<<<<<<<<<<<
 constant = {integer_constant | floating_constant | character_constant}
 
 integer_constant = ${(hex_constant | binary_constant | octal_constant | decimal_constant) ~ integer_suffix? ~ !("." | ^"e" | ^"p")}
@@ -104,7 +116,10 @@ char_no_escape = @{!(PEEK | "\\" | NEWLINE) ~ ANY}
 
 escape_sequence = @{"\\'" | "\\\"" | "\\?" | "\\\\" | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | ("\\" ~ ASCII_OCT_DIGIT{1, 3}) | ("\\x" ~ ASCII_HEX_DIGIT{1, 2}) | ("\\u" ~ ASCII_HEX_DIGIT{4}) | ("\\U" ~ ASCII_HEX_DIGIT{8})}
 
-// other
+
+//>>>>>>>>>>>>>>>>>>>>>>>
+//        TOKEN
+//<<<<<<<<<<<<<<<<<<<<<<<
 identifier = @{!keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")*}
 
 keyword = @{(auto_ | break_ | case_ | char_ | const_ | continue_ | default_ | do_ | double_ | else_ | enum_ | extern_ | float_ | for_ | goto_ | if_ | inline_ | int_ | long_ | register_ | restrict_ | return_ | short_ | signed_ | sizeof_ | static_ | struct_ | switch_ | typedef_ | union_ | unsigned_ | void_ | volatile_ | while_ | alignas_ | alignof_ | atomic_ | bool_ | complex_ | generic_ | imaginary_ | noreturn_ | static_assert_ | thread_local_) ~ !(ASCII_ALPHA | "_")}
@@ -207,6 +222,5 @@ ul_ = {"ul" | "UL"}
 ll_ = {"ll" | "LL"}
 ull_ = {"ull" | "ULL"}
 f_ = {^"f"}
-
 
 WHITESPACE = _{ " " | NEWLINE | "\t"}

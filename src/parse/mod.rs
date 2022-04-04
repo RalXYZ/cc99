@@ -1,5 +1,7 @@
 mod declaration;
-mod function_definition;
+mod expression;
+mod literal;
+mod statement;
 
 use pest::Parser;
 use serde::Serialize;
@@ -7,7 +9,9 @@ use std::error::Error;
 
 use super::ast::*;
 use declaration::*;
-use function_definition::*;
+use expression::*;
+use literal::*;
+use statement::*;
 
 #[derive(Parser, Serialize)]
 #[grammar = "./parse/parse.pest"]
