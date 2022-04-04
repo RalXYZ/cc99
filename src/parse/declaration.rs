@@ -342,16 +342,16 @@ pub fn build_struct_specifier(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) 
         }
     }
 
-    let ret = match is_struct {
+    let struct_definition = match is_struct {
         true => BaseType::Struct(
-            identifier,
+            identifier.clone(),
             match struct_declaration {
                 false => None,
                 true => Some(struct_members),
             },
         ),
         false => BaseType::Union(
-            identifier,
+            identifier.clone(),
             match struct_declaration {
                 false => None,
                 true => Some(struct_members),
@@ -366,14 +366,18 @@ pub fn build_struct_specifier(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) 
                 storage_class_specifier: Default::default(),
                 basic_type: BasicType {
                     qualifier: Default::default(),
-                    base_type: ret.clone(),
+                    base_type: struct_definition,
                 },
             },
             None,
             None,
         ));
     }
-    ret
+
+    match is_struct {
+        true => BaseType::Struct(identifier, None),
+        false => BaseType::Union(identifier, None),
+    }
 }
 
 pub fn build_type_qualifier(pair: Pair<'_, Rule>) -> TypeQualifier {
