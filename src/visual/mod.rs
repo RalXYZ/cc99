@@ -1,9 +1,9 @@
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
-use crate::ast::AST;
-use crate::parse::parse;
-use crate::preprocess::preprocess;
+use super::ast::AST;
+use super::parse::parse;
+use super::preprocess::preprocess;
 
 #[derive(Debug, Serialize)]
 struct ParseTreeNode {
@@ -41,4 +41,16 @@ pub fn compile_result(code: &str) -> String {
         }
     };
     serde_json::to_string(&result).unwrap()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_compile_result() {
+        let result = compile_result("let x = 1;");
+        let result = serde_json::to_string(&result).unwrap();
+        println!("{}", result);
+    }
 }

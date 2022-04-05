@@ -2,12 +2,15 @@ extern crate pest;
 #[macro_use]
 extern crate pest_derive;
 
-mod ast;
-mod parse;
-mod preprocess;
-mod visual;
+pub mod ast;
+pub mod parse;
+pub mod preprocess;
+#[cfg(feature = "web")]
+pub mod visual;
 
 pub use ast::*;
 pub use parse::*;
 pub use preprocess::*;
+
+#[cfg(feature = "web")]
 pub use visual::*;
