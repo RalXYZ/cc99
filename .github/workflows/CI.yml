@@ -23,6 +23,12 @@ jobs:
         toolchain: stable
         components: rustfmt, clippy
 
+    - name: install LLVM and Clang
+      uses: KyleMayes/install-llvm-action@v1
+      with:
+        version: "11.0"
+        directory: ${{ runner.temp }}/llvm
+
     - name: automated tests
       uses: actions-rs/cargo@v1
       with:
