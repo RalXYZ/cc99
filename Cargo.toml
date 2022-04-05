@@ -9,6 +9,12 @@ repository = "https://github.com/RalXYZ/cc99"
 license = "GPL-3.0"
 
 
+[lib]
+name = "cc99"
+path = "src/lib.rs"
+crate-type = ["cdylib", "lib"]
+
+
 [features]
 default = ["local"]
 local = ["clap"]
@@ -22,11 +28,5 @@ pest_derive = "2.1.0"
 serde = { version = "1.0", features = ["derive"] }
 walkdir = "2.3.2"
 serde_json = "1.0.59"
-clap = { version = "3.1.8", features = ["derive"],optional = true}
-wasm-bindgen = { version = "0.2.79",optional = true}
-
-
-[lib]
-name = "cc99_visual_lib"
-path = "src/lib.rs"
-crate-type = ["cdylib"]
+clap = { version = "3.1.8", features = ["derive"], optional = true }
+wasm-bindgen = { version = "0.2.79", optional = true }
