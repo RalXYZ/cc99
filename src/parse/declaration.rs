@@ -395,6 +395,11 @@ pub fn build_struct_specifier(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) 
         ),
     };
 
+    if identifier.is_none() {
+        // TODO(TO/GA): throw error if struct_declaration is false
+        return struct_definition;
+    }
+
     if struct_declaration {
         ast.push(Declaration::Declaration(
             Type {
