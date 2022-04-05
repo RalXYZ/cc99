@@ -2,7 +2,7 @@ use pest::iterators::Pair;
 
 use super::*;
 
-pub fn build_expression(pair: Pair<'_, Rule>) -> Expression {
+pub fn build_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let mut expression: Option<Expression> = None;
     for token in pair.into_inner() {
         match token.as_rule() {
@@ -11,18 +11,18 @@ pub fn build_expression(pair: Pair<'_, Rule>) -> Expression {
                     Some(e) => Expression::Binary(
                         BinaryOperation::Comma,
                         Box::new(e),
-                        Box::new(build_assignment_expression(token)),
+                        Box::new(build_assignment_expression(token)?),
                     ),
-                    None => build_assignment_expression(token),
+                    None => build_assignment_expression(token)?,
                 });
             }
             _ => unreachable!(),
         }
     }
-    expression.unwrap()
+    Ok(expression.unwrap())
 }
 
-pub fn build_assignment_expression(pair: Pair<'_, Rule>) -> Expression {
+pub fn build_assignment_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let mut lhs: Expression = Default::default();
     let mut rhs: Expression = Default::default();
     let mut assignment_operator: AssignOperation = Default::default();
@@ -32,7 +32,7 @@ pub fn build_assignment_expression(pair: Pair<'_, Rule>) -> Expression {
                 return build_conditional_expression(token);
             }
             Rule::unary_expression => {
-                lhs = build_unary_expression(token);
+                lhs = build_unary_expression(token)?;
             }
             Rule::assignment_operator => {
                 assignment_operator = match token.into_inner().next().unwrap().as_rule() {
@@ -51,31 +51,35 @@ pub fn build_assignment_expression(pair: Pair<'_, Rule>) -> Expression {
                 };
             }
             Rule::assignment_expression => {
-                rhs = build_assignment_expression(token);
+                rhs = build_assignment_expression(token)?;
             }
             _ => unreachable!(),
         }
     }
-    Expression::Assignment(assignment_operator, Box::new(lhs), Box::new(rhs))
+    Ok(Expression::Assignment(
+        assignment_operator,
+        Box::new(lhs),
+        Box::new(rhs),
+    ))
 }
 
-pub fn build_conditional_expression(pair: Pair<'_, Rule>) -> Expression {
+pub fn build_conditional_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let mut expressions: Vec<Expression> = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::logical_or_expression => {
-                expressions.push(build_binary_expression(token));
+                expressions.push(build_binary_expression(token)?);
             }
             Rule::expression => {
-                expressions.push(build_expression(token));
+                expressions.push(build_expression(token)?);
             }
             Rule::conditional_expression => {
-                expressions.push(build_conditional_expression(token));
+                expressions.push(build_conditional_expression(token)?);
             }
             _ => unreachable!(),
         }
     }
-    match expressions.len() {
+    Ok(match expressions.len() {
         1 => expressions[0].to_owned(),
         3 => Expression::Conditional(
             Box::new(expressions[0].to_owned()),
@@ -83,10 +87,10 @@ pub fn build_conditional_expression(pair: Pair<'_, Rule>) -> Expression {
             Box::new(expressions[2].to_owned()),
         ),
         _ => unreachable!(),
-    }
+    })
 }
 
-pub fn build_binary_expression(pair: Pair<'_, Rule>) -> Expression {
+pub fn build_binary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     // recursive termination condition
     if pair.as_rule() == Rule::unary_expression {
         return build_unary_expression(pair);
@@ -165,25 +169,25 @@ pub fn build_binary_expression(pair: Pair<'_, Rule>) -> Expression {
                     Some(e) => Expression::Binary(
                         operation.clone(),
                         Box::new(e),
-                        Box::new(build_binary_expression(token)),
+                        Box::new(build_binary_expression(token)?),
                     ),
-                    None => build_binary_expression(token),
+                    None => build_binary_expression(token)?,
                 });
             }
             _ => unreachable!(),
         }
     }
-    expression.unwrap()
+    Ok(expression.unwrap())
 }
 
-pub fn build_unary_expression(pair: Pair<'_, Rule>) -> Expression {
+pub fn build_unary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let mut cast_type: Option<BasicType> = None;
     let mut unary_operation: UnaryOperation = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::sizeof_ => {}
             Rule::type_name => {
-                return Expression::SizeofType(build_type_name(token));
+                return Ok(Expression::SizeofType(build_type_name(token)?));
             }
             Rule::prefix_unary_operator => {
                 let sub_token = token.into_inner().next().unwrap();
@@ -198,7 +202,7 @@ pub fn build_unary_expression(pair: Pair<'_, Rule>) -> Expression {
                     Rule::reference_op => UnaryOperation::Reference,
                     Rule::sizeof_ => UnaryOperation::SizeofExpr,
                     Rule::type_name => {
-                        cast_type = Some(build_type_name(sub_token));
+                        cast_type = Some(build_type_name(sub_token)?);
                         Default::default()
                     }
                     _ => unreachable!(),
@@ -206,16 +210,16 @@ pub fn build_unary_expression(pair: Pair<'_, Rule>) -> Expression {
             }
             Rule::unary_expression => match cast_type {
                 Some(cast_type) => {
-                    return Expression::TypeCast(
+                    return Ok(Expression::TypeCast(
                         cast_type,
-                        Box::new(build_unary_expression(token)),
-                    );
+                        Box::new(build_unary_expression(token)?),
+                    ));
                 }
                 None => {
-                    return Expression::Unary(
+                    return Ok(Expression::Unary(
                         unary_operation,
-                        Box::new(build_unary_expression(token)),
-                    );
+                        Box::new(build_unary_expression(token)?),
+                    ));
                 }
             },
             Rule::postfix_unary_expression => {
@@ -224,16 +228,16 @@ pub fn build_unary_expression(pair: Pair<'_, Rule>) -> Expression {
             _ => unreachable!(),
         }
     }
-    Default::default()
+    Ok(Default::default())
 }
 
-pub fn build_postfix_unary_expression(pair: Pair<'_, Rule>) -> Expression {
+pub fn build_postfix_unary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let mut expression: Expression = Default::default();
     let mut object_or_pointer = true; // true if object, false otherwise
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::primary_expression => {
-                expression = build_primary_expression(token);
+                expression = build_primary_expression(token)?;
             }
             Rule::postfix_inc_op => {
                 expression =
@@ -247,7 +251,7 @@ pub fn build_postfix_unary_expression(pair: Pair<'_, Rule>) -> Expression {
                 let mut arguments: Vec<Expression> = Default::default();
                 for argument_list in token.into_inner() {
                     for argument in argument_list.into_inner() {
-                        arguments.push(build_assignment_expression(argument));
+                        arguments.push(build_assignment_expression(argument)?);
                     }
                 }
                 expression = Expression::FunctionCall(Box::new(expression), arguments);
@@ -255,7 +259,7 @@ pub fn build_postfix_unary_expression(pair: Pair<'_, Rule>) -> Expression {
             Rule::expression => {
                 expression = Expression::ArraySubscript(
                     Box::new(expression),
-                    Box::new(build_expression(token)),
+                    Box::new(build_expression(token)?),
                 );
             }
             Rule::member_of_object_op => {
@@ -277,13 +281,13 @@ pub fn build_postfix_unary_expression(pair: Pair<'_, Rule>) -> Expression {
             _ => unreachable!(),
         }
     }
-    expression
+    Ok(expression)
 }
 
-pub fn build_primary_expression(pair: Pair<'_, Rule>) -> Expression {
+pub fn build_primary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let token = pair.into_inner().next().unwrap();
     match token.as_rule() {
-        Rule::identifier => Expression::Identifier(token.as_str().to_owned()),
+        Rule::identifier => Ok(Expression::Identifier(token.as_str().to_owned())),
         Rule::constant => build_constant(token),
         Rule::string_literal => build_string_literal(token),
         Rule::expression => build_expression(token),
@@ -291,26 +295,26 @@ pub fn build_primary_expression(pair: Pair<'_, Rule>) -> Expression {
     }
 }
 
-pub fn build_type_name(pair: Pair<'_, Rule>) -> BasicType {
+pub fn build_type_name(pair: Pair<'_, Rule>) -> Result<BasicType, Box<dyn Error>> {
     let mut fake_ast: Vec<Declaration> = Default::default();
     let mut derived_type: Type = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::declaration_specifiers => {
-                derived_type = build_declaration_specifiers(&mut fake_ast, token);
+                derived_type = build_declaration_specifiers(&mut fake_ast, token)?;
             }
             Rule::pointer => {
-                build_pointer(&mut derived_type, token);
+                build_pointer(&mut derived_type, token)?;
             }
             Rule::function_parameter_list => {
-                build_function_parameter_list(&mut fake_ast, &mut derived_type, token);
+                build_function_parameter_list(&mut fake_ast, &mut derived_type, token)?;
             }
             Rule::assignment_expression => {
                 derived_type.basic_type = BasicType {
                     qualifier: vec![],
                     base_type: BaseType::Array(
                         Box::new(derived_type.basic_type),
-                        Box::new(build_assignment_expression(token)),
+                        Box::new(build_assignment_expression(token)?),
                     ),
                 };
             }
@@ -318,5 +322,5 @@ pub fn build_type_name(pair: Pair<'_, Rule>) -> BasicType {
         }
     }
     // TODO:(TO/GA) throw error if storage_class_specifier is not empty
-    derived_type.basic_type
+    Ok(derived_type.basic_type)
 }
