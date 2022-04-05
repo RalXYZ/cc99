@@ -7,7 +7,6 @@ use std::fs;
 mod ast;
 mod parse;
 mod preprocess;
-mod visual;
 
 use parse::*;
 use preprocess::*;

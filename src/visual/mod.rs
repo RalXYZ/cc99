@@ -1,7 +1,7 @@
-use crate::ast::AST;
-
 use serde::Serialize;
+use wasm_bindgen::prelude::*;
 
+use crate::ast::AST;
 use crate::parse::parse;
 use crate::preprocess::preprocess;
 
@@ -18,7 +18,7 @@ struct VisualResult {
     ast: Box<AST>,
 }
 
-//  TODO  use #[wasm_bindgen]
+#[wasm_bindgen]
 pub fn compile_result(code: &str) -> String {
     let mut result = VisualResult {
         error: false,
