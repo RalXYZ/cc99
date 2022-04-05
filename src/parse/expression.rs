@@ -1,3 +1,4 @@
+use pest::error::ErrorVariant;
 use pest::iterators::Pair;
 
 use super::*;
@@ -296,6 +297,7 @@ pub fn build_primary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<
 }
 
 pub fn build_type_name(pair: Pair<'_, Rule>) -> Result<BasicType, Box<dyn Error>> {
+    let span = pair.as_span();
     let mut fake_ast: Vec<Declaration> = Default::default();
     let mut derived_type: Type = Default::default();
     for token in pair.into_inner() {
@@ -321,6 +323,14 @@ pub fn build_type_name(pair: Pair<'_, Rule>) -> Result<BasicType, Box<dyn Error>
             _ => unreachable!(),
         }
     }
-    // TODO:(TO/GA) throw error if storage_class_specifier is not empty
+    if derived_type.storage_class_specifier != StorageClassSpecifier::Auto {
+        return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+            ErrorVariant::CustomError {
+                message: "the type to be casted to can't have any storage class specifier"
+                    .to_string(),
+            },
+            span,
+        )));
+    }
     Ok(derived_type.basic_type)
 }

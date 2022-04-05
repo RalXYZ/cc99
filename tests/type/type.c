@@ -5,7 +5,7 @@
 int main(){
     short c = 0x3;
     int d = 0b1011;
-    long f = 0xcafebabe;
+    long f = 0xcafeba;
     float g = 0.5;
     double h = 0.25;
     char i = 'a';

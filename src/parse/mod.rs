@@ -17,7 +17,6 @@ use statement::*;
 #[grammar = "./parse/parse.pest"]
 pub struct CC99Parser;
 
-// TODO(TO/GA): error handling
 pub fn parse(code: &str) -> Result<Box<AST>, Box<dyn Error>> {
     let tokens = match CC99Parser::parse(Rule::cc99, code)?.next() {
         Some(p) => p.into_inner(),
@@ -173,13 +172,13 @@ mod tests {
 
     #[test]
     fn function_definition() {
-        let code = r#"_Noreturn int *const bar(int x, float) {}"#;
+        let code = r#"inline int *const bar(int x, float) {}"#;
         assert_eq!(
             parse(code).unwrap(),
             Box::new(AST::GlobalDeclaration(vec![
                 Declaration::FunctionDefinition(
                     Type {
-                        function_specifier: vec![FunctionSpecifier::Noreturn],
+                        function_specifier: vec![FunctionSpecifier::Inline],
                         storage_class_specifier: StorageClassSpecifier::Auto,
                         basic_type: BasicType {
                             qualifier: vec![],

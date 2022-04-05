@@ -86,7 +86,6 @@ pub fn build_compound_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<d
                             ));
                         }
                         Declaration::FunctionDefinition(_, _, _, _) => {
-                            // TODO(TO/GA): throw error
                             unreachable!();
                         }
                     }
@@ -307,7 +306,6 @@ pub fn build_for_init_clause(pair: Pair<'_, Rule>) -> Result<ForInitClause, Box<
             _ => unreachable!(),
         }
     }
-    // TODO(TO/GA): throw error if sub_ast has function declarations
     Ok(match expression {
         Some(expression) => ForInitClause::Expression(expression),
         None => ForInitClause::Declaration(sub_ast),
