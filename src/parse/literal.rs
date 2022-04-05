@@ -2,7 +2,7 @@ use pest::iterators::Pair;
 
 use super::*;
 
-pub fn build_string_literal(pair: Pair<'_, Rule>) -> Expression {
+pub fn build_string_literal(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let mut string_literal: String = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
@@ -10,17 +10,17 @@ pub fn build_string_literal(pair: Pair<'_, Rule>) -> Expression {
                 string_literal.push_str(token.as_str());
             }
             Rule::escape_sequence => {
-                string_literal.push(build_escape_sequence(token));
+                string_literal.push(build_escape_sequence(token)?);
             }
             _ => unreachable!(),
         }
     }
-    Expression::StringLiteral(string_literal)
+    Ok(Expression::StringLiteral(string_literal))
 }
 
-pub fn build_escape_sequence(pair: Pair<'_, Rule>) -> char {
+pub fn build_escape_sequence(pair: Pair<'_, Rule>) -> Result<char, Box<dyn Error>> {
     let escape_sequence = pair.as_str();
-    match escape_sequence {
+    Ok(match escape_sequence {
         "\\'" => '\'',
         "\\\"" => '\"',
         "\\?" => '?',
@@ -34,14 +34,14 @@ pub fn build_escape_sequence(pair: Pair<'_, Rule>) -> char {
         "\\v" => '\x0b',
         _ => {
             if escape_sequence == "\\0" {
-                return '\0';
+                return Ok('\0');
             }
             unimplemented!();
         }
-    }
+    })
 }
 
-pub fn build_constant(pair: Pair<'_, Rule>) -> Expression {
+pub fn build_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let token = pair.into_inner().next().unwrap();
     match token.as_rule() {
         Rule::integer_constant => build_integer_constant(token),
@@ -51,7 +51,7 @@ pub fn build_constant(pair: Pair<'_, Rule>) -> Expression {
     }
 }
 
-pub fn build_integer_constant(pair: Pair<'_, Rule>) -> Expression {
+pub fn build_integer_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let mut number: i128 = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
@@ -76,40 +76,40 @@ pub fn build_integer_constant(pair: Pair<'_, Rule>) -> Expression {
             }
             Rule::integer_suffix => match token.into_inner().next().unwrap().as_rule() {
                 Rule::ull_ => {
-                    return Expression::UnsignedLongLongConstant(number as u64);
+                    return Ok(Expression::UnsignedLongLongConstant(number as u64));
                 }
                 Rule::ll_ => {
-                    return Expression::LongLongConstant(number as i64);
+                    return Ok(Expression::LongLongConstant(number as i64));
                 }
                 Rule::ul_ => {
-                    return Expression::UnsignedLongConstant(number as u64);
+                    return Ok(Expression::UnsignedLongConstant(number as u64));
                 }
                 Rule::l_ => {
-                    return Expression::LongConstant(number as i64);
+                    return Ok(Expression::LongConstant(number as i64));
                 }
                 Rule::u_ => {
-                    return Expression::UnsignedIntegerConstant(number as u32);
+                    return Ok(Expression::UnsignedIntegerConstant(number as u32));
                 }
                 _ => unreachable!(),
             },
             _ => unreachable!(),
         }
     }
-    Expression::IntegerConstant(number as i32) // TODO(TO/GA): throw error if overflow
+    Ok(Expression::IntegerConstant(number as i32)) // TODO(TO/GA): throw error if overflow
 }
 
-pub fn build_character_constant(pair: Pair<'_, Rule>) -> Expression {
+pub fn build_character_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let token = pair.into_inner().next().unwrap();
     match token.as_rule() {
-        Rule::char_no_escape => {
-            Expression::CharacterConstant(token.as_str().chars().next().unwrap())
-        }
-        Rule::escape_sequence => Expression::CharacterConstant(build_escape_sequence(token)),
+        Rule::char_no_escape => Ok(Expression::CharacterConstant(
+            token.as_str().chars().next().unwrap(),
+        )),
+        Rule::escape_sequence => Ok(Expression::CharacterConstant(build_escape_sequence(token)?)),
         _ => unreachable!(),
     }
 }
 
-pub fn build_floating_constant(pair: Pair<'_, Rule>) -> Expression {
+pub fn build_floating_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let token = pair.into_inner().next().unwrap();
     match token.as_rule() {
         Rule::decimal_floating_constant => build_decimal_floating_constant(token),
@@ -118,7 +118,7 @@ pub fn build_floating_constant(pair: Pair<'_, Rule>) -> Expression {
     }
 }
 
-pub fn build_decimal_floating_constant(pair: Pair<'_, Rule>) -> Expression {
+pub fn build_decimal_floating_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let mut number: f64 = Default::default();
     let mut is_double = true;
     for token in pair.into_inner() {
@@ -136,13 +136,13 @@ pub fn build_decimal_floating_constant(pair: Pair<'_, Rule>) -> Expression {
             _ => {}
         }
     }
-    match is_double {
+    Ok(match is_double {
         false => Expression::FloatConstant(number as f32),
         true => Expression::DoubleConstant(number),
-    }
+    })
 }
 
-pub fn build_hex_floating_constant(_pair: Pair<'_, Rule>) -> Expression {
+pub fn build_hex_floating_constant(_pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     // TODO(TO/GA)
     unimplemented!();
 }

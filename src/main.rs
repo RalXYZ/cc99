@@ -38,12 +38,14 @@ struct Args {
 fn main() {
     let args = Args::parse();
     if args.expand {
-        let code = preprocess_file(&args.file).unwrap();
+        let code =
+            preprocess_file(&args.file).unwrap_or_else(|e| panic!("Preprocess failed:\n{}", e));
         fs::write(&args.output, &code)
             .unwrap_or_else(|_| panic!("Unable to write file {}", args.output));
     } else if args.parse {
-        let code = preprocess_file(&args.file).unwrap();
-        let ast = parse(&code).unwrap();
+        let code =
+            preprocess_file(&args.file).unwrap_or_else(|e| panic!("Preprocess failed:\n{}", e));
+        let ast = parse(&code).unwrap_or_else(|e| panic!("Parse failed:\n{}", e));
         fs::write(&args.output, &serde_json::to_string(&ast).unwrap())
             .unwrap_or_else(|_| panic!("Unable to write file {}", args.output));
     } else {

@@ -16,7 +16,7 @@ pub fn preprocess_file(path: &str) -> Result<String, Box<dyn Error>> {
 pub fn preprocess(code: &str) -> Result<String, Box<dyn Error>> {
     let pairs = match PreprocessParser::parse(Rule::cc99, code)?.next() {
         Some(p) => p.into_inner(),
-        None => panic!("Fail to parse an empty file"),
+        None => unreachable!(),
     };
     let mut result = String::new();
     for pair in pairs {

@@ -2,7 +2,10 @@ use pest::iterators::Pair;
 
 use super::*;
 
-pub fn build_function_definition(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) {
+pub fn build_function_definition(
+    ast: &mut Vec<Declaration>,
+    pair: Pair<'_, Rule>,
+) -> Result<(), Box<dyn Error>> {
     let mut derived_type: Type = Default::default();
     let mut identifier: String = Default::default();
     let mut parameter_names: Vec<Option<String>> = Default::default();
@@ -10,19 +13,19 @@ pub fn build_function_definition(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::declaration_specifiers => {
-                derived_type = build_declaration_specifiers(ast, token);
+                derived_type = build_declaration_specifiers(ast, token)?;
             }
             Rule::pointer => {
-                build_pointer(&mut derived_type, token);
+                build_pointer(&mut derived_type, token)?;
             }
             Rule::identifier => {
                 identifier = token.as_str().to_string();
             }
             Rule::function_parameter_list => {
-                parameter_names = build_function_parameter_list(ast, &mut derived_type, token);
+                parameter_names = build_function_parameter_list(ast, &mut derived_type, token)?;
             }
             Rule::compound_statement => {
-                function_body = build_compound_statement(token);
+                function_body = build_compound_statement(token)?;
             }
             _ => unreachable!(),
         }
@@ -33,20 +36,24 @@ pub fn build_function_definition(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule
         parameter_names,
         function_body,
     ));
+    Ok(())
 }
 
-pub fn build_declaration(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) {
+pub fn build_declaration(
+    ast: &mut Vec<Declaration>,
+    pair: Pair<'_, Rule>,
+) -> Result<(), Box<dyn Error>> {
     let mut basic_type: Type = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::declaration_specifiers => {
-                basic_type = build_declaration_specifiers(ast, token);
+                basic_type = build_declaration_specifiers(ast, token)?;
             }
             Rule::declarator_and_initializer_list => {
                 for list_entry in token.into_inner() {
                     match list_entry.as_rule() {
                         Rule::declarator_and_initializer => {
-                            build_declarator_and_initializer(ast, list_entry, &basic_type);
+                            build_declarator_and_initializer(ast, list_entry, &basic_type)?;
                         }
                         _ => unreachable!(),
                     }
@@ -55,9 +62,13 @@ pub fn build_declaration(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) {
             _ => unreachable!(),
         }
     }
+    Ok(())
 }
 
-pub fn build_declaration_specifiers(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) -> Type {
+pub fn build_declaration_specifiers(
+    ast: &mut Vec<Declaration>,
+    pair: Pair<'_, Rule>,
+) -> Result<Type, Box<dyn Error>> {
     let mut qualifier: Vec<TypeQualifier> = Default::default();
     let mut storage_class_specifier: Vec<StorageClassSpecifier> = Default::default();
     let mut function_specifier: Vec<FunctionSpecifier> = Default::default();
@@ -94,15 +105,15 @@ pub fn build_declaration_specifiers(ast: &mut Vec<Declaration>, pair: Pair<'_, R
                 }
                 _ => unreachable!(),
             },
-            Rule::type_qualifier => qualifier.push(build_type_qualifier(token)),
+            Rule::type_qualifier => qualifier.push(build_type_qualifier(token)?),
             Rule::type_specifier => {
-                base_type = build_type_specifier(ast, token);
+                base_type = build_type_specifier(ast, token)?;
             }
             _ => unreachable!(),
         }
     }
     assert!(storage_class_specifier.len() <= 1);
-    Type {
+    Ok(Type {
         function_specifier,
         storage_class_specifier: if !storage_class_specifier.is_empty() {
             storage_class_specifier[0].to_owned()
@@ -113,15 +124,18 @@ pub fn build_declaration_specifiers(ast: &mut Vec<Declaration>, pair: Pair<'_, R
             qualifier,
             base_type,
         },
-    }
+    })
 }
 
-pub fn build_type_specifier(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) -> BaseType {
+pub fn build_type_specifier(
+    ast: &mut Vec<Declaration>,
+    pair: Pair<'_, Rule>,
+) -> Result<BaseType, Box<dyn Error>> {
     let mut is_signed = true;
     let mut integer_type = IntegerType::Int;
     let token = pair.into_inner().next().unwrap();
     match token.as_rule() {
-        Rule::void_ => return BaseType::Void,
+        Rule::void_ => return Ok(BaseType::Void),
         Rule::signed_ => is_signed = true,
         Rule::unsigned_ => is_signed = false,
         Rule::char_ => integer_type = IntegerType::Char,
@@ -134,17 +148,17 @@ pub fn build_type_specifier(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) ->
                 _ => unreachable!(),
             }
         }
-        Rule::bool_ => return BaseType::Bool,
-        Rule::float_ => return BaseType::Float,
-        Rule::double_ => return BaseType::Double,
-        Rule::identifier => return BaseType::Identifier(token.as_str().to_string()),
+        Rule::bool_ => return Ok(BaseType::Bool),
+        Rule::float_ => return Ok(BaseType::Float),
+        Rule::double_ => return Ok(BaseType::Double),
+        Rule::identifier => return Ok(BaseType::Identifier(token.as_str().to_string())),
         Rule::struct_specifier => return build_struct_specifier(ast, token),
         _ => unreachable!(),
     }
     if is_signed {
-        BaseType::SignedInteger(integer_type)
+        Ok(BaseType::SignedInteger(integer_type))
     } else {
-        BaseType::UnsignedInteger(integer_type)
+        Ok(BaseType::UnsignedInteger(integer_type))
     }
 }
 
@@ -152,7 +166,7 @@ pub fn build_declarator_and_initializer(
     ast: &mut Vec<Declaration>,
     pair: Pair<'_, Rule>,
     basic_type: &Type,
-) {
+) -> Result<(), Box<dyn Error>> {
     let mut derived_type = (*basic_type).clone();
     let mut identifier: String = Default::default();
     let mut initializer: Option<Box<Expression>> = None;
@@ -162,7 +176,7 @@ pub fn build_declarator_and_initializer(
                 for sub_token in token.into_inner() {
                     match sub_token.as_rule() {
                         Rule::pointer => {
-                            build_pointer(&mut derived_type, sub_token);
+                            build_pointer(&mut derived_type, sub_token)?;
                         }
                         Rule::raw_declarator => {
                             build_raw_declarator(
@@ -170,14 +184,14 @@ pub fn build_declarator_and_initializer(
                                 &mut derived_type,
                                 &mut identifier,
                                 sub_token,
-                            );
+                            )?;
                         }
                         _ => unreachable!(),
                     }
                 }
             }
             Rule::assignment_expression => {
-                initializer = Some(Box::new(build_assignment_expression(token)));
+                initializer = Some(Box::new(build_assignment_expression(token)?));
             }
             _ => unreachable!(),
         }
@@ -189,9 +203,10 @@ pub fn build_declarator_and_initializer(
         Some(identifier),
         initializer,
     ));
+    Ok(())
 }
 
-pub fn build_pointer(derived_type: &mut Type, pair: Pair<'_, Rule>) {
+pub fn build_pointer(derived_type: &mut Type, pair: Pair<'_, Rule>) -> Result<(), Box<dyn Error>> {
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::star_ => {
@@ -203,11 +218,12 @@ pub fn build_pointer(derived_type: &mut Type, pair: Pair<'_, Rule>) {
                 derived_type
                     .basic_type
                     .qualifier
-                    .push(build_type_qualifier(token));
+                    .push(build_type_qualifier(token)?);
             }
             _ => unreachable!(),
         }
     }
+    Ok(())
 }
 
 pub fn build_raw_declarator(
@@ -215,7 +231,7 @@ pub fn build_raw_declarator(
     derived_type: &mut Type,
     identifier: &mut String,
     pair: Pair<'_, Rule>,
-) {
+) -> Result<(), Box<dyn Error>> {
     let mut dimensions: Vec<Expression> = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
@@ -223,10 +239,10 @@ pub fn build_raw_declarator(
                 *identifier = token.as_str().to_string();
             }
             Rule::assignment_expression => {
-                dimensions.push(build_assignment_expression(token));
+                dimensions.push(build_assignment_expression(token)?);
             }
             Rule::function_parameter_list => {
-                build_function_parameter_list(ast, derived_type, token);
+                build_function_parameter_list(ast, derived_type, token)?;
             }
             _ => unreachable!(),
         }
@@ -238,20 +254,21 @@ pub fn build_raw_declarator(
         );
         derived_type.basic_type.qualifier = Default::default();
     }
+    Ok(())
 }
 
 pub fn build_function_parameter_list(
     ast: &mut Vec<Declaration>,
     derived_type: &mut Type,
     pair: Pair<'_, Rule>,
-) -> Vec<Option<String>> {
+) -> Result<Vec<Option<String>>, Box<dyn Error>> {
     let mut is_variadic = false;
     let mut parameter_list: Vec<BasicType> = Default::default();
     let mut parameter_name: Vec<Option<String>> = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::function_parameter => {
-                let parameter = build_function_parameter(ast, token);
+                let parameter = build_function_parameter(ast, token)?;
                 parameter_list.push(parameter.0);
                 parameter_name.push(parameter.1);
             }
@@ -267,27 +284,27 @@ pub fn build_function_parameter_list(
         is_variadic,
     );
     derived_type.basic_type.qualifier = Default::default();
-    parameter_name
+    Ok(parameter_name)
 }
 
 pub fn build_function_parameter(
     ast: &mut Vec<Declaration>,
     pair: Pair<'_, Rule>,
-) -> (BasicType, Option<String>) {
+) -> Result<(BasicType, Option<String>), Box<dyn Error>> {
     let mut basic_type: BasicType = Default::default();
     let mut identifier: Option<String> = None;
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::declaration_specifiers => {
-                basic_type = build_declaration_specifiers(ast, token).basic_type;
+                basic_type = build_declaration_specifiers(ast, token)?.basic_type;
             }
             Rule::function_parameter_declarator => {
-                build_function_parameter_declarator(ast, &mut basic_type, &mut identifier, token);
+                build_function_parameter_declarator(ast, &mut basic_type, &mut identifier, token)?;
             }
             _ => unreachable!(),
         }
     }
-    (basic_type, identifier)
+    Ok((basic_type, identifier))
 }
 
 pub fn build_function_parameter_declarator(
@@ -295,7 +312,7 @@ pub fn build_function_parameter_declarator(
     basic_type: &mut BasicType,
     identifier: &mut Option<String>,
     pair: Pair<'_, Rule>,
-) {
+) -> Result<(), Box<dyn Error>> {
     let mut derived_type = Type {
         function_specifier: Default::default(),
         storage_class_specifier: Default::default(),
@@ -304,11 +321,11 @@ pub fn build_function_parameter_declarator(
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::pointer => {
-                build_pointer(&mut derived_type, token);
+                build_pointer(&mut derived_type, token)?;
             }
             Rule::function_parameter_raw_declarator => {
                 let mut identifier_: String = Default::default();
-                build_raw_declarator(ast, &mut derived_type, &mut identifier_, token);
+                build_raw_declarator(ast, &mut derived_type, &mut identifier_, token)?;
                 if !identifier_.is_empty() {
                     *identifier = Some(identifier_.to_string());
                 }
@@ -317,9 +334,13 @@ pub fn build_function_parameter_declarator(
         }
     }
     *basic_type = derived_type.basic_type;
+    Ok(())
 }
 
-pub fn build_struct_specifier(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) -> BaseType {
+pub fn build_struct_specifier(
+    ast: &mut Vec<Declaration>,
+    pair: Pair<'_, Rule>,
+) -> Result<BaseType, Box<dyn Error>> {
     let mut is_struct = true;
     let mut identifier: Option<String> = None;
     let mut struct_declaration = false;
@@ -342,7 +363,7 @@ pub fn build_struct_specifier(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) 
                     match sub_token.as_rule() {
                         Rule::declaration => {
                             let mut sub_ast = Vec::new();
-                            build_declaration(&mut sub_ast, sub_token);
+                            build_declaration(&mut sub_ast, sub_token)?;
                             for declaration in sub_ast {
                                 match declaration {
                                     Declaration::Declaration(
@@ -397,7 +418,7 @@ pub fn build_struct_specifier(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) 
 
     if identifier.is_none() {
         // TODO(TO/GA): throw error if struct_declaration is false
-        return struct_definition;
+        return Ok(struct_definition);
     }
 
     if struct_declaration {
@@ -415,19 +436,19 @@ pub fn build_struct_specifier(ast: &mut Vec<Declaration>, pair: Pair<'_, Rule>) 
         ));
     }
 
-    match is_struct {
+    Ok(match is_struct {
         true => BaseType::Struct(identifier, None),
         false => BaseType::Union(identifier, None),
-    }
+    })
 }
 
-pub fn build_type_qualifier(pair: Pair<'_, Rule>) -> TypeQualifier {
+pub fn build_type_qualifier(pair: Pair<'_, Rule>) -> Result<TypeQualifier, Box<dyn Error>> {
     let token = pair.into_inner().next().unwrap();
-    match token.as_rule() {
+    Ok(match token.as_rule() {
         Rule::const_ => TypeQualifier::Const,
         Rule::volatile_ => TypeQualifier::Volatile,
         Rule::restrict_ => TypeQualifier::Restrict,
         Rule::atomic_ => TypeQualifier::Atomic,
         _ => unreachable!(),
-    }
+    })
 }
