@@ -7,11 +7,15 @@ import Editor from "./components/AceEditor";
 import { ExampleCode } from "./data/example";
 
 import { Typography, Divider } from "antd";
+import init, { compile_result } from "cc99";
 const { Title, Text } = Typography;
 
 const { Header, Footer, Content } = Layout;
 const { Option } = Select;
 function App() {
+  useEffect(() => {
+    init();
+  }, []);
   const [code, setCode] = useState(ExampleCode[0].code);
 
   const [output, setOutput] = useState(
@@ -33,6 +37,12 @@ function App() {
 
   const onClickRunCode = () => {
     setOutput(`${output}<br>[INFO] 别点我!`);
+  };
+
+  const compile = () => {
+    console.log(code);
+    let data = JSON.parse(compile_result(code));
+    console.log(data);
   };
   return (
     <>
@@ -64,7 +74,11 @@ function App() {
             </ResizePanel>
             <Card
               title="Visualization"
-              extra={<a href="#">More</a>}
+              extra={
+                <Button type="primary" onClick={compile}>
+                  Compile!
+                </Button>
+              }
               headStyle={{ fontWeight: "bold", fontSize: 22 }}
               style={{
                 flexGrow: 1,
