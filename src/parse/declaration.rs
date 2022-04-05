@@ -1,3 +1,4 @@
+use pest::error::ErrorVariant;
 use pest::iterators::Pair;
 
 use super::*;
@@ -6,6 +7,7 @@ pub fn build_function_definition(
     ast: &mut Vec<Declaration>,
     pair: Pair<'_, Rule>,
 ) -> Result<(), Box<dyn Error>> {
+    let span = pair.as_span();
     let mut derived_type: Type = Default::default();
     let mut identifier: String = Default::default();
     let mut parameter_names: Vec<Option<String>> = Default::default();
@@ -30,6 +32,26 @@ pub fn build_function_definition(
             _ => unreachable!(),
         }
     }
+
+    // throw error if derived_type is a function that return sth. but has noreturn specifier
+    match &derived_type.basic_type.base_type {
+        BaseType::Function(return_type, _, _) => {
+            if return_type.base_type != BaseType::Void
+                && derived_type
+                    .function_specifier
+                    .contains(&FunctionSpecifier::Noreturn)
+            {
+                return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                    ErrorVariant::CustomError {
+                        message: "function with return value is marked as _Noreturn".to_string(),
+                    },
+                    span,
+                )));
+            }
+        }
+        _ => unreachable!(),
+    }
+
     ast.push(Declaration::FunctionDefinition(
         derived_type,
         identifier,
@@ -167,6 +189,7 @@ pub fn build_declarator_and_initializer(
     pair: Pair<'_, Rule>,
     basic_type: &Type,
 ) -> Result<(), Box<dyn Error>> {
+    let span = pair.as_span();
     let mut derived_type = (*basic_type).clone();
     let mut identifier: String = Default::default();
     let mut initializer: Option<Box<Expression>> = None;
@@ -196,8 +219,36 @@ pub fn build_declarator_and_initializer(
             _ => unreachable!(),
         }
     }
-    // TODO(TO/GA): throw error if derived_type is not a function but have a function specifier
-    // TODO(TO/GA): throw error if derived_type is a function that return sth. but has noreturn specifier
+
+    match &derived_type.basic_type.base_type {
+        BaseType::Function(return_type, _, _) => {
+            // throw error if derived_type is a function that return sth. but has noreturn specifier
+            if return_type.base_type != BaseType::Void
+                && derived_type
+                    .function_specifier
+                    .contains(&FunctionSpecifier::Noreturn)
+            {
+                return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                    ErrorVariant::CustomError {
+                        message: "function with return value is marked as _Noreturn".to_string(),
+                    },
+                    span,
+                )));
+            }
+        }
+        _ => {
+            // throw error if derived_type is not a function but have function specifiers
+            if !derived_type.function_specifier.is_empty() {
+                return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                    ErrorVariant::CustomError {
+                        message: "non-function type can't have function specifiers".to_string(),
+                    },
+                    span,
+                )));
+            }
+        }
+    }
+
     ast.push(Declaration::Declaration(
         derived_type,
         Some(identifier),
@@ -360,6 +411,7 @@ pub fn build_struct_specifier(
             Rule::struct_declaration => {
                 struct_declaration = true;
                 for sub_token in token.into_inner() {
+                    let sub_span = sub_token.as_span();
                     match sub_token.as_rule() {
                         Rule::declaration => {
                             let mut sub_ast = Vec::new();
@@ -373,19 +425,64 @@ pub fn build_struct_specifier(
                                     ) => {
                                         let member_name = match member_name {
                                             Some(name) => name,
-                                            None => panic!("struct member name is None"), // TODO(TO/GA): throw error
+                                            None => {
+                                                return Err(Box::new(
+                                                    pest::error::Error::<Rule>::new_from_span(
+                                                        ErrorVariant::CustomError {
+                                                            message: "expected struct member name"
+                                                                .to_string(),
+                                                        },
+                                                        sub_span,
+                                                    ),
+                                                ));
+                                            }
                                         };
                                         if member_initializer.is_some() {
-                                            panic!("struct member initializer is not None");
-                                            // TODO(TO/GA): throw error
+                                            return Err(Box::new(
+                                                pest::error::Error::<Rule>::new_from_span(
+                                                    ErrorVariant::CustomError {
+                                                        message:
+                                                            "struct member can't have initializer"
+                                                                .to_string(),
+                                                    },
+                                                    sub_span,
+                                                ),
+                                            ));
+                                        }
+                                        if member_type.storage_class_specifier
+                                            != StorageClassSpecifier::Auto
+                                        {
+                                            return Err(Box::new(
+                                                pest::error::Error::<Rule>::new_from_span(
+                                                    ErrorVariant::CustomError {
+                                                        message:
+                                                            "struct member can't have storage class specifiers"
+                                                                .to_string(),
+                                                    },
+                                                    sub_span,
+                                                ),
+                                            ));
+                                        }
+                                        if let BaseType::Function(_, _, _) =
+                                            member_type.basic_type.base_type
+                                        {
+                                            return Err(Box::new(
+                                                pest::error::Error::<Rule>::new_from_span(
+                                                    ErrorVariant::CustomError {
+                                                        message:
+                                                            "struct member can't be function type"
+                                                                .to_string(),
+                                                    },
+                                                    sub_span,
+                                                ),
+                                            ));
                                         }
                                         struct_members.push(StructMember {
-                                            member_type: member_type.basic_type, // TODO(TO/GA): throw error if it has StorageClassSpecifier
+                                            member_type: member_type.basic_type,
                                             member_name,
                                         });
                                     }
                                     Declaration::FunctionDefinition(_, _, _, _) => {
-                                        // TODO(TO/GA): throw error
                                         unreachable!();
                                     }
                                 }
@@ -417,7 +514,6 @@ pub fn build_struct_specifier(
     };
 
     if identifier.is_none() {
-        // TODO(TO/GA): throw error if struct_declaration is false
         return Ok(struct_definition);
     }
 

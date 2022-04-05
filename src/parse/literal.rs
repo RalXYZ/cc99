@@ -1,3 +1,4 @@
+use pest::error::ErrorVariant;
 use pest::iterators::Pair;
 
 use super::*;
@@ -52,6 +53,7 @@ pub fn build_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>
 }
 
 pub fn build_integer_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
+    let span = pair.as_span();
     let mut number: i128 = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
@@ -95,7 +97,15 @@ pub fn build_integer_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dy
             _ => unreachable!(),
         }
     }
-    Ok(Expression::IntegerConstant(number as i32)) // TODO(TO/GA): throw error if overflow
+    match i32::try_from(number) {
+        Ok(number) => Ok(Expression::IntegerConstant(number)),
+        Err(e) => Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+            ErrorVariant::CustomError {
+                message: e.to_string(),
+            },
+            span,
+        ))),
+    }
 }
 
 pub fn build_character_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
