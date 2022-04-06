@@ -218,9 +218,9 @@ star_ = {"*"}
 variadic_argument_ = {"..."}
 u_ = {^"u"}
 l_ = {^"l"}
-ul_ = {"ul" | "UL"}
-ll_ = {"ll" | "LL"}
-ull_ = {"ull" | "ULL"}
+ul_ = {^"ul" | ^"lu"}
+ll_ = {^"ll"}
+ull_ = {^"ull" | ^"llu"}
 f_ = {^"f"}
 
 WHITESPACE = _{ " " | NEWLINE | "\t"}

@@ -54,58 +54,168 @@ pub fn build_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>
 
 pub fn build_integer_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let span = pair.as_span();
+    let mut is_decimal_base = false;
     let mut number: i128 = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::decimal_constant => {
-                number = token.as_str().to_string().parse::<i128>().unwrap();
+                is_decimal_base = true;
+                number = match token.as_str().to_string().parse::<i128>() {
+                    Ok(number) => number,
+                    Err(_) => {
+                        return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                            ErrorVariant::CustomError {
+                                message: "integer constant overflow".to_string(),
+                            },
+                            span,
+                        )));
+                    }
+                };
             }
             Rule::octal_constant => {
                 let number_str = token.as_str();
                 number = match number_str.len() {
                     0 => unreachable!(),
                     1 => 0,
-                    _ => i128::from_str_radix(&number_str[1..number_str.len()], 8).unwrap(),
+                    _ => match i128::from_str_radix(&number_str[1..number_str.len()], 8) {
+                        Ok(number) => number,
+                        Err(_) => {
+                            return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                                ErrorVariant::CustomError {
+                                    message: "integer constant overflow".to_string(),
+                                },
+                                span,
+                            )));
+                        }
+                    },
                 }
             }
             Rule::hex_constant => {
                 let number_str = token.as_str();
-                number = i128::from_str_radix(&number_str[2..number_str.len()], 16).unwrap()
+                number = match i128::from_str_radix(&number_str[2..number_str.len()], 16) {
+                    Ok(number) => number,
+                    Err(_) => {
+                        return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                            ErrorVariant::CustomError {
+                                message: "integer constant overflow".to_string(),
+                            },
+                            span,
+                        )));
+                    }
+                };
             }
             Rule::binary_constant => {
                 let number_str = token.as_str();
-                number = i128::from_str_radix(&number_str[2..number_str.len()], 2).unwrap()
+                number = match i128::from_str_radix(&number_str[2..number_str.len()], 2) {
+                    Ok(number) => number,
+                    Err(_) => {
+                        return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                            ErrorVariant::CustomError {
+                                message: "integer constant overflow".to_string(),
+                            },
+                            span,
+                        )));
+                    }
+                };
             }
             Rule::integer_suffix => match token.into_inner().next().unwrap().as_rule() {
-                Rule::ull_ => {
-                    return Ok(Expression::UnsignedLongLongConstant(number as u64));
-                }
+                Rule::ull_ => match number.try_into() {
+                    Ok(number) => {
+                        return Ok(Expression::UnsignedLongLongConstant(number));
+                    }
+                    Err(_) => {
+                        return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                            ErrorVariant::CustomError {
+                                message: "integer constant overflow".to_string(),
+                            },
+                            span,
+                        )));
+                    }
+                },
                 Rule::ll_ => {
-                    return Ok(Expression::LongLongConstant(number as i64));
+                    if let Ok(number) = number.try_into() {
+                        return Ok(Expression::LongLongConstant(number));
+                    }
+                    if !is_decimal_base {
+                        if let Ok(number) = number.try_into() {
+                            return Ok(Expression::UnsignedLongLongConstant(number));
+                        }
+                    }
+                    return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                        ErrorVariant::CustomError {
+                            message: "integer constant overflow".to_string(),
+                        },
+                        span,
+                    )));
                 }
                 Rule::ul_ => {
-                    return Ok(Expression::UnsignedLongConstant(number as u64));
+                    if let Ok(number) = number.try_into() {
+                        return Ok(Expression::UnsignedLongConstant(number));
+                    }
+                    return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                        ErrorVariant::CustomError {
+                            message: "integer constant overflow".to_string(),
+                        },
+                        span,
+                    )));
                 }
                 Rule::l_ => {
-                    return Ok(Expression::LongConstant(number as i64));
+                    if let Ok(number) = number.try_into() {
+                        return Ok(Expression::LongConstant(number));
+                    }
+                    if !is_decimal_base {
+                        if let Ok(number) = number.try_into() {
+                            return Ok(Expression::UnsignedLongConstant(number));
+                        }
+                    }
+                    return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                        ErrorVariant::CustomError {
+                            message: "integer constant overflow".to_string(),
+                        },
+                        span,
+                    )));
                 }
                 Rule::u_ => {
-                    return Ok(Expression::UnsignedIntegerConstant(number as u32));
+                    if let Ok(number) = number.try_into() {
+                        return Ok(Expression::UnsignedIntegerConstant(number));
+                    }
+                    if let Ok(number) = number.try_into() {
+                        return Ok(Expression::UnsignedLongConstant(number));
+                    }
+                    return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                        ErrorVariant::CustomError {
+                            message: "integer constant overflow".to_string(),
+                        },
+                        span,
+                    )));
                 }
                 _ => unreachable!(),
             },
             _ => unreachable!(),
         }
     }
-    match i32::try_from(number) {
-        Ok(number) => Ok(Expression::IntegerConstant(number)),
-        Err(e) => Err(Box::new(pest::error::Error::<Rule>::new_from_span(
-            ErrorVariant::CustomError {
-                message: e.to_string(),
-            },
-            span,
-        ))),
+    if let Ok(number) = number.try_into() {
+        return Ok(Expression::IntegerConstant(number));
     }
+    if !is_decimal_base {
+        if let Ok(number) = number.try_into() {
+            return Ok(Expression::UnsignedIntegerConstant(number));
+        }
+    }
+    if let Ok(number) = number.try_into() {
+        return Ok(Expression::LongConstant(number));
+    }
+    if !is_decimal_base {
+        if let Ok(number) = number.try_into() {
+            return Ok(Expression::UnsignedLongLongConstant(number));
+        }
+    }
+    return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+        ErrorVariant::CustomError {
+            message: "integer constant overflow".to_string(),
+        },
+        span,
+    )));
 }
 
 pub fn build_character_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
