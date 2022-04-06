@@ -1,11 +1,16 @@
 use pest::Parser;
-use serde::Serialize;
 use std::error::Error;
 use std::fs;
 
-#[derive(Parser, Serialize)]
-#[grammar = "./preprocess/preprocess.pest"]
-pub struct PreprocessParser;
+mod phase2;
+mod phase3;
+mod phase4;
+mod phase6;
+
+use phase2::*;
+use phase3::*;
+use phase4::*;
+use phase6::*;
 
 pub fn preprocess_file(path: &str) -> Result<String, Box<dyn Error>> {
     let source_content =
@@ -14,20 +19,9 @@ pub fn preprocess_file(path: &str) -> Result<String, Box<dyn Error>> {
 }
 
 pub fn preprocess(code: &str) -> Result<String, Box<dyn Error>> {
-    let pairs = match PreprocessParser::parse(Rule::cc99, code)?.next() {
-        Some(p) => p.into_inner(),
-        None => unreachable!(),
-    };
-    let mut result = String::new();
-    for pair in pairs {
-        match pair.as_rule() {
-            Rule::line_break => {}
-            Rule::cpp_comment => result.push('\n'),
-            Rule::c_comment => result.push(' '),
-            _ => result.push_str(pair.as_str()),
-        }
-    }
-    Ok(result)
+    let code = phase2(code);
+    let code = phase3(&code)?;
+    Ok(code)
 }
 
 #[cfg(test)]
