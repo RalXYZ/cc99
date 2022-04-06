@@ -1,14 +1,21 @@
 import "./App.css";
-import { Layout } from "antd";
-import { Card, Select, Button } from "antd";
+import {
+  Card,
+  Select,
+  Button,
+  message,
+  Layout,
+  Typography,
+  notification,
+} from "antd";
 import ResizePanel from "react-resize-panel";
 import { useState, useEffect } from "react";
 import Editor from "./components/AceEditor";
 import { ExampleCode } from "./data/example";
 
-import { Typography, Divider } from "antd";
 import init, { compile_result } from "cc99";
-const { Title, Text } = Typography;
+import AntVG6 from "./components/AntVG6";
+const { Text } = Typography;
 
 const { Header, Footer, Content } = Layout;
 const { Option } = Select;
@@ -17,7 +24,8 @@ function App() {
     init();
   }, []);
   const [code, setCode] = useState(ExampleCode[0].code);
-
+  const [ast, setAst] = useState({ id: "0", label: "CC99" });
+  const [visAst, setVisAst] = useState({ id: "0", label: "CC99" });
   const [output, setOutput] = useState(
     `[INFO] Compile the code before running!`
   );
@@ -42,6 +50,17 @@ function App() {
   const compile = () => {
     console.log(code);
     let data = JSON.parse(compile_result(code));
+    if (!data["error"]) {
+      setAst(data["ast"]);
+      setVisAst(data["ast"]);
+      message.success("编译成功!");
+    } else {
+      notification.error({
+        message: "编译失败",
+        description: data["error_message"],
+        duration: null,
+      });
+    }
     console.log(data);
   };
   return (
@@ -84,9 +103,7 @@ function App() {
                 flexGrow: 1,
               }}
             >
-              <p>Card content</p>
-              <p>Card content</p>
-              <p>Card content</p>
+              <AntVG6 data={ast} />
             </Card>
 
             <ResizePanel direction="w" style={{ flexGrow: 1 }}>
