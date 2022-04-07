@@ -1,4 +1,5 @@
 use pest::Parser;
+use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 
@@ -12,15 +13,19 @@ use phase3::*;
 use phase4::*;
 use phase6::*;
 
-pub fn preprocess_file(path: &str) -> Result<String, Box<dyn Error>> {
+pub fn preprocess_file(path: &str, include_dirs: &[&str]) -> Result<String, Box<dyn Error>> {
     let source_content =
         fs::read_to_string(path).unwrap_or_else(|_| panic!("Unable to read source file {}", path));
-    preprocess(&source_content)
+    preprocess(&source_content, include_dirs)
 }
 
-pub fn preprocess(code: &str) -> Result<String, Box<dyn Error>> {
+pub fn preprocess(code: &str, include_dirs: &[&str]) -> Result<String, Box<dyn Error>> {
     let code = phase2(code);
     let code = phase3(&code)?;
+
+    let mut defined: HashMap<String, Macro> = Default::default();
+    let code = phase4(&code, &mut defined, include_dirs)?;
+
     let code = phase6(&code)?;
     Ok(code)
 }
@@ -33,7 +38,8 @@ mod tests {
     #[should_panic]
     fn process_comments_fail() {
         let code = r#"/* "#;
-        println!("result: {}", preprocess(code).unwrap());
+        let include_dirs = vec![];
+        println!("result: {}", preprocess(code, &include_dirs).unwrap());
     }
 
     #[test]
@@ -58,7 +64,8 @@ int main() {
     return 0;
 }
 "#;
-        assert_eq!(expected, preprocess(code).unwrap());
+        let include_dirs = vec![];
+        assert_eq!(expected, preprocess(code, &include_dirs).unwrap());
     }
 
     #[test]
@@ -70,7 +77,8 @@ int main() { \
         let expected = r#"
 int main() { }
 "#;
-        assert_eq!(expected, preprocess(code).unwrap());
+        let include_dirs = vec![];
+        assert_eq!(expected, preprocess(code, &include_dirs).unwrap());
     }
 
     #[test]
@@ -88,7 +96,8 @@ int main() {
     return 0;
 }
 "#;
-        assert_eq!(expected, preprocess(code).unwrap());
+        let include_dirs = vec![];
+        assert_eq!(expected, preprocess(code, &include_dirs).unwrap());
     }
 
     #[test]
@@ -103,6 +112,7 @@ int main() {
     char *x = "xyz";
 }
 "#;
-        assert_eq!(expected, preprocess(code).unwrap());
+        let include_dirs = vec![];
+        assert_eq!(expected, preprocess(code, &include_dirs).unwrap());
     }
 }

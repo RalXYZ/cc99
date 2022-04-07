@@ -1,33 +1,48 @@
-cc99 = { SOI ~ (control_line | conditional | token_string_line)* ~ EOI }
+cc99 = { SOI ~ group* ~ EOI }
+
+group = {control_line | conditional | token_string_line}
+
+conditional = {if_line ~ group* ~ (elif_line ~ group*)* ~ (else_line ~ group*)? ~ endif_line}
+if_line = {(("#" ~ if__ ~ constant_expression) | ("#" ~ ifdef__ ~ identifier) | ("#" ~ ifndef__ ~ identifier)) ~ NEWLINE}
+elif_line = {("#" ~ elif__ ~ constant_expression) ~ NEWLINE}
+else_line = {"#" ~ else__ ~ NEWLINE}
+endif_line = {"#" ~ endif__ ~ NEWLINE}
 
 control_line = {(function_like_macro | object_like_macro | current_include | standard_include | line_info | undef_macro | error_macro | pragma_macro) ~ NEWLINE}
-function_like_macro = {"#" ~ "define" ~ identifier ~ "(" ~ (identifier ~ ("," ~ identifier)*)? ~ ")" ~ token_string?}
-object_like_macro = {"#" ~ "define" ~ identifier ~ token_string?}
-current_include = {"#" ~ "include" ~ "\"" ~ path_spec ~ "\""}
-standard_include = {"#" ~ "include" ~ "<" ~ path_spec ~ ">"}
-line_info = {"#" ~ "line" ~ digit_sequence ~ ("\"" ~ filename ~ "\"")?}
-undef_macro = {"#" ~ "undef" ~ identifier}
-error_macro = {"#" ~ "error" ~ token_string}
-pragma_macro = {"#" ~ "pragma" ~ token_string}
-
-conditional = {if_line ~ token_string_line* ~ (elif_line ~ token_string_line*)* ~ (else_line ~ token_string_line*)? ~ endif_line}
-if_line = {(("#" ~ "if" ~ constant_expression) | ("#" ~ "ifdef" ~ identifier) | ("#" ~ "ifndef" ~ identifier)) ~ NEWLINE}
-elif_line = {("#" ~ "elif" ~ constant_expression) ~ NEWLINE}
-else_line = {"#" ~ "else" ~ NEWLINE}
-endif_line = {"#" ~ "endif" ~ NEWLINE}
+function_like_macro = {"#" ~ define__ ~ identifier ~ "(" ~ (identifier ~ ("," ~ identifier)*)? ~ ("," ~ variadic_)? ~ ")" ~ token_string?}
+object_like_macro = {"#" ~ define__ ~ identifier ~ token_string?}
+current_include = {"#" ~ include__ ~ "\"" ~ path_spec ~ "\""}
+standard_include = {"#" ~ include__ ~ "<" ~ path_spec ~ ">"}
+line_info = {"#" ~ line__ ~ digit_sequence ~ ("\"" ~ filename ~ "\"")?}
+undef_macro = {"#" ~ undef__ ~ identifier}
+error_macro = {"#" ~ error__ ~ token_string}
+pragma_macro = {"#" ~ pragma__ ~ token_string}
 
 token_string_line = {empty_line | token_string? ~ NEWLINE}
 empty_line = {"#" ~ NEWLINE}
 
 token_string = {token+}
-token = {keyword | identifier | constant | punctuator}
+token = {keyword | identifier | string_literal | constant | punctuator}
 filename = {(ASCII_ALPHANUMERIC | "-" | "_" | ".")*}
 path_spec = {(ASCII_ALPHANUMERIC | "-" | "_" | "." | "/" | ":")*}
 constant_expression = {("defined" ~ "(" ~ identifier ~ ")") | ("defined" ~ identifier)}
 digit_sequence = {ASCII_DIGIT+}
+variadic_ = {"..."}
 
 punctuator = {"##" | ("#" ~ !macro_keyword) | "{" | "}" | "[" | "]" | "(" | ")" | ";" | ":" | "..." | "?" | "." | "->" | "~" | "=" | "+=" | "*=" | "/=" | "%=" | "^=" | "&=" | "|=" | "==" | "!=" | "<=" | ">=" | "<<=" | ">>=" | "++" | "--"| "!" | "+" | "-" | "*" | "/" | "%" | "^" | "&" | "|" | "<" | ">" | "&&" | "||" | "<<" | ">>"  | ","}
-macro_keyword = {"define" | "include" | "line" | "undef" | "error" | "pragma" | "if" | "ifdef" | "ifndef" | "elif" | "else" | "endif" | NEWLINE}
+macro_keyword = {define__ | include__ | line__ | undef__ | error__ | pragma__ | if__ | ifdef__ | ifndef__ | elif__ | else__ | endif__ | NEWLINE}
+define__ = ${"define" ~ &(WHITESPACE | NEWLINE)}
+include__ = ${"include" ~ &(WHITESPACE | NEWLINE)}
+line__ = ${"line" ~ &(WHITESPACE | NEWLINE)}
+undef__ = ${"undef" ~ &(WHITESPACE | NEWLINE)}
+error__ = ${"error" ~ &(WHITESPACE | NEWLINE)}
+pragma__ = ${"pragma" ~ &(WHITESPACE | NEWLINE)}
+if__ = ${"if" ~ &(WHITESPACE | NEWLINE)}
+ifdef__ = ${"ifdef" ~ &(WHITESPACE | NEWLINE)}
+ifndef__ = ${"ifndef" ~ &(WHITESPACE | NEWLINE)}
+elif__ = ${"elif" ~ &(WHITESPACE | NEWLINE)}
+else__ = ${"else" ~ &(WHITESPACE | NEWLINE)}
+endif__ = ${"endif" ~ &(WHITESPACE | NEWLINE)}
 
 //>>>>>>>>>>>>>>>>>>>>>>>
 //       LITERAL

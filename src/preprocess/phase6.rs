@@ -15,12 +15,9 @@ pub fn phase6(code: &str) -> Result<String, Box<dyn Error>> {
             Rule::sequence_string_literal => {
                 result.push('"');
                 for literal in pair.into_inner() {
-                    match literal.as_rule() {
-                        Rule::string_literal => {
-                            let literal = literal.as_str();
-                            result.push_str(&literal[1..literal.len() - 1]);
-                        }
-                        _ => {}
+                    if literal.as_rule() == Rule::string_literal {
+                        let literal = literal.as_str();
+                        result.push_str(&literal[1..literal.len() - 1]);
                     }
                 }
                 result.push('"');
