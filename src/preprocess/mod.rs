@@ -21,6 +21,7 @@ pub fn preprocess_file(path: &str) -> Result<String, Box<dyn Error>> {
 pub fn preprocess(code: &str) -> Result<String, Box<dyn Error>> {
     let code = phase2(code);
     let code = phase3(&code)?;
+    let code = phase6(&code)?;
     Ok(code)
 }
 
@@ -85,6 +86,21 @@ int main() {
 int main() {
     
     return 0;
+}
+"#;
+        assert_eq!(expected, preprocess(code).unwrap());
+    }
+
+    #[test]
+    fn combine_adjacent_strings() {
+        let code = r#"
+int main() {
+    char *x = "x" "y""z";
+}
+"#;
+        let expected = r#"
+int main() {
+    char *x = "xyz";
 }
 "#;
         assert_eq!(expected, preprocess(code).unwrap());
