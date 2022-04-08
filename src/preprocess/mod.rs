@@ -1,33 +1,33 @@
 use pest::Parser;
-use serde::Serialize;
+use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
 
-#[derive(Parser, Serialize)]
-#[grammar = "./preprocess/preprocess.pest"]
-pub struct PreprocessParser;
+mod phase2;
+mod phase3;
+mod phase4;
+mod phase6;
 
-pub fn preprocess_file(path: &str) -> Result<String, Box<dyn Error>> {
+use phase2::*;
+use phase3::*;
+use phase4::*;
+use phase6::*;
+
+pub fn preprocess_file(path: &str, include_dirs: &[&str]) -> Result<String, Box<dyn Error>> {
     let source_content =
         fs::read_to_string(path).unwrap_or_else(|_| panic!("Unable to read source file {}", path));
-    preprocess(&source_content)
+    preprocess(&source_content, include_dirs)
 }
 
-pub fn preprocess(code: &str) -> Result<String, Box<dyn Error>> {
-    let pairs = match PreprocessParser::parse(Rule::cc99, code)?.next() {
-        Some(p) => p.into_inner(),
-        None => unreachable!(),
-    };
-    let mut result = String::new();
-    for pair in pairs {
-        match pair.as_rule() {
-            Rule::line_break => {}
-            Rule::cpp_comment => result.push('\n'),
-            Rule::c_comment => result.push(' '),
-            _ => result.push_str(pair.as_str()),
-        }
-    }
-    Ok(result)
+pub fn preprocess(code: &str, include_dirs: &[&str]) -> Result<String, Box<dyn Error>> {
+    let code = phase2(code);
+    let code = phase3(&code)?;
+
+    let mut defined: HashMap<String, Macro> = Default::default();
+    let code = phase4(&code, &mut defined, include_dirs)?;
+
+    let code = phase6(&code)?;
+    Ok(code)
 }
 
 #[cfg(test)]
@@ -38,7 +38,8 @@ mod tests {
     #[should_panic]
     fn process_comments_fail() {
         let code = r#"/* "#;
-        println!("result: {}", preprocess(code).unwrap());
+        let include_dirs = vec![];
+        println!("result: {}", preprocess(code, &include_dirs).unwrap());
     }
 
     #[test]
@@ -63,7 +64,8 @@ int main() {
     return 0;
 }
 "#;
-        assert_eq!(expected, preprocess(code).unwrap());
+        let include_dirs = vec![];
+        assert_eq!(expected, preprocess(code, &include_dirs).unwrap());
     }
 
     #[test]
@@ -75,7 +77,8 @@ int main() { \
         let expected = r#"
 int main() { }
 "#;
-        assert_eq!(expected, preprocess(code).unwrap());
+        let include_dirs = vec![];
+        assert_eq!(expected, preprocess(code, &include_dirs).unwrap());
     }
 
     #[test]
@@ -93,6 +96,23 @@ int main() {
     return 0;
 }
 "#;
-        assert_eq!(expected, preprocess(code).unwrap());
+        let include_dirs = vec![];
+        assert_eq!(expected, preprocess(code, &include_dirs).unwrap());
+    }
+
+    #[test]
+    fn combine_adjacent_strings() {
+        let code = r#"
+int main() {
+    char *x = "x" "y""z";
+}
+"#;
+        let expected = r#"
+int main() {
+    char *x = "xyz";
+}
+"#;
+        let include_dirs = vec![];
+        assert_eq!(expected, preprocess(code, &include_dirs).unwrap());
     }
 }

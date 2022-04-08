@@ -25,7 +25,8 @@ pub fn compile_result(code: &str) -> String {
         message: String::from(""),
         ast: Box::new(AST::GlobalDeclaration(vec![])),
     };
-    match preprocess(code) {
+    let include_dirs = vec![];
+    match preprocess(code, &include_dirs) {
         Ok(code) => match parse(&code) {
             Ok(ast) => {
                 result.ast = ast;

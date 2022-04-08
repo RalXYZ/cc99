@@ -7,6 +7,7 @@ mod tests {
 
     #[test]
     fn parse_test_file() {
+        let include_dirs = vec![];
         for entry in WalkDir::new("./tests")
             .into_iter()
             .filter_map(Result::ok)
@@ -23,7 +24,7 @@ mod tests {
             }
             println!(">>> {} {} <<<", "Start compiling", source_path);
 
-            let res = preprocess_file(&source_path).unwrap();
+            let res = preprocess_file(&source_path, &include_dirs).unwrap();
             let ast = parse(&res).unwrap();
             println!("{}", serde_json::to_string(&ast).unwrap());
             println!(">>> {} <<<", "Finish Parsing");

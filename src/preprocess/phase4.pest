@@ -1,0 +1,136 @@
+cc99 = { SOI ~ group* ~ EOI }
+
+group = {control_line | conditional | token_string_line}
+
+conditional = {if_line ~ group* ~ (elif_line ~ group*)* ~ (else_line ~ group*)? ~ endif_line}
+if_line = {(("#" ~ if__ ~ constant_expression) | ("#" ~ ifdef__ ~ identifier) | ("#" ~ ifndef__ ~ identifier)) ~ NEWLINE}
+elif_line = {("#" ~ elif__ ~ constant_expression) ~ NEWLINE}
+else_line = {"#" ~ else__ ~ NEWLINE}
+endif_line = {"#" ~ endif__ ~ NEWLINE}
+
+control_line = {(function_like_macro | object_like_macro | current_include | standard_include | line_info | undef_macro | error_macro | pragma_macro) ~ NEWLINE}
+function_like_macro = {"#" ~ define__ ~ identifier ~ "(" ~ (identifier ~ ("," ~ identifier)*)? ~ ("," ~ variadic_)? ~ ")" ~ token_string?}
+object_like_macro = {"#" ~ define__ ~ identifier ~ token_string?}
+current_include = {"#" ~ include__ ~ "\"" ~ path_spec ~ "\""}
+standard_include = {"#" ~ include__ ~ "<" ~ path_spec ~ ">"}
+line_info = {"#" ~ line__ ~ digit_sequence ~ ("\"" ~ filename ~ "\"")?}
+undef_macro = {"#" ~ undef__ ~ identifier}
+error_macro = {"#" ~ error__ ~ token_string}
+pragma_macro = {"#" ~ pragma__ ~ token_string}
+
+token_string_line = {empty_line | token_string? ~ NEWLINE}
+empty_line = {"#" ~ NEWLINE}
+
+token_string = {token+}
+token = {keyword | identifier | string_literal | constant | punctuator}
+filename = {(ASCII_ALPHANUMERIC | "-" | "_" | ".")*}
+path_spec = {(ASCII_ALPHANUMERIC | "-" | "_" | "." | "/" | ":")*}
+constant_expression = {("defined" ~ "(" ~ identifier ~ ")") | ("defined" ~ identifier)}
+digit_sequence = {ASCII_DIGIT+}
+variadic_ = {"..."}
+
+punctuator = {"##" | ("#" ~ !macro_keyword) | "{" | "}" | "[" | "]" | "(" | ")" | ";" | ":" | "..." | "?" | "." | "->" | "~" | "=" | "+=" | "*=" | "/=" | "%=" | "^=" | "&=" | "|=" | "==" | "!=" | "<=" | ">=" | "<<=" | ">>=" | "++" | "--"| "!" | "+" | "-" | "*" | "/" | "%" | "^" | "&" | "|" | "<" | ">" | "&&" | "||" | "<<" | ">>"  | ","}
+macro_keyword = {define__ | include__ | line__ | undef__ | error__ | pragma__ | if__ | ifdef__ | ifndef__ | elif__ | else__ | endif__ | NEWLINE}
+define__ = ${"define" ~ &(WHITESPACE | NEWLINE)}
+include__ = ${"include" ~ &(WHITESPACE | NEWLINE)}
+line__ = ${"line" ~ &(WHITESPACE | NEWLINE)}
+undef__ = ${"undef" ~ &(WHITESPACE | NEWLINE)}
+error__ = ${"error" ~ &(WHITESPACE | NEWLINE)}
+pragma__ = ${"pragma" ~ &(WHITESPACE | NEWLINE)}
+if__ = ${"if" ~ &(WHITESPACE | NEWLINE)}
+ifdef__ = ${"ifdef" ~ &(WHITESPACE | NEWLINE)}
+ifndef__ = ${"ifndef" ~ &(WHITESPACE | NEWLINE)}
+elif__ = ${"elif" ~ &(WHITESPACE | NEWLINE)}
+else__ = ${"else" ~ &(WHITESPACE | NEWLINE)}
+endif__ = ${"endif" ~ &(WHITESPACE | NEWLINE)}
+
+//>>>>>>>>>>>>>>>>>>>>>>>
+//       LITERAL
+//<<<<<<<<<<<<<<<<<<<<<<<
+constant = {integer_constant | floating_constant | character_constant}
+
+integer_constant = ${(hex_constant | binary_constant | octal_constant | decimal_constant) ~ integer_suffix? ~ !("." | ^"e" | ^"p")}
+integer_suffix = {ull_ | ll_ | ul_ | l_ | u_}
+decimal_constant = @{ASCII_NONZERO_DIGIT ~ (ASCII_DIGIT)*}
+octal_constant = @{"0" ~ (ASCII_OCT_DIGIT)*}
+hex_constant = @{"0" ~ ("x" | "X") ~ (ASCII_HEX_DIGIT)*}
+binary_constant = @{"0" ~ ("b" | "B") ~ (ASCII_BIN_DIGIT)*}
+
+floating_constant = {decimal_floating_constant | hex_floating_constant}
+decimal_floating_constant = ${decimal_floating_constant_no_suffix ~ floating_suffix?}
+decimal_floating_constant_no_suffix = @{decimal_significand ~ decimal_exponent?}
+decimal_significand = @{((ASCII_NONZERO_DIGIT ~ (ASCII_DIGIT)*) ~ "."? ~ ((ASCII_DIGIT)+)?) | ((ASCII_NONZERO_DIGIT? ~ (ASCII_DIGIT)*) ~ "."? ~ ((ASCII_DIGIT)+))}
+decimal_exponent = @{(^"e" ~ ("+"|"-")? ~ ASCII_DIGIT+)}
+hex_floating_constant = ${hex_floating_constant_no_suffix ~ floating_suffix?}
+hex_floating_constant_no_suffix = @{hex_significand ~ hex_exponent?}
+hex_significand = @{"0" ~ ("x" | "X") ~ (((ASCII_HEX_DIGIT) ~ "."? ~ ((ASCII_HEX_DIGIT)+)?) | ((ASCII_HEX_DIGIT)? ~ "."? ~ ((ASCII_HEX_DIGIT)+)))}
+hex_exponent = @{(^"p" ~ ("+"|"-")? ~ ASCII_DIGIT+)}
+floating_suffix = {f_ | l_}
+
+character_constant = ${PUSH("'") ~ (char_no_escape | escape_sequence) ~ POP}
+string_literal = ${PUSH("\"") ~ (char_no_escape | escape_sequence)* ~ POP}
+char_no_escape = @{!(PEEK | "\\" | NEWLINE) ~ ANY}
+
+escape_sequence = @{"\\'" | "\\\"" | "\\?" | "\\\\" | "\\a" | "\\b" | "\\f" | "\\n" | "\\r" | "\\t" | "\\v" | ("\\" ~ ASCII_OCT_DIGIT{1, 3}) | ("\\x" ~ ASCII_HEX_DIGIT{1, 2}) | ("\\u" ~ ASCII_HEX_DIGIT{4}) | ("\\U" ~ ASCII_HEX_DIGIT{8})}
+
+
+//>>>>>>>>>>>>>>>>>>>>>>>
+//        TOKEN
+//<<<<<<<<<<<<<<<<<<<<<<<
+identifier = @{!keyword ~ (ASCII_ALPHA | "_") ~ (ASCII_ALPHANUMERIC | "_")*}
+
+keyword = @{(auto_ | break_ | case_ | char_ | const_ | continue_ | default_ | do_ | double_ | else_ | enum_ | extern_ | float_ | for_ | goto_ | if_ | inline_ | int_ | long_ | register_ | restrict_ | return_ | short_ | signed_ | sizeof_ | static_ | struct_ | switch_ | typedef_ | union_ | unsigned_ | void_ | volatile_ | while_ | alignas_ | alignof_ | atomic_ | bool_ | complex_ | generic_ | imaginary_ | noreturn_ | static_assert_ | thread_local_) ~ !(ASCII_ALPHA | "_")}
+
+auto_ = {"auto"}
+break_ = {"break"}
+case_ = {"case"}
+char_ = {"char"}
+const_ = {"const"}
+continue_ = {"continue"}
+default_ = {"default"}
+do_ = {"do"}
+double_ = {"double"}
+else_ = {"else"}
+enum_ = {"enum"}
+extern_ = {"extern"}
+float_ = {"float"}
+for_ = {"for"}
+goto_ = {"goto"}
+if_ = {"if"}
+inline_ = {"inline"}
+int_ = {"int"}
+long_ = {"long"}
+register_ = {"register"}
+restrict_ = {"restrict"}
+return_ = {"return"}
+short_ = {"short"}
+signed_ = {"signed"}
+sizeof_ = {"sizeof"}
+static_ = {"static"}
+struct_ = {"struct"}
+switch_ = {"switch"}
+typedef_ = {"typedef"}
+union_ = {"union"}
+unsigned_ = {"unsigned"}
+void_ = {"void"}
+volatile_ = {"volatile"}
+while_ = {"while"}
+alignas_ = {"_Alignas"}
+alignof_ = {"_Alignof"}
+atomic_ = {"_Atomic"}
+bool_ = {"_Bool"}
+complex_ = {"_Complex"}
+generic_ = {"_Generic"}
+imaginary_ = {"_Imaginary"}
+noreturn_ = {"_Noreturn"}
+static_assert_ = {"_Static_assert"}
+thread_local_ = {"_Thread_local"}
+
+u_ = {^"u"}
+l_ = {^"l"}
+ul_ = {"ul" | "UL"}
+ll_ = {"ll" | "LL"}
+ull_ = {"ull" | "ULL"}
+f_ = {^"f"}
+
+WHITESPACE = { " " | "\t"}
