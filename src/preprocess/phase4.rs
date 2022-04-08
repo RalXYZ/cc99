@@ -49,7 +49,8 @@ pub fn phase4(
                     }
                 }
             }
-            Rule::WHITESPACE | Rule::EOI => { // preserve indentation
+            Rule::WHITESPACE | Rule::EOI => {
+                // preserve indentation
                 result.push_str(pair.as_str());
             }
             _ => unreachable!(),
