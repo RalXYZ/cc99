@@ -9,6 +9,7 @@ mod ast;
 mod parse;
 mod preprocess;
 mod generator;
+mod utils;
 
 use parse::*;
 use preprocess::*;

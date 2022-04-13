@@ -8,6 +8,8 @@ pub mod preprocess;
 #[cfg(feature = "web")]
 pub mod visual;
 
+pub mod utils;
+
 pub use ast::*;
 pub use parse::*;
 pub use preprocess::*;

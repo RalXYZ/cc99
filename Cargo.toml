@@ -32,5 +32,6 @@ clap = { version = "3.1.8", features = ["derive"], optional = true }
 wasm-bindgen = { version = "0.2.79", optional = true }
 inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = ["llvm13-0"] }
 anyhow = "1.0"
+thiserror = "1.0"
 typed-arena = "2.0.1"
 escape_string = "0.1.2"
