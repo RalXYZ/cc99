@@ -1,6 +1,7 @@
 use super::*;
 use pest::error::ErrorVariant;
 use pest::iterators::Pair;
+use std::collections::HashSet;
 use std::path::Path;
 
 #[derive(Parser)]
@@ -19,35 +20,30 @@ pub enum Macro<'a> {
     ),
 }
 
-pub fn phase4(
-    code: &str,
-    defined: &mut HashMap<String, Macro>,
+pub fn phase4<'a>(
+    code: &'a str,
+    defined: &mut HashMap<String, Macro<'a>>,
     include_dirs: &[&str],
 ) -> Result<String, Box<dyn Error>> {
     let pairs = match Phase4Parser::parse(Rule::cc99, code)?.next() {
         Some(p) => p.into_inner(),
         None => unreachable!(),
     };
+    let mut tmp_codes: Vec<String> = Default::default(); // fix lifetime related issues
     let mut result = String::new();
     for pair in pairs {
         match pair.as_rule() {
             Rule::group => {
-                for pair in pair.into_inner() {
-                    match pair.as_rule() {
-                        Rule::control_line => {
-                            result.push_str(&build_control_line(pair, defined, include_dirs)?)
-                        }
-                        Rule::token_string_line => {
-                            result.push_str(pair.as_str());
-                            // TODO(TO/GA)
-                        }
-                        Rule::conditional => {
-                            result.push_str(pair.as_str());
-                            // TODO(TO/GA)
-                        }
-                        _ => unreachable!(),
-                    }
-                }
+                result.push_str(
+                    build_group(
+                        pair,
+                        defined,
+                        include_dirs,
+                        Default::default(),
+                        &mut tmp_codes,
+                    )?
+                    .as_str(),
+                );
             }
             Rule::WHITESPACE | Rule::EOI => {
                 // preserve indentation
@@ -59,9 +55,69 @@ pub fn phase4(
     Ok(result)
 }
 
-pub fn build_control_line(
-    pair: Pair<'_, Rule>,
-    defined: &mut HashMap<String, Macro>,
+pub fn build_group<'a>(
+    pair: Pair<'a, Rule>,
+    defined: &mut HashMap<String, Macro<'a>>,
+    include_dirs: &[&str],
+    extracting_macro: HashSet<String>,
+    tmp_codes: &'a mut Vec<String>,
+) -> Result<String, Box<dyn Error>> {
+    let mut modified = false;
+    let mut result = String::new();
+    for pair in pair.into_inner() {
+        match pair.as_rule() {
+            Rule::control_line => {
+                modified = true;
+                result.push_str(&build_control_line(pair, defined, include_dirs)?);
+            }
+            Rule::token_string_line => {
+                result.push_str(pair.as_str());
+                // (modified, str) = build_token_string_line
+                // TODO(TO/GA)
+            }
+            Rule::conditional => {
+                modified = true;
+                result.push_str(pair.as_str());
+                // TODO(TO/GA)
+            }
+            _ => unreachable!(),
+        }
+    }
+    match modified {
+        true => {
+            tmp_codes.push(result);
+            let new_code = tmp_codes.last_mut().unwrap().as_str();
+            let pairs = match Phase4Parser::parse(Rule::cc99, new_code)?.next() {
+                Some(p) => p.into_inner(),
+                None => unreachable!(),
+            };
+            let mut result = String::new();
+            for pair in pairs {
+                match pair.as_rule() {
+                    Rule::group => {
+                        result.push_str(
+                            build_group(
+                                pair,
+                                defined,
+                                include_dirs,
+                                Default::default(),
+                                tmp_codes,
+                            )?
+                            .as_str(),
+                        );
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            Ok(result)
+        }
+        false => Ok(result),
+    }
+}
+
+pub fn build_control_line<'a>(
+    pair: Pair<'a, Rule>,
+    defined: &mut HashMap<String, Macro<'a>>,
     include_dirs: &[&str],
 ) -> Result<String, Box<dyn Error>> {
     let pair = pair.into_inner().next().unwrap();
@@ -71,8 +127,12 @@ pub fn build_control_line(
     let mut path: Option<&str> = None;
 
     match pair.as_rule() {
-        Rule::function_like_macro => unimplemented!(),
-        Rule::object_like_macro => unimplemented!(),
+        Rule::function_like_macro => {
+            build_function_like_macro(pair, defined)?;
+        }
+        Rule::object_like_macro => {
+            build_object_like_macro(pair, defined)?;
+        }
         Rule::current_include => {
             search_current_first = true;
             for token in pair.into_inner() {
@@ -145,4 +205,32 @@ pub fn build_control_line(
     }
 
     Ok("".to_string())
+}
+
+pub fn build_object_like_macro<'a>(
+    pair: Pair<'a, Rule>,
+    defined: &mut HashMap<String, Macro<'a>>,
+) -> Result<(), Box<dyn Error>> {
+    let mut identifier: String = Default::default();
+    for token in pair.into_inner() {
+        match token.as_rule() {
+            Rule::define__ => {}
+            Rule::identifier => {
+                identifier = token.as_str().to_string();
+            }
+            Rule::token_string => {
+                defined.insert(identifier.to_owned(), Macro::Object(token));
+                return Ok(());
+            }
+            _ => unreachable!(),
+        }
+    }
+    unimplemented!()
+}
+
+pub fn build_function_like_macro(
+    pair: Pair<'_, Rule>,
+    defined: &mut HashMap<String, Macro>,
+) -> Result<(), Box<dyn Error>> {
+    unimplemented!()
 }
