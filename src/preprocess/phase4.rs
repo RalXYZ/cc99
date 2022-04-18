@@ -24,25 +24,19 @@ pub fn phase4<'a>(
     code: &'a str,
     defined: &mut HashMap<String, Macro<'a>>,
     include_dirs: &[&str],
+    code_arena: &'a Arena<String>,
 ) -> Result<String, Box<dyn Error>> {
     let pairs = match Phase4Parser::parse(Rule::cc99, code)?.next() {
         Some(p) => p.into_inner(),
         None => unreachable!(),
     };
-    let mut tmp_codes: Vec<String> = Default::default(); // fix lifetime related issues
     let mut result = String::new();
     for pair in pairs {
         match pair.as_rule() {
             Rule::group => {
                 result.push_str(
-                    build_group(
-                        pair,
-                        defined,
-                        include_dirs,
-                        Default::default(),
-                        &mut tmp_codes,
-                    )?
-                    .as_str(),
+                    build_group(pair, defined, include_dirs, Default::default(), code_arena)?
+                        .as_str(),
                 );
             }
             Rule::WHITESPACE | Rule::EOI => {
@@ -60,7 +54,7 @@ pub fn build_group<'a>(
     defined: &mut HashMap<String, Macro<'a>>,
     include_dirs: &[&str],
     extracting_macro: HashSet<String>,
-    tmp_codes: &'a mut Vec<String>,
+    code_arena: &'a Arena<String>,
 ) -> Result<String, Box<dyn Error>> {
     let mut modified = false;
     let mut result = String::new();
@@ -85,9 +79,10 @@ pub fn build_group<'a>(
     }
     match modified {
         true => {
-            tmp_codes.push(result);
-            let new_code = tmp_codes.last_mut().unwrap().as_str();
-            let pairs = match Phase4Parser::parse(Rule::cc99, new_code)?.next() {
+            // let leak = Box::new(result.clone());
+            // let leak = Box::leak(leak);
+            let result = code_arena.alloc(result).as_str();
+            let pairs = match Phase4Parser::parse(Rule::cc99, result)?.next() {
                 Some(p) => p.into_inner(),
                 None => unreachable!(),
             };
@@ -101,7 +96,7 @@ pub fn build_group<'a>(
                                 defined,
                                 include_dirs,
                                 Default::default(),
-                                tmp_codes,
+                                code_arena,
                             )?
                             .as_str(),
                         );
@@ -192,7 +187,8 @@ pub fn build_control_line<'a>(
             let code = phase3(&code)?;
 
             let mut defined: HashMap<String, Macro> = Default::default();
-            let code = phase4(&code, &mut defined, include_dirs)?;
+            let code_arena = Arena::new();
+            let code = phase4(&code, &mut defined, include_dirs, &code_arena)?;
             return Ok(code);
         } else {
             return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
