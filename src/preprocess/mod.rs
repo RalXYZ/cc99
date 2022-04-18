@@ -2,6 +2,7 @@ use pest::Parser;
 use std::collections::HashMap;
 use std::error::Error;
 use std::fs;
+use typed_arena::Arena;
 
 mod phase2;
 mod phase3;
@@ -24,7 +25,8 @@ pub fn preprocess(code: &str, include_dirs: &[&str]) -> Result<String, Box<dyn E
     let code = phase3(&code)?;
 
     let mut defined: HashMap<String, Macro> = Default::default();
-    let code = phase4(&code, &mut defined, include_dirs)?;
+    let code_arena = Arena::new();
+    let code = phase4(&code, &mut defined, include_dirs, &code_arena)?;
 
     let code = phase6(&code)?;
     Ok(code)
