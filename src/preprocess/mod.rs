@@ -117,4 +117,22 @@ int main() {
         let include_dirs = vec![];
         assert_eq!(expected, preprocess(code, &include_dirs).unwrap());
     }
+
+    #[test]
+    fn process_object_define() {
+        let code = r#"
+#define b 0
+#define x b
+int main() {
+    return x;
+}
+"#;
+        let expected = r#"
+int main() {
+    return 0;
+}
+"#;
+        let include_dirs = vec![];
+        assert_eq!(expected, preprocess(code, &include_dirs).unwrap());
+    }
 }

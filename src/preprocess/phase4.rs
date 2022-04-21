@@ -40,7 +40,6 @@ pub fn phase4<'a>(
                 );
             }
             Rule::WHITESPACE | Rule::EOI => {
-                // preserve indentation
                 result.push_str(pair.as_str());
             }
             _ => unreachable!(),
@@ -53,7 +52,7 @@ pub fn build_group<'a>(
     pair: Pair<'a, Rule>,
     defined: &mut HashMap<String, Macro<'a>>,
     include_dirs: &[&str],
-    extracting_macro: HashSet<String>,
+    mut extracting_macro: HashSet<String>,
     code_arena: &'a Arena<String>,
 ) -> Result<String, Box<dyn Error>> {
     let mut modified = false;
@@ -65,9 +64,10 @@ pub fn build_group<'a>(
                 result.push_str(&build_control_line(pair, defined, include_dirs)?);
             }
             Rule::token_string_line => {
-                result.push_str(pair.as_str());
-                // (modified, str) = build_token_string_line
-                // TODO(TO/GA)
+                result.push_str(
+                    build_token_string_line(pair, defined, &mut extracting_macro, &mut modified)?
+                        .as_str(),
+                );
             }
             Rule::conditional => {
                 modified = true;
@@ -95,11 +95,14 @@ pub fn build_group<'a>(
                                 pair,
                                 defined,
                                 include_dirs,
-                                Default::default(),
+                                extracting_macro.clone(),
                                 code_arena,
                             )?
                             .as_str(),
                         );
+                    }
+                    Rule::WHITESPACE | Rule::EOI => {
+                        result.push_str(pair.as_str());
                     }
                     _ => unreachable!(),
                 }
@@ -210,7 +213,7 @@ pub fn build_object_like_macro<'a>(
     let mut identifier: String = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
-            Rule::define__ => {}
+            Rule::define__ | Rule::WHITESPACE => {}
             Rule::identifier => {
                 identifier = token.as_str().to_string();
             }
@@ -229,4 +232,75 @@ pub fn build_function_like_macro(
     defined: &mut HashMap<String, Macro>,
 ) -> Result<(), Box<dyn Error>> {
     unimplemented!()
+}
+
+pub fn build_token_string_line<'a>(
+    pair: Pair<'a, Rule>,
+    defined: &mut HashMap<String, Macro<'a>>,
+    extracting_macro: &mut HashSet<String>,
+    modified: &mut bool,
+) -> Result<String, Box<dyn Error>> {
+    let mut result = String::new();
+    for pair in pair.into_inner() {
+        match pair.as_rule() {
+            Rule::token_string => {
+                result.push_str(
+                    build_token_string(pair, defined, extracting_macro, modified)?.as_str(),
+                );
+            }
+            Rule::empty_line | Rule::WHITESPACE => {
+                result.push_str(pair.as_str());
+            }
+            _ => unreachable!(),
+        }
+    }
+    result.push('\n');
+    Ok(result)
+}
+
+pub fn build_token_string<'a>(
+    pair: Pair<'a, Rule>,
+    defined: &mut HashMap<String, Macro<'a>>,
+    extracting_macro: &mut HashSet<String>,
+    modified: &mut bool,
+) -> Result<String, Box<dyn Error>> {
+    let mut result = String::new();
+    let mut pair = pair.into_inner();
+    while let Some(pair) = pair.next() {
+        match pair.as_rule() {
+            Rule::WHITESPACE => {
+                result.push_str(pair.as_str());
+            }
+            Rule::token => {
+                let token = pair.into_inner().next().unwrap();
+                match token.as_rule() {
+                    Rule::keyword | Rule::string_literal | Rule::constant | Rule::WHITESPACE => {
+                        result.push_str(token.as_str());
+                    }
+                    Rule::identifier => {
+                        if let Some(macro_) = defined.get(token.as_str()) {
+                            *modified = true;
+                            extracting_macro.insert(token.as_str().to_owned());
+                            match macro_ {
+                                Macro::Object(body) => {
+                                    result.push_str(body.as_str());
+                                }
+                                Macro::Function(_, _, _) => {
+                                    unimplemented!();
+                                }
+                            }
+                        } else {
+                            result.push_str(token.as_str());
+                        }
+                    }
+                    Rule::punctuator => {
+                        result.push_str(token.as_str());
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+    Ok(result)
 }
