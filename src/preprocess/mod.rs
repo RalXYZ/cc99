@@ -135,4 +135,25 @@ int main() {
         let include_dirs = vec![];
         assert_eq!(expected, preprocess(code, &include_dirs).unwrap());
     }
+
+    #[test]
+    fn process_conditional_macro() {
+        let code = r#"
+        #define x
+        #ifndef x
+        #define x 1
+        #else
+        #if defined(y)
+        #elif defined(x)
+        #define x 0
+        #endif
+        #endif
+        int main() { return x; }
+"#;
+        let expected = r#"
+                        int main() { return 0; }
+"#;
+        let include_dirs = vec![];
+        assert_eq!(expected, preprocess(code, &include_dirs).unwrap());
+    }
 }

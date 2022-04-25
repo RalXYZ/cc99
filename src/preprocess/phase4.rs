@@ -9,6 +9,7 @@ use std::path::Path;
 struct Phase4Parser;
 
 pub enum Macro<'a> {
+    Empty,
     Object(Pair<'a, Rule>),
     Function(
         /// arguments
@@ -71,16 +72,16 @@ pub fn build_group<'a>(
             }
             Rule::conditional => {
                 modified = true;
-                result.push_str(pair.as_str());
-                // TODO(TO/GA)
+                result.push_str(
+                    build_conditional(pair, defined, include_dirs, &extracting_macro, code_arena)?
+                        .as_str(),
+                );
             }
             _ => unreachable!(),
         }
     }
     match modified {
         true => {
-            // let leak = Box::new(result.clone());
-            // let leak = Box::leak(leak);
             let result = code_arena.alloc(result).as_str();
             let pairs = match Phase4Parser::parse(Rule::cc99, result)?.next() {
                 Some(p) => p.into_inner(),
@@ -224,7 +225,8 @@ pub fn build_object_like_macro<'a>(
             _ => unreachable!(),
         }
     }
-    unimplemented!()
+    defined.insert(identifier.to_owned(), Macro::Empty);
+    Ok(())
 }
 
 pub fn build_function_like_macro(
@@ -282,6 +284,7 @@ pub fn build_token_string<'a>(
                             *modified = true;
                             extracting_macro.insert(token.as_str().to_owned());
                             match macro_ {
+                                Macro::Empty => {}
                                 Macro::Object(body) => {
                                     result.push_str(body.as_str());
                                 }
@@ -303,4 +306,99 @@ pub fn build_token_string<'a>(
         }
     }
     Ok(result)
+}
+
+pub fn build_conditional<'a>(
+    pair: Pair<'a, Rule>,
+    defined: &mut HashMap<String, Macro<'a>>,
+    include_dirs: &[&str],
+    extracting_macro: &HashSet<String>,
+    code_arena: &'a Arena<String>,
+) -> Result<String, Box<dyn Error>> {
+    let mut result = String::new();
+    let mut taken = false;
+    let mut pair = pair.into_inner();
+    while let Some(pair) = pair.next() {
+        match pair.as_rule() {
+            Rule::if_line => {
+                let mut negative_predicate = false;
+                for token in pair.into_inner() {
+                    match token.as_rule() {
+                        Rule::if__ | Rule::ifdef__ => {
+                            negative_predicate = false;
+                        }
+                        Rule::ifndef__ => {
+                            negative_predicate = true;
+                        }
+                        Rule::constant_expression => {
+                            taken = negative_predicate ^ build_constant_expression(token, defined)?;
+                        }
+                        Rule::identifier => {
+                            taken = negative_predicate ^ defined.contains_key(token.as_str());
+                        }
+                        Rule::WHITESPACE => {}
+                        _ => unreachable!(),
+                    }
+                }
+            }
+            Rule::elif_line => match taken {
+                true => {
+                    // already taken
+                    break;
+                }
+                false => {
+                    for token in pair.into_inner() {
+                        match token.as_rule() {
+                            Rule::constant_expression => {
+                                taken = build_constant_expression(token, defined)?;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            },
+            Rule::else_line => match taken {
+                true => {
+                    // already taken
+                    break;
+                }
+                false => {
+                    taken = true;
+                }
+            },
+            Rule::endif_line => {}
+            Rule::group => {
+                if taken {
+                    result.push_str(
+                        build_group(
+                            pair,
+                            defined,
+                            include_dirs,
+                            extracting_macro.clone(),
+                            code_arena,
+                        )?
+                        .as_str(),
+                    );
+                }
+            }
+            Rule::WHITESPACE => {}
+            _ => unreachable!(),
+        }
+    }
+    Ok(result)
+}
+
+pub fn build_constant_expression(
+    pair: Pair<'_, Rule>,
+    defined: &HashMap<String, Macro>,
+) -> Result<bool, Box<dyn Error>> {
+    for token in pair.into_inner() {
+        match token.as_rule() {
+            Rule::identifier => {
+                return Ok(defined.contains_key(token.as_str()));
+            }
+            _ => {}
+        }
+    }
+    unreachable!()
 }
