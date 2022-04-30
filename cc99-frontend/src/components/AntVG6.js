@@ -9,6 +9,7 @@ export default function AntvTree(props) {
 
   useEffect(() => {
     const { width, height } = ref.current.getBoundingClientRect();
+    console.log(width, height);
     if (!graph) {
       const tooltip = new G6.Tooltip({
         offsetX: 10,
@@ -88,7 +89,8 @@ export default function AntvTree(props) {
         let rotate = 0;
         if (!node.children) {
           position = "bottom";
-          rotate = Math.PI / 2;
+          rotate = 0;
+          // rotate = Math.PI / 2;
         }
         return {
           style: {
@@ -117,5 +119,5 @@ export default function AntvTree(props) {
     }
   }, [graph, props.data]);
 
-  return <div ref={ref} style={{ display: "flex", flex: "1 1 auto" }}></div>;
+  return <div ref={ref} style={{ width: "100%", height: "100%" }}></div>;
 }

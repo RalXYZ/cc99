@@ -61,7 +61,8 @@ function App() {
         duration: null,
       });
     }
-    console.log(data);
+    console.log(data["ast"]);
+    console.log(JSON.stringify(data["ast"], null, "\t"));
   };
   return (
     <>
@@ -99,11 +100,14 @@ function App() {
                 </Button>
               }
               headStyle={{ fontWeight: "bold", fontSize: 22 }}
+              bodyStyle={{ flexGrow: 1, padding: 0, overflow: "hidden" }}
               style={{
                 flexGrow: 1,
+                display: "flex",
+                flexDirection: "column",
               }}
             >
-              <AntVG6 data={ast} />
+              <AntVG6 data={visAst} />
             </Card>
 
             <ResizePanel direction="w" style={{ flexGrow: 1 }}>
