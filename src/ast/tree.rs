@@ -139,13 +139,13 @@ pub enum Expression {
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum ForInitClause {
     Expression(Expression),
-    Declaration(Vec<Declaration>),
+    Declaration1(Vec<Declaration>),
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum StatementOrDeclaration {
     Statement(Statement),
-    Declaration(Declaration),
+    Declaration2(Declaration),
 }
 
 impl Default for Statement {

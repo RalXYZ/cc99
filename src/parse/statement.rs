@@ -81,7 +81,7 @@ pub fn build_compound_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<d
                 for declaration in sub_ast {
                     match declaration {
                         Declaration::Declaration(declaration_type, identifier, initializer) => {
-                            statements.push(StatementOrDeclaration::Declaration(
+                            statements.push(StatementOrDeclaration::Declaration2(
                                 Declaration::Declaration(declaration_type, identifier, initializer),
                             ));
                         }
@@ -308,6 +308,6 @@ pub fn build_for_init_clause(pair: Pair<'_, Rule>) -> Result<ForInitClause, Box<
     }
     Ok(match expression {
         Some(expression) => ForInitClause::Expression(expression),
-        None => ForInitClause::Declaration(sub_ast),
+        None => ForInitClause::Declaration1(sub_ast),
     })
 }
