@@ -139,7 +139,7 @@ int foo() {
     name: "Type System",
     code: `int main() {
     bool a = false;
-    byte b = 0o3;
+    byte b = 013;
     short c = 0x3;
     int d = 0b1011;
     long f = 0xcafebabe;

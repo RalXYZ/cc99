@@ -11,6 +11,7 @@
     "antd": "^4.19.3",
     "cc99": "file:../pkg",
     "customize-cra": "^1.0.0",
+    "js-yaml": "^4.1.0",
     "react": "^17.0.0",
     "react-ace": "^9.5.0",
     "react-app-rewired": "^2.2.1",

@@ -12,7 +12,7 @@ import ResizePanel from "react-resize-panel";
 import { useState, useEffect } from "react";
 import Editor from "./components/AceEditor";
 import { ExampleCode } from "./data/example";
-
+import Ast2Vis from "./utils/AST2Vis";
 import init, { compile_result } from "cc99";
 import AntVG6 from "./components/AntVG6";
 const { Text } = Typography;
@@ -48,11 +48,11 @@ function App() {
   };
 
   const compile = () => {
-    console.log(code);
     let data = JSON.parse(compile_result(code));
     if (!data["error"]) {
       setAst(data["ast"]);
-      setVisAst(data["ast"]);
+      setVisAst(Ast2Vis(data["ast"]));
+
       message.success("编译成功!");
     } else {
       notification.error({
@@ -61,8 +61,8 @@ function App() {
         duration: null,
       });
     }
-    console.log(data["ast"]);
-    console.log(JSON.stringify(data["ast"], null, "\t"));
+
+    // console.log(JSON.stringify(data["ast"], null, "\t"));
   };
   return (
     <>

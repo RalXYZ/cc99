@@ -1,15 +1,16 @@
 import React, { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import G6 from "@antv/g6";
-
+import yaml from "js-yaml";
 //TODO 格式化数据用来展示
 export default function AntvTree(props) {
   const ref = useRef(null);
   const [graph, setGraph] = useState(null);
-
+  const [nowWidth, setNowWidth] = useState(0);
+  const [nowHeight, setNowHeight] = useState(0);
   useEffect(() => {
     const { width, height } = ref.current.getBoundingClientRect();
-    console.log(width, height);
+
     if (!graph) {
       const tooltip = new G6.Tooltip({
         offsetX: 10,
@@ -17,16 +18,16 @@ export default function AntvTree(props) {
         getContent(e) {
           const outDiv = document.createElement("div");
           outDiv.style.width = "180px";
+          outDiv.style.whiteSpace = "pre";
           let content = `<h4><b>${e.item.getModel().label}</b></h4>`;
-
-          //   if (e.item.getModel().attrs) {
-          //     const attrs = e.item.getModel().attrs;
-          //     content += `<ul>`;
-          //     for (const attr in attrs) {
-          //       content += `<li><b> - ${attr}:</b> ${attrs[attr]}</li>`;
-          //     }
-          //     content += `</ul>`;
-          //   }
+          if (e.item.getModel().attrs) {
+            const attrs = e.item.getModel().attrs;
+            content += `<div>`;
+            content += yaml.dump(attrs, {
+              indent: 3,
+            });
+            content += `</div>`;
+          }
           outDiv.innerHTML = content;
           return outDiv;
         },
@@ -113,11 +114,24 @@ export default function AntvTree(props) {
       tmpGraph.fitView();
       setGraph(tmpGraph);
     } else {
+      if (nowWidth !== width || nowHeight !== height) {
+        graph.changeSize(width, height);
+      }
       graph.data(props.data);
       graph.render();
       graph.fitView();
     }
-  }, [graph, props.data]);
+    setNowWidth(width);
+    setNowHeight(height);
+  }, [graph, props.data, nowHeight, nowWidth]);
 
-  return <div ref={ref} style={{ width: "100%", height: "100%" }}></div>;
+  return (
+    <div
+      ref={ref}
+      style={{
+        width: "100%",
+        height: "100%",
+      }}
+    ></div>
+  );
 }
