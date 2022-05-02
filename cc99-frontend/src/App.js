@@ -15,6 +15,8 @@ import { ExampleCode } from "./data/example";
 import Ast2Vis from "./utils/AST2Vis";
 import init, { compile_result } from "cc99";
 import AntVG6 from "./components/AntVG6";
+import ReactAnsi from "react-ansi";
+import Logger from "./utils/logger";
 const { Text } = Typography;
 
 const { Header, Footer, Content } = Layout;
@@ -27,8 +29,9 @@ function App() {
   const [ast, setAst] = useState({ id: "0", label: "CC99" });
   const [visAst, setVisAst] = useState({ id: "0", label: "CC99" });
   const [output, setOutput] = useState(
-    `[INFO] Compile the code before running!`
+    Logger.Info("Please compile the code before running!")
   );
+
   const codeSelector = (
     <Select
       style={{ width: 150 }}
@@ -42,6 +45,9 @@ function App() {
       ))}
     </Select>
   );
+  const appendOutput = (data) => {
+    setOutput(`${output}\n${data}`);
+  };
 
   const onClickRunCode = () => {
     setOutput(`${output}<br>[INFO] 别点我!`);
@@ -49,17 +55,20 @@ function App() {
 
   const compile = () => {
     let data = JSON.parse(compile_result(code));
+    console.log(data);
     if (!data["error"]) {
       setAst(data["ast"]);
       setVisAst(Ast2Vis(data["ast"]));
 
       message.success("编译成功!");
+      appendOutput(Logger.Info("compile success!"));
     } else {
       notification.error({
         message: "编译失败",
-        description: data["error_message"],
-        duration: null,
+        description: data["message"],
+        duration: 5,
       });
+      appendOutput("compile error!\n" + Logger.Error(data["message"]));
     }
 
     // console.log(JSON.stringify(data["ast"], null, "\t"));
@@ -119,20 +128,21 @@ function App() {
                   </Button>
                 }
                 headStyle={{ fontWeight: "bold", fontSize: 22 }}
+                bodyStyle={{ flexGrow: 1, marginTop: 20, overflowY: "auto" }}
                 style={{
                   width: "100%",
                   flexGrow: 1,
+                  display: "flex",
+                  flexDirection: "column",
                 }}
               >
-                <Typography>
-                  <Text
-                    strong={false}
-                    type="secondary"
-                    style={{ fontSize: 16 }}
-                  >
-                    {output}
-                  </Text>
-                </Typography>
+                <ReactAnsi
+                  log={output}
+                  style={{ width: "100%", height: "100%" }}
+                  bodyStyle={{ height: "100%" }}
+                  logStyle={{ height: "100%" }}
+                  autoScroll
+                />
               </Card>
             </ResizePanel>
           </div>
