@@ -1,6 +1,9 @@
 use super::*;
+use escape_string::escape;
 use pest::error::ErrorVariant;
-use pest::iterators::Pair;
+use pest::iterators::{Pair, Pairs};
+use pest::Span;
+use serde::Serialize;
 use std::collections::HashSet;
 use std::path::Path;
 
@@ -9,16 +12,24 @@ use std::path::Path;
 struct Phase4Parser;
 
 pub enum Macro<'a> {
-    Empty,
-    Object(Pair<'a, Rule>),
+    Object(Option<Pair<'a, Rule>>),
     Function(
         /// arguments
         Vec<String>,
         /// is variadic
         bool,
         /// body
-        Pair<'a, Rule>,
+        Option<Vec<Replacement>>,
     ),
+}
+
+#[derive(Serialize, Debug, PartialEq, Clone)]
+pub enum Replacement {
+    Text(String),
+    Parameter(String),
+    Stringizing(String),
+    Concat(String, String),
+    VAArg,
 }
 
 pub fn phase4<'a>(
@@ -58,22 +69,22 @@ pub fn build_group<'a>(
 ) -> Result<String, Box<dyn Error>> {
     let mut modified = false;
     let mut result = String::new();
-    for pair in pair.into_inner() {
-        match pair.as_rule() {
+    for token in pair.into_inner() {
+        match token.as_rule() {
             Rule::control_line => {
                 modified = true;
-                result.push_str(&build_control_line(pair, defined, include_dirs)?);
+                result.push_str(&build_control_line(token, defined, include_dirs)?);
             }
             Rule::token_string_line => {
                 result.push_str(
-                    build_token_string_line(pair, defined, &mut extracting_macro, &mut modified)?
+                    build_token_string_line(token, defined, &mut extracting_macro, &mut modified)?
                         .as_str(),
                 );
             }
             Rule::conditional => {
                 modified = true;
                 result.push_str(
-                    build_conditional(pair, defined, include_dirs, &extracting_macro, code_arena)?
+                    build_conditional(token, defined, include_dirs, &extracting_macro, code_arena)?
                         .as_str(),
                 );
             }
@@ -83,7 +94,7 @@ pub fn build_group<'a>(
     match modified {
         true => {
             let result = code_arena.alloc(result).as_str();
-            let pairs = match Phase4Parser::parse(Rule::cc99, result)?.next() {
+            let pairs = match Phase4Parser::parse(Rule::cc99, result).unwrap().next() {
                 Some(p) => p.into_inner(),
                 None => unreachable!(),
             };
@@ -159,7 +170,15 @@ pub fn build_control_line<'a>(
             }
         }
         Rule::error_macro => {}
-        Rule::pragma_macro => unimplemented!(),
+        Rule::pragma_macro => {
+            return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                ErrorVariant::CustomError {
+                    message: "unsupported pragma macro".to_string(),
+                },
+                span,
+            )));
+            // TODO: no pragma macro now
+        }
         _ => unreachable!(),
     }
 
@@ -219,21 +238,135 @@ pub fn build_object_like_macro<'a>(
                 identifier = token.as_str().to_string();
             }
             Rule::token_string => {
-                defined.insert(identifier.to_owned(), Macro::Object(token));
+                defined.insert(identifier, Macro::Object(Some(token)));
                 return Ok(());
             }
             _ => unreachable!(),
         }
     }
-    defined.insert(identifier.to_owned(), Macro::Empty);
+    defined.insert(identifier, Macro::Object(None));
     Ok(())
 }
 
-pub fn build_function_like_macro(
-    pair: Pair<'_, Rule>,
-    defined: &mut HashMap<String, Macro>,
+pub fn build_function_like_macro<'a>(
+    pair: Pair<'a, Rule>,
+    defined: &mut HashMap<String, Macro<'a>>,
 ) -> Result<(), Box<dyn Error>> {
-    unimplemented!()
+    let mut identifier: Option<String> = None;
+    let mut params: Vec<String> = Default::default();
+    let mut is_variadic = false;
+
+    for token in pair.into_inner() {
+        match token.as_rule() {
+            Rule::define__ | Rule::WHITESPACE => {}
+            Rule::identifier => {
+                if identifier.is_none() {
+                    identifier = Some(token.as_str().to_string());
+                } else {
+                    params.push(token.as_str().to_string());
+                }
+            }
+            Rule::variadic_ => {
+                is_variadic = true;
+            }
+            Rule::token_string => {
+                let body = build_function_macro_body(token, &params, is_variadic)?;
+                defined.insert(
+                    identifier.unwrap(),
+                    Macro::Function(params, is_variadic, Some(body)),
+                );
+                return Ok(());
+            }
+            _ => unreachable!(),
+        }
+    }
+    defined.insert(
+        identifier.unwrap(),
+        Macro::Function(params, is_variadic, None),
+    );
+    Ok(())
+}
+
+pub fn build_function_macro_body(
+    pair: Pair<'_, Rule>,
+    params: &[String],
+    is_variadic: bool,
+) -> Result<Vec<Replacement>, Box<dyn Error>> {
+    let mut result: Vec<Replacement> = Default::default();
+    let mut remaining_text: Option<String> = None;
+    for token in pair.into_inner() {
+        let token = token.into_inner().next().unwrap();
+        match token.as_rule() {
+            Rule::macro_expression => {
+                if let Some(text) = remaining_text {
+                    result.push(Replacement::Text(text));
+                    remaining_text = None;
+                }
+                let token = token.into_inner().next().unwrap();
+                let span = token.as_span();
+                match token.as_rule() {
+                    Rule::token_pasting => {
+                        let mut token_iter = token.into_inner();
+                        let lhs = token_iter.next().unwrap().as_str();
+                        let rhs = token_iter.next().unwrap().as_str();
+                        result.push(Replacement::Concat(lhs.to_string(), rhs.to_string()));
+                    }
+                    Rule::stringizing => {
+                        let token = token.into_inner().next().unwrap().as_str().to_string();
+                        if token == "__VA_ARGS__" {
+                            if is_variadic {
+                                result.push(Replacement::VAArg);
+                            } else {
+                                return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                                    ErrorVariant::CustomError {
+                                        message: "__VA_ARGS__ is not allowed in this macro"
+                                            .to_string(),
+                                    },
+                                    span,
+                                )));
+                            }
+                        } else if params.contains(&token) {
+                            result.push(Replacement::Stringizing(token));
+                        } else {
+                            return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                                ErrorVariant::CustomError {
+                                    message: "unknown parameter".to_string(),
+                                },
+                                span,
+                            )));
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            }
+            Rule::keyword | Rule::identifier => {
+                let token = token.as_str().to_string();
+                if params.contains(&token) {
+                    if let Some(text) = remaining_text {
+                        result.push(Replacement::Text(text));
+                        remaining_text = None;
+                    }
+                    result.push(Replacement::Parameter(token));
+                } else if remaining_text.is_some() {
+                    remaining_text.as_mut().unwrap().push_str(token.as_str());
+                } else {
+                    remaining_text = Some(token.as_str().to_string());
+                }
+            }
+            Rule::string_literal | Rule::constant | Rule::punctuator | Rule::WHITESPACE => {
+                if remaining_text.is_some() {
+                    remaining_text.as_mut().unwrap().push_str(token.as_str());
+                } else {
+                    remaining_text = Some(token.as_str().to_string());
+                }
+            }
+            _ => unreachable!(),
+        }
+    }
+    if let Some(remaining_text) = remaining_text {
+        result.push(Replacement::Text(remaining_text));
+    }
+    Ok(result)
 }
 
 pub fn build_token_string_line<'a>(
@@ -243,15 +376,15 @@ pub fn build_token_string_line<'a>(
     modified: &mut bool,
 ) -> Result<String, Box<dyn Error>> {
     let mut result = String::new();
-    for pair in pair.into_inner() {
-        match pair.as_rule() {
+    for token in pair.into_inner() {
+        match token.as_rule() {
             Rule::token_string => {
                 result.push_str(
-                    build_token_string(pair, defined, extracting_macro, modified)?.as_str(),
+                    build_token_string(token, defined, extracting_macro, modified)?.as_str(),
                 );
             }
             Rule::empty_line | Rule::WHITESPACE => {
-                result.push_str(pair.as_str());
+                result.push_str(token.as_str());
             }
             _ => unreachable!(),
         }
@@ -267,14 +400,14 @@ pub fn build_token_string<'a>(
     modified: &mut bool,
 ) -> Result<String, Box<dyn Error>> {
     let mut result = String::new();
-    let mut pair = pair.into_inner();
-    while let Some(pair) = pair.next() {
-        match pair.as_rule() {
+    let mut token_iter = pair.into_inner();
+    while let Some(token) = token_iter.next() {
+        match token.as_rule() {
             Rule::WHITESPACE => {
-                result.push_str(pair.as_str());
+                result.push_str(token.as_str());
             }
             Rule::token => {
-                let token = pair.into_inner().next().unwrap();
+                let token = token.into_inner().next().unwrap();
                 match token.as_rule() {
                     Rule::keyword | Rule::string_literal | Rule::constant | Rule::WHITESPACE => {
                         result.push_str(token.as_str());
@@ -284,12 +417,24 @@ pub fn build_token_string<'a>(
                             *modified = true;
                             extracting_macro.insert(token.as_str().to_owned());
                             match macro_ {
-                                Macro::Empty => {}
                                 Macro::Object(body) => {
-                                    result.push_str(body.as_str());
+                                    if let Some(body) = body {
+                                        result.push_str(body.as_str());
+                                    }
                                 }
-                                Macro::Function(_, _, _) => {
-                                    unimplemented!();
+                                Macro::Function(params, is_variadic, body) => {
+                                    if let Some(body) = body {
+                                        result.push_str(
+                                            extract_function_like_macro(
+                                                &mut token_iter,
+                                                token.as_span(),
+                                                params,
+                                                *is_variadic,
+                                                body,
+                                            )?
+                                            .as_str(),
+                                        );
+                                    }
                                 }
                             }
                         } else {
@@ -317,8 +462,7 @@ pub fn build_conditional<'a>(
 ) -> Result<String, Box<dyn Error>> {
     let mut result = String::new();
     let mut taken = false;
-    let mut pair = pair.into_inner();
-    while let Some(pair) = pair.next() {
+    for pair in pair.into_inner() {
         match pair.as_rule() {
             Rule::if_line => {
                 let mut negative_predicate = false;
@@ -348,11 +492,8 @@ pub fn build_conditional<'a>(
                 }
                 false => {
                     for token in pair.into_inner() {
-                        match token.as_rule() {
-                            Rule::constant_expression => {
-                                taken = build_constant_expression(token, defined)?;
-                            }
-                            _ => {}
+                        if token.as_rule() == Rule::constant_expression {
+                            taken = build_constant_expression(token, defined)?;
                         }
                     }
                 }
@@ -393,12 +534,135 @@ pub fn build_constant_expression(
     defined: &HashMap<String, Macro>,
 ) -> Result<bool, Box<dyn Error>> {
     for token in pair.into_inner() {
-        match token.as_rule() {
-            Rule::identifier => {
-                return Ok(defined.contains_key(token.as_str()));
-            }
-            _ => {}
+        if token.as_rule() == Rule::identifier {
+            return Ok(defined.contains_key(token.as_str()));
         }
     }
     unreachable!()
+}
+
+pub fn extract_function_like_macro(
+    token_iter: &mut Pairs<'_, Rule>,
+    span: Span<'_>,
+    params: &[String],
+    is_variadic: bool,
+    body: &[Replacement],
+) -> Result<String, Box<dyn Error>> {
+    // consume '('
+    match token_iter.next() {
+        Some(token) => {
+            if token.as_str() != "(" {
+                return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                    ErrorVariant::CustomError {
+                        message: "expected macro function call".to_string(),
+                    },
+                    span,
+                )));
+            }
+        }
+        None => {
+            return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                ErrorVariant::CustomError {
+                    message: "unexpected end of file".to_string(),
+                },
+                span,
+            )));
+        }
+    }
+    // get args
+    let mut parenthesis_level = 1;
+    let mut args: Vec<String> = vec!["".to_string()];
+    loop {
+        match token_iter.next() {
+            Some(token) => match token.as_str() {
+                "(" => {
+                    parenthesis_level += 1;
+                    args.last_mut().unwrap().push_str(token.as_str());
+                }
+                ")" => {
+                    parenthesis_level -= 1;
+                    if parenthesis_level == 0 {
+                        break;
+                    }
+                    args.last_mut().unwrap().push_str(token.as_str());
+                }
+                "," => {
+                    if parenthesis_level != 1 {
+                        // old args
+                        args.last_mut().unwrap().push_str(token.as_str());
+                    } else {
+                        // new args
+                        args.push("".to_string());
+                    }
+                }
+                " " => {}
+                _ => {
+                    args.last_mut().unwrap().push_str(token.as_str());
+                }
+            },
+            None => {
+                return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                    ErrorVariant::CustomError {
+                        message: "unexpected end of file".to_string(),
+                    },
+                    span,
+                )))
+            }
+        }
+    }
+    // replace
+    if (!is_variadic && args.len() != params.len()) || (is_variadic && args.len() < params.len()) {
+        return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+            ErrorVariant::CustomError {
+                message: "number of arguments mismatch".to_string(),
+            },
+            span,
+        )));
+    }
+    let mut result = String::new();
+    for action in body {
+        match action {
+            Replacement::Text(text) => {
+                result.push_str(text);
+            }
+            Replacement::Parameter(para_name) => {
+                let index = params.iter().position(|r| r == para_name).unwrap();
+                result.push_str(args[index].as_str());
+            }
+            Replacement::Stringizing(para_name) => {
+                let index = params.iter().position(|r| r == para_name).unwrap();
+                result.push('"');
+                result.push_str(&escape(args[index].as_str()));
+                result.push('"');
+            }
+            Replacement::Concat(lhs, rhs) => {
+                let lhs = match params.contains(lhs) {
+                    true => {
+                        let index = params.iter().position(|r| r == lhs).unwrap();
+                        escape(args[index].as_str()).to_string()
+                    }
+                    false => lhs.clone(),
+                };
+                let rhs = match params.contains(rhs) {
+                    true => {
+                        let index = params.iter().position(|r| r == rhs).unwrap();
+                        escape(args[index].as_str()).to_string()
+                    }
+                    false => rhs.clone(),
+                };
+                result.push_str(&format!("{}{}", lhs, rhs));
+            }
+            Replacement::VAArg => {
+                if params.len() == args.len() {
+                    break;
+                }
+                result.push_str(args[params.len()].as_str());
+                for arg in args.iter().skip(params.len() + 1) {
+                    result.push(',');
+                    result.push_str(arg.as_str());
+                }
+            }
+        }
+    }
+    Ok(result)
 }

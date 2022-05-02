@@ -69,6 +69,7 @@ name = "cc99"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "escape_string",
  "pest",
  "pest_derive",
  "serde",
@@ -122,6 +123,12 @@ checksum = "f3d0c8c8752312f9713efd397ff63acb9f85585afbf179282e720e7704954dd5"
 dependencies = [
  "generic-array",
 ]
+
+[[package]]
+name = "escape_string"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59e867569975c88fdf73833a30bd6e0978aa6ab6bd784b648fcece07450951ba"
 
 [[package]]
 name = "fake-simd"
