@@ -210,12 +210,12 @@ pub fn build_integer_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dy
             return Ok(Expression::UnsignedLongLongConstant(number));
         }
     }
-    return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+    Err(Box::new(pest::error::Error::<Rule>::new_from_span(
         ErrorVariant::CustomError {
             message: "integer constant overflow".to_string(),
         },
         span,
-    )));
+    )))
 }
 
 pub fn build_character_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {

@@ -22,14 +22,17 @@ token_string_line = {empty_line | token_string? ~ NEWLINE}
 empty_line = {"#" ~ NEWLINE}
 
 token_string = {token+}
-token = {keyword | identifier | string_literal | constant | punctuator}
+token = {string_literal | constant | macro_expression | keyword | identifier | punctuator}
 filename = {(ASCII_ALPHANUMERIC | "-" | "_" | ".")*}
 path_spec = {(ASCII_ALPHANUMERIC | "-" | "_" | "." | "/" | ":")*}
 constant_expression = {("defined" ~ "(" ~ identifier ~ ")") | ("defined" ~ identifier)}
 digit_sequence = {ASCII_DIGIT+}
 variadic_ = {"..."}
+macro_expression = {token_pasting | stringizing}
+token_pasting = {(keyword | identifier) ~ "##" ~ (keyword | identifier)}
+stringizing = {("#" ~ !macro_keyword) ~ (keyword | identifier)}
 
-punctuator = {"##" | ("#" ~ !macro_keyword) | "{" | "}" | "[" | "]" | "(" | ")" | ";" | ":" | "..." | "?" | "." | "->" | "~" | "=" | "+=" | "*=" | "/=" | "%=" | "^=" | "&=" | "|=" | "==" | "!=" | "<=" | ">=" | "<<=" | ">>=" | "++" | "--"| "!" | "+" | "-" | "*" | "/" | "%" | "^" | "&" | "|" | "<" | ">" | "&&" | "||" | "<<" | ">>"  | ","}
+punctuator = {"{" | "}" | "[" | "]" | "(" | ")" | ";" | ":" | "..." | "?" | "." | "->" | "~" | "=" | "+=" | "*=" | "/=" | "%=" | "^=" | "&=" | "|=" | "==" | "!=" | "<=" | ">=" | "<<=" | ">>=" | "++" | "--"| "!" | "+" | "-" | "*" | "/" | "%" | "^" | "&" | "|" | "<" | ">" | "&&" | "||" | "<<" | ">>"  | ","}
 macro_keyword = {define__ | include__ | line__ | undef__ | error__ | pragma__ | if__ | ifdef__ | ifndef__ | elif__ | else__ | endif__ | NEWLINE}
 define__ = ${"define" ~ &(WHITESPACE | NEWLINE)}
 include__ = ${"include" ~ &(WHITESPACE | NEWLINE)}
