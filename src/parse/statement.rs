@@ -2,7 +2,7 @@ use pest::iterators::Pair;
 
 use super::*;
 
-pub fn build_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
+fn build_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
     let token = pair.into_inner().next().unwrap();
     match token.as_rule() {
         Rule::labeled_statement => build_labeled_statement(token),
@@ -16,7 +16,7 @@ pub fn build_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>
     }
 }
 
-pub fn build_labeled_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
+fn build_labeled_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
     let mut label: String = Default::default();
     let mut statement: Statement = Default::default();
     for token in pair.into_inner() {
@@ -33,7 +33,7 @@ pub fn build_labeled_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dy
     Ok(Statement::Labeled(label, Box::new(statement)))
 }
 
-pub fn build_case_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
+fn build_case_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
     let mut expression: Option<Box<Expression>> = None;
     let mut statement: Statement = Default::default();
     for token in pair.into_inner() {
@@ -52,7 +52,7 @@ pub fn build_case_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn E
     Ok(Statement::Case(expression, Box::new(statement)))
 }
 
-pub fn build_expression_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
+fn build_expression_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
     let mut expression: Option<Box<Expression>> = None;
     for token in pair.into_inner() {
         match token.as_rule() {
@@ -97,7 +97,7 @@ pub fn build_compound_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<d
     Ok(Statement::Compound(statements))
 }
 
-pub fn build_selection_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
+fn build_selection_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
     let token = pair.into_inner().next().unwrap();
     match token.as_rule() {
         Rule::if_statement => build_if_statement(token),
@@ -106,7 +106,7 @@ pub fn build_selection_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<
     }
 }
 
-pub fn build_iteration_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
+fn build_iteration_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
     let token = pair.into_inner().next().unwrap();
     match token.as_rule() {
         Rule::for_statement => build_for_statement(token),
@@ -116,7 +116,7 @@ pub fn build_iteration_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<
     }
 }
 
-pub fn build_jump_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
+fn build_jump_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
     let token = pair.into_inner().next().unwrap();
     Ok(match token.as_rule() {
         Rule::break_statement => Statement::Break,
@@ -127,7 +127,7 @@ pub fn build_jump_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn E
     })
 }
 
-pub fn build_if_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
+fn build_if_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
     let mut expression: Expression = Default::default();
     let mut statements: Vec<Statement> = Default::default();
     for token in pair.into_inner() {
@@ -154,7 +154,7 @@ pub fn build_if_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Err
     ))
 }
 
-pub fn build_switch_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
+fn build_switch_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
     let mut expression: Expression = Default::default();
     let mut statement: Statement = Default::default();
     for token in pair.into_inner() {
@@ -172,7 +172,7 @@ pub fn build_switch_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn
     Ok(Statement::Switch(Box::new(expression), Box::new(statement)))
 }
 
-pub fn build_for_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
+fn build_for_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
     let mut init_clause: Option<Box<ForInitClause>> = None;
     let mut condition_expression: Option<Box<Expression>> = None;
     let mut iteration_expression: Option<Box<Expression>> = None;
@@ -208,7 +208,7 @@ pub fn build_for_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Er
     ))
 }
 
-pub fn build_while_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
+fn build_while_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
     let mut expression: Expression = Default::default();
     let mut statement: Statement = Default::default();
     for token in pair.into_inner() {
@@ -226,7 +226,7 @@ pub fn build_while_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn 
     Ok(Statement::While(Box::new(expression), Box::new(statement)))
 }
 
-pub fn build_do_while_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
+fn build_do_while_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
     let mut expression: Expression = Default::default();
     let mut statement: Statement = Default::default();
     for token in pair.into_inner() {
@@ -248,7 +248,7 @@ pub fn build_do_while_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<d
     ))
 }
 
-pub fn build_return_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
+fn build_return_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
     let mut expression: Option<Box<Expression>> = None;
     for token in pair.into_inner() {
         match token.as_rule() {
@@ -262,7 +262,7 @@ pub fn build_return_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn
     Ok(Statement::Return(expression))
 }
 
-pub fn build_goto_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
+fn build_goto_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
     let mut label: String = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
@@ -276,7 +276,7 @@ pub fn build_goto_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn E
     Ok(Statement::Goto(label))
 }
 
-pub fn build_for_init_clause(pair: Pair<'_, Rule>) -> Result<ForInitClause, Box<dyn Error>> {
+fn build_for_init_clause(pair: Pair<'_, Rule>) -> Result<ForInitClause, Box<dyn Error>> {
     let mut expression: Option<Expression> = None;
     let mut basic_type: Type = Default::default();
     let mut sub_ast = Vec::new();

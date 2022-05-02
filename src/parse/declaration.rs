@@ -149,7 +149,7 @@ pub fn build_declaration_specifiers(
     })
 }
 
-pub fn build_type_specifier(
+fn build_type_specifier(
     ast: &mut Vec<Declaration>,
     pair: Pair<'_, Rule>,
 ) -> Result<BaseType, Box<dyn Error>> {
@@ -277,7 +277,7 @@ pub fn build_pointer(derived_type: &mut Type, pair: Pair<'_, Rule>) -> Result<()
     Ok(())
 }
 
-pub fn build_raw_declarator(
+fn build_raw_declarator(
     ast: &mut Vec<Declaration>,
     derived_type: &mut Type,
     identifier: &mut String,
@@ -338,7 +338,7 @@ pub fn build_function_parameter_list(
     Ok(parameter_name)
 }
 
-pub fn build_function_parameter(
+fn build_function_parameter(
     ast: &mut Vec<Declaration>,
     pair: Pair<'_, Rule>,
 ) -> Result<(BasicType, Option<String>), Box<dyn Error>> {
@@ -358,7 +358,7 @@ pub fn build_function_parameter(
     Ok((basic_type, identifier))
 }
 
-pub fn build_function_parameter_declarator(
+fn build_function_parameter_declarator(
     ast: &mut Vec<Declaration>,
     basic_type: &mut BasicType,
     identifier: &mut Option<String>,
@@ -388,7 +388,7 @@ pub fn build_function_parameter_declarator(
     Ok(())
 }
 
-pub fn build_struct_specifier(
+fn build_struct_specifier(
     ast: &mut Vec<Declaration>,
     pair: Pair<'_, Rule>,
 ) -> Result<BaseType, Box<dyn Error>> {
@@ -538,7 +538,7 @@ pub fn build_struct_specifier(
     })
 }
 
-pub fn build_type_qualifier(pair: Pair<'_, Rule>) -> Result<TypeQualifier, Box<dyn Error>> {
+fn build_type_qualifier(pair: Pair<'_, Rule>) -> Result<TypeQualifier, Box<dyn Error>> {
     let token = pair.into_inner().next().unwrap();
     Ok(match token.as_rule() {
         Rule::const_ => TypeQualifier::Const,

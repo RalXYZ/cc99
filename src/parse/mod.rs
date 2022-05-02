@@ -15,7 +15,7 @@ use statement::*;
 
 #[derive(Parser, Serialize)]
 #[grammar = "./parse/parse.pest"]
-pub struct CC99Parser;
+struct CC99Parser;
 
 pub fn parse(code: &str) -> Result<Box<AST>, Box<dyn Error>> {
     let tokens = match CC99Parser::parse(Rule::cc99, code)?.next() {

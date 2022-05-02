@@ -64,7 +64,7 @@ pub fn build_assignment_expression(pair: Pair<'_, Rule>) -> Result<Expression, B
     ))
 }
 
-pub fn build_conditional_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
+fn build_conditional_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let mut expressions: Vec<Expression> = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
@@ -91,7 +91,7 @@ pub fn build_conditional_expression(pair: Pair<'_, Rule>) -> Result<Expression, 
     })
 }
 
-pub fn build_binary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
+fn build_binary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     // recursive termination condition
     if pair.as_rule() == Rule::unary_expression {
         return build_unary_expression(pair);
@@ -181,7 +181,7 @@ pub fn build_binary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<d
     Ok(expression.unwrap())
 }
 
-pub fn build_unary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
+fn build_unary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let mut cast_type: Option<BasicType> = None;
     let mut unary_operation: UnaryOperation = Default::default();
     for token in pair.into_inner() {
@@ -232,7 +232,7 @@ pub fn build_unary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dy
     Ok(Default::default())
 }
 
-pub fn build_postfix_unary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
+fn build_postfix_unary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let mut expression: Expression = Default::default();
     let mut object_or_pointer = true; // true if object, false otherwise
     for token in pair.into_inner() {
@@ -285,7 +285,7 @@ pub fn build_postfix_unary_expression(pair: Pair<'_, Rule>) -> Result<Expression
     Ok(expression)
 }
 
-pub fn build_primary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
+fn build_primary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let token = pair.into_inner().next().unwrap();
     match token.as_rule() {
         Rule::identifier => Ok(Expression::Identifier(token.as_str().to_owned())),
@@ -296,7 +296,7 @@ pub fn build_primary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<
     }
 }
 
-pub fn build_type_name(pair: Pair<'_, Rule>) -> Result<BasicType, Box<dyn Error>> {
+fn build_type_name(pair: Pair<'_, Rule>) -> Result<BasicType, Box<dyn Error>> {
     let span = pair.as_span();
     let mut fake_ast: Vec<Declaration> = Default::default();
     let mut derived_type: Type = Default::default();

@@ -60,7 +60,7 @@ pub fn phase4<'a>(
     Ok(result)
 }
 
-pub fn build_group<'a>(
+fn build_group<'a>(
     pair: Pair<'a, Rule>,
     defined: &mut HashMap<String, Macro<'a>>,
     include_dirs: &[&str],
@@ -125,7 +125,7 @@ pub fn build_group<'a>(
     }
 }
 
-pub fn build_control_line<'a>(
+fn build_control_line<'a>(
     pair: Pair<'a, Rule>,
     defined: &mut HashMap<String, Macro<'a>>,
     include_dirs: &[&str],
@@ -226,7 +226,7 @@ pub fn build_control_line<'a>(
     Ok("".to_string())
 }
 
-pub fn build_object_like_macro<'a>(
+fn build_object_like_macro<'a>(
     pair: Pair<'a, Rule>,
     defined: &mut HashMap<String, Macro<'a>>,
 ) -> Result<(), Box<dyn Error>> {
@@ -248,7 +248,7 @@ pub fn build_object_like_macro<'a>(
     Ok(())
 }
 
-pub fn build_function_like_macro<'a>(
+fn build_function_like_macro<'a>(
     pair: Pair<'a, Rule>,
     defined: &mut HashMap<String, Macro<'a>>,
 ) -> Result<(), Box<dyn Error>> {
@@ -287,7 +287,7 @@ pub fn build_function_like_macro<'a>(
     Ok(())
 }
 
-pub fn build_function_macro_body(
+fn build_function_macro_body(
     pair: Pair<'_, Rule>,
     params: &[String],
     is_variadic: bool,
@@ -369,7 +369,7 @@ pub fn build_function_macro_body(
     Ok(result)
 }
 
-pub fn build_token_string_line<'a>(
+fn build_token_string_line<'a>(
     pair: Pair<'a, Rule>,
     defined: &mut HashMap<String, Macro<'a>>,
     extracting_macro: &mut HashSet<String>,
@@ -393,7 +393,7 @@ pub fn build_token_string_line<'a>(
     Ok(result)
 }
 
-pub fn build_token_string<'a>(
+fn build_token_string<'a>(
     pair: Pair<'a, Rule>,
     defined: &mut HashMap<String, Macro<'a>>,
     extracting_macro: &mut HashSet<String>,
@@ -453,7 +453,7 @@ pub fn build_token_string<'a>(
     Ok(result)
 }
 
-pub fn build_conditional<'a>(
+fn build_conditional<'a>(
     pair: Pair<'a, Rule>,
     defined: &mut HashMap<String, Macro<'a>>,
     include_dirs: &[&str],
@@ -529,7 +529,7 @@ pub fn build_conditional<'a>(
     Ok(result)
 }
 
-pub fn build_constant_expression(
+fn build_constant_expression(
     pair: Pair<'_, Rule>,
     defined: &HashMap<String, Macro>,
 ) -> Result<bool, Box<dyn Error>> {
@@ -541,7 +541,7 @@ pub fn build_constant_expression(
     unreachable!()
 }
 
-pub fn extract_function_like_macro(
+fn extract_function_like_macro(
     token_iter: &mut Pairs<'_, Rule>,
     span: Span<'_>,
     params: &[String],

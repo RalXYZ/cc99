@@ -19,7 +19,7 @@ pub fn build_string_literal(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn 
     Ok(Expression::StringLiteral(string_literal))
 }
 
-pub fn build_escape_sequence(pair: Pair<'_, Rule>) -> Result<char, Box<dyn Error>> {
+fn build_escape_sequence(pair: Pair<'_, Rule>) -> Result<char, Box<dyn Error>> {
     let escape_sequence = pair.as_str();
     Ok(match escape_sequence {
         "\\'" => '\'',
@@ -52,7 +52,7 @@ pub fn build_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>
     }
 }
 
-pub fn build_integer_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
+fn build_integer_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let span = pair.as_span();
     let mut is_decimal_base = false;
     let mut number: i128 = Default::default();
@@ -218,7 +218,7 @@ pub fn build_integer_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dy
     )))
 }
 
-pub fn build_character_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
+fn build_character_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let token = pair.into_inner().next().unwrap();
     match token.as_rule() {
         Rule::char_no_escape => Ok(Expression::CharacterConstant(
@@ -229,7 +229,7 @@ pub fn build_character_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<
     }
 }
 
-pub fn build_floating_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
+fn build_floating_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let token = pair.into_inner().next().unwrap();
     match token.as_rule() {
         Rule::decimal_floating_constant => build_decimal_floating_constant(token),
@@ -238,7 +238,7 @@ pub fn build_floating_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<d
     }
 }
 
-pub fn build_decimal_floating_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
+fn build_decimal_floating_constant(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     let mut number: f64 = Default::default();
     let mut is_double = true;
     for token in pair.into_inner() {
@@ -262,7 +262,7 @@ pub fn build_decimal_floating_constant(pair: Pair<'_, Rule>) -> Result<Expressio
     })
 }
 
-pub fn build_hex_floating_constant(_pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
+fn build_hex_floating_constant(_pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
     // TODO(TO/GA)
     unimplemented!();
 }
