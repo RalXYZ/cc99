@@ -36,6 +36,10 @@ steps:
   - name: deploy
     commands:
       - echo hello
-      - cd /
+      - cd /app/cc99
+      - docker-compose up -d
+      - docker image prune -f
+      - docker cp cc99_app_1:/srv/cc99 /srv/
+      - nginx -s reload
 depends_on:
   - build
