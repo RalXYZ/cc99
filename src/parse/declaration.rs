@@ -249,7 +249,7 @@ pub fn build_declarator_and_initializer(
         }
     }
 
-    ast.push(Declaration::Declaration(
+    ast.push(Declaration::GlobalDeclaration(
         derived_type,
         Some(identifier),
         initializer,
@@ -418,7 +418,7 @@ fn build_struct_specifier(
                             build_declaration(&mut sub_ast, sub_token)?;
                             for declaration in sub_ast {
                                 match declaration {
-                                    Declaration::Declaration(
+                                    Declaration::GlobalDeclaration(
                                         member_type,
                                         member_name,
                                         member_initializer,
@@ -518,7 +518,7 @@ fn build_struct_specifier(
     }
 
     if struct_declaration {
-        ast.push(Declaration::Declaration(
+        ast.push(Declaration::GlobalDeclaration(
             Type {
                 function_specifier: Default::default(),
                 storage_class_specifier: Default::default(),

@@ -5,12 +5,12 @@ use super::types::*;
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum AST {
-    GlobalDeclaration(Vec<Declaration>),
+    GlobalDeclarations(Vec<Declaration>),
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum Declaration {
-    Declaration(
+    GlobalDeclaration(
         Type,
         /// identifier (if it's a struct/union declaration, it might be None)
         Option<String>,
@@ -139,13 +139,13 @@ pub enum Expression {
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum ForInitClause {
     Expression(Expression),
-    Declaration1(Vec<Declaration>),
+    ForDeclaration(Vec<Declaration>),
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum StatementOrDeclaration {
     Statement(Statement),
-    Declaration2(Declaration),
+    LocalDeclaration(Declaration),
 }
 
 impl Default for Statement {

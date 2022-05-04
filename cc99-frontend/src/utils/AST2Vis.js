@@ -8,7 +8,7 @@ export default function Ast2Vis(ast) {
     attrs: {
       remark: "AST ROOT NODE",
     },
-    children: node2tree(ast.GlobalDeclaration),
+    children: node2tree(ast.GlobalDeclarations),
   };
   return root;
 }
@@ -26,9 +26,9 @@ function node2tree(astNode) {
       attrs: {},
       children: [],
     };
-    if (node.hasOwnProperty("Declaration")) {
-      treeNode.label = "Declaration";
-      const [type, name, expression] = node.Declaration;
+    if (node.hasOwnProperty("GlobalDeclaration")) {
+      treeNode.label = "GlobalDeclaration";
+      const [type, name, expression] = node.GlobalDeclaration;
       treeNode.attrs.name = name;
       treeNode.type = parseType(type);
       treeNode.children = node2tree([expression]);
@@ -183,13 +183,13 @@ function node2tree(astNode) {
       treeNode.attrs.value = value;
     } else if (node === "Empty") {
       treeNode.label = "Empty";
-    } else if (node.hasOwnProperty("Declaration1")) {
-      treeNode.label = "Declaration1";
-      treeNode.children = node2tree(node.Declaration1);
-    } else if (node.hasOwnProperty("Declaration2")) {
-      treeNode.label = "Declaration2";
-      const Declaration = node.Declaration2;
-      treeNode.children = node2tree([Declaration]);
+    } else if (node.hasOwnProperty("ForDeclaration")) {
+      treeNode.label = "ForDeclaration";
+      treeNode.children = node2tree(node.ForDeclaration);
+    } else if (node.hasOwnProperty("LocalDeclaration")) {
+      treeNode.label = "LocalDeclaration";
+      const GlobalDeclaration = node.LocalDeclaration;
+      treeNode.children = node2tree([GlobalDeclaration]);
     } else if (node.hasOwnProperty("Statement")) {
       treeNode.label = "Statement";
       const Statement = node.Statement;

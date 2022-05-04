@@ -80,9 +80,17 @@ pub fn build_compound_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<d
                 build_declaration(&mut sub_ast, token)?;
                 for declaration in sub_ast {
                     match declaration {
-                        Declaration::Declaration(declaration_type, identifier, initializer) => {
-                            statements.push(StatementOrDeclaration::Declaration2(
-                                Declaration::Declaration(declaration_type, identifier, initializer),
+                        Declaration::GlobalDeclaration(
+                            declaration_type,
+                            identifier,
+                            initializer,
+                        ) => {
+                            statements.push(StatementOrDeclaration::LocalDeclaration(
+                                Declaration::GlobalDeclaration(
+                                    declaration_type,
+                                    identifier,
+                                    initializer,
+                                ),
                             ));
                         }
                         Declaration::FunctionDefinition(_, _, _, _) => {
@@ -308,6 +316,6 @@ fn build_for_init_clause(pair: Pair<'_, Rule>) -> Result<ForInitClause, Box<dyn 
     }
     Ok(match expression {
         Some(expression) => ForInitClause::Expression(expression),
-        None => ForInitClause::Declaration1(sub_ast),
+        None => ForInitClause::ForDeclaration(sub_ast),
     })
 }
