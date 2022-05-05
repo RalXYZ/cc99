@@ -84,39 +84,37 @@ mod tests {
         let code = r#"inline static const int foo(const int x, float *, ...);"#;
         assert_eq!(
             parse(code).unwrap(),
-            Box::new(AST::GlobalDeclaration(vec![
-                Declaration::Declaration(
-                    Type {
-                        function_specifier: vec!(FunctionSpecifier::Inline),
-                        storage_class_specifier: StorageClassSpecifier::Static,
-                        basic_type: BasicType {
-                            qualifier: vec![],
-                            base_type: BaseType::Function(
-                                Box::new(BasicType {
+            Box::new(AST::GlobalDeclaration(vec![Declaration::Declaration(
+                Type {
+                    function_specifier: vec!(FunctionSpecifier::Inline),
+                    storage_class_specifier: StorageClassSpecifier::Static,
+                    basic_type: BasicType {
+                        qualifier: vec![],
+                        base_type: BaseType::Function(
+                            Box::new(BasicType {
+                                qualifier: vec![TypeQualifier::Const],
+                                base_type: Default::default(),
+                            }),
+                            vec![
+                                BasicType {
                                     qualifier: vec![TypeQualifier::Const],
                                     base_type: Default::default(),
-                                }),
-                                vec![
-                                    BasicType {
-                                        qualifier: vec![TypeQualifier::Const],
-                                        base_type: Default::default(),
-                                    },
-                                    BasicType {
+                                },
+                                BasicType {
+                                    qualifier: vec![],
+                                    base_type: BaseType::Pointer(Box::new(BasicType {
                                         qualifier: vec![],
-                                        base_type: BaseType::Pointer(Box::new(BasicType {
-                                            qualifier: vec![],
-                                            base_type: BaseType::Float,
-                                        })),
-                                    },
-                                ],
-                                true
-                            ),
-                        },
+                                        base_type: BaseType::Float,
+                                    })),
+                                },
+                            ],
+                            true
+                        ),
                     },
-                    Some("foo".to_string()),
-                    None
-                ),
-            ]))
+                },
+                Some("foo".to_string()),
+                None
+            ),]))
         );
     }
 
