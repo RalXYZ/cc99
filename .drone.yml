@@ -17,7 +17,6 @@ trigger:
     - main
   event:
     - push
-    - pull_request
     - rollback
 volumes:
   - name: cache
