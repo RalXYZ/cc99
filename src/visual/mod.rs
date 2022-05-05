@@ -23,7 +23,7 @@ pub fn compile_result(code: &str) -> String {
     let mut result = VisualResult {
         error: false,
         message: String::from(""),
-        ast: Box::new(AST::GlobalDeclarations(vec![])),
+        ast: Box::new(AST::GlobalDeclaration(vec![])),
     };
     let include_dirs = vec![];
     match preprocess(code, &include_dirs) {

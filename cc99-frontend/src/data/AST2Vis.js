@@ -8,7 +8,7 @@ export default function Ast2Vis(ast) {
     attrs: {
       remark: "AST ROOT NODE",
     },
-    children: node2tree(ast.GlobalDeclaration),
+    children: node2tree(ast.Declaration),
   };
 }
 

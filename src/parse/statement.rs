@@ -80,13 +80,13 @@ pub fn build_compound_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<d
                 build_declaration(&mut sub_ast, token)?;
                 for declaration in sub_ast {
                     match declaration {
-                        Declaration::GlobalDeclaration(
+                        Declaration::Declaration(
                             declaration_type,
                             identifier,
                             initializer,
                         ) => {
                             statements.push(StatementOrDeclaration::LocalDeclaration(
-                                Declaration::GlobalDeclaration(
+                                Declaration::Declaration(
                                     declaration_type,
                                     identifier,
                                     initializer,
