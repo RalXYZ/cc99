@@ -611,7 +611,10 @@ fn extract_function_like_macro(
         }
     }
     // replace
-    if (!is_variadic && args.len() != params.len()) || (is_variadic && args.len() < params.len()) {
+    if !(params.is_empty() && args.len() == 1 && args[0].is_empty()) // function without params
+        && ((!is_variadic && args.len() != params.len())
+            || (is_variadic && args.len() < params.len()))
+    {
         return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
             ErrorVariant::CustomError {
                 message: "number of arguments mismatch".to_string(),

@@ -164,11 +164,12 @@ int main() {
 #define m_1(a, b) a##b
 #define m_2(a) #a
 #define m_3(a, ...) #__VA_ARGS__
+#define m_4() 0
 int main() {
     m_1(i, j);
     m_2(sadf);
     m_3(1, 2, -(3*4, 7), " ,");
-    return x(0);
+    return x(0)m_4();
 }
 "#;
         let expected = r#"
@@ -176,7 +177,7 @@ int main() {
     ij;
     "sadf";
     2,-(3*4,7)," ,";
-    return 0;
+    return 00;
 }
 "#;
         let include_dirs = vec![];
