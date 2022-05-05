@@ -5,12 +5,12 @@ use super::types::*;
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum AST {
-    GlobalDeclarations(Vec<Declaration>),
+    GlobalDeclaration(Vec<Declaration>),
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
 pub enum Declaration {
-    GlobalDeclaration(
+    Declaration(
         Type,
         /// identifier (if it's a struct/union declaration, it might be None)
         Option<String>,
