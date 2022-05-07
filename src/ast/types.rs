@@ -162,7 +162,7 @@ impl<'ctx> BaseType {
             return Ok(cast_ty.clone());
         }
 
-        return Err(CompileErr::InvalidDefaultCast(self.clone(), cast_ty.clone()).into());
+        Err(CompileErr::InvalidDefaultCast(self.clone(), cast_ty.clone()).into())
     }
 }
 

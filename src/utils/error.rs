@@ -14,4 +14,10 @@ pub enum CompileErr {
 
     #[error("invalid default cast between {} and {}", .0.to_string(), .1.to_string())]
     InvalidDefaultCast(BaseType, BaseType),
+
+    #[error("there are duplicate functions: {}", .0.as_str())]
+    DuplicateFunction(String),
+
+    #[error("redefinition of symbol: {}", .0.as_str())]
+    Redefinition(String),
 }

@@ -7,8 +7,9 @@ use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::values::{BasicValue, BasicValueEnum, FunctionValue, PointerValue};
 use anyhow::Result;
+use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType};
 use crate::ast::IntegerType;
-use crate::ast::{AST, BaseType, BasicType, Declaration, Expression, Statement, Type};
+use crate::ast::{AST, BaseType, BasicType as CC99BasicTYpe, Declaration, Expression, Statement, Type};
 use crate::utils::CompileErr;
 
 pub struct Generator<'ctx> {
@@ -21,17 +22,17 @@ pub struct Generator<'ctx> {
     //      LLVM Blocks
     //<<<<<<<<<<<<<<<<<<<<<<<<
 
-    addr_map_stack: Vec<HashMap<String, (BasicType, PointerValue<'ctx>)>>,
+    addr_map_stack: Vec<HashMap<String, (CC99BasicTYpe, PointerValue<'ctx>)>>,
     // current function block
-    current_function: Option<(FunctionValue<'ctx>, Option<BasicType>)>,
+    current_function: Option<(FunctionValue<'ctx>, Option<CC99BasicTYpe>)>,
     // break labels (in loop statements)
     break_labels: VecDeque<BasicBlock<'ctx>>,
     // continue labels (in loop statements)
     continue_labels: VecDeque<BasicBlock<'ctx>>,
     // hashset for functions
-    function_map: HashMap<String, (Option<BasicType>, Vec<BasicType>)>,
+    function_map: HashMap<String, (Option<CC99BasicTYpe>, Vec<CC99BasicTYpe>)>,
     // hashset for global variable
-    global_variable_map: HashMap<String, (BasicType, PointerValue<'ctx>)>,
+    global_variable_map: HashMap<String, (CC99BasicTYpe, PointerValue<'ctx>)>,
 }
 
 impl<'ctx> Generator<'ctx> {
@@ -43,7 +44,7 @@ impl<'ctx> Generator<'ctx> {
 
         // set variable scope
         let mut addr_map_stack = Vec::new();
-        let global_map: HashMap<String, (BasicType, PointerValue<'ctx>)> = HashMap::new();
+        let global_map: HashMap<String, (CC99BasicTYpe, PointerValue<'ctx>)> = HashMap::new();
         addr_map_stack.push(global_map); // push global variable hashmap
 
         Generator { // return value
@@ -101,11 +102,62 @@ impl<'ctx> Generator<'ctx> {
     // FIXME: implement this
     fn gen_function_proto(
         &mut self,
-        ret_type: &Box<BasicType>,
+        ret_type: &CC99BasicTYpe,
         func_name: &String,
-        func_param: &Vec<BasicType>
+        func_param: &Vec<CC99BasicTYpe>
     ) -> Result<()> {
-        unimplemented!();
+        // cannot handle duplicate function
+        if self.function_map.contains_key(func_name) {
+            return Err(CompileErr::DuplicateFunction(func_name.to_string()).into());
+        }
+        if self.global_variable_map.contains_key(func_name) {
+            return Err(CompileErr::Redefinition(func_name.to_string()).into());
+        }
+
+        // function parameter should be added in this llvm_func_type
+        let mut llvm_params: Vec<BasicTypeEnum<'ctx>> = Vec::new();
+        let mut params: Vec<CC99BasicTYpe> = Vec::new();
+
+        for param in func_param {
+            params.push(param.to_owned());
+            llvm_params.push(param.base_type.to_llvm_type(self.context));
+        }
+
+        let llvm_func_ty = self.to_return_type(ret_type, &llvm_params)?;
+
+        // create function
+        self.module.add_function(func_name.as_str(), llvm_func_ty, None);
+
+        let ret_ty = if ret_type.base_type != BaseType::Void {
+            Some(ret_type.to_owned())
+        } else {
+            None
+        };
+
+        self.function_map.insert(func_name.to_owned(), (ret_ty, params));
+        Ok(())
+    }
+
+    // add void type as return type
+    fn to_return_type(
+        &self,
+        in_type: &CC99BasicTYpe,
+        param_types: &Vec<BasicTypeEnum<'ctx>>
+    ) -> Result<FunctionType<'ctx>> {
+        let param_types_meta = param_types.iter()
+            .map(|ty| BasicMetadataTypeEnum::from(*ty))
+            .collect::<Vec<BasicMetadataTypeEnum>>();
+
+        match in_type.base_type {
+            BaseType::Void => Ok(self.context.void_type().fn_type(
+                &param_types_meta,
+                false,
+            )),
+            _ => {
+                let basic_type = in_type.base_type.to_llvm_type(self.context);
+                Ok(basic_type.fn_type(&param_types_meta, false))
+            }
+        }
     }
 
     // FIXME: implement this
@@ -129,7 +181,7 @@ impl<'ctx> Generator<'ctx> {
     }
 
     // FIXME: implement this
-    fn get_variable(&self, identifier: &String) -> Result<(BasicType, PointerValue<'ctx>)> {
+    fn get_variable(&self, identifier: &String) -> Result<(CC99BasicTYpe, PointerValue<'ctx>)> {
         unimplemented!();
     }
 
@@ -248,7 +300,7 @@ impl<'ctx> Generator<'ctx> {
             },
             Expression::StringLiteral(ref string) => {
                 Ok((
-                    BaseType::Pointer(Box::new(BasicType{
+                    BaseType::Pointer(Box::new(CC99BasicTYpe{
                         qualifier: vec![],
                         base_type: BaseType::SignedInteger(IntegerType::Char),
                     })),
