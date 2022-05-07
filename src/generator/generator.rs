@@ -10,30 +10,8 @@ use anyhow::Result;
 use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType};
 use crate::ast::IntegerType;
 use crate::ast::{AST, BaseType, BasicType as CC99BasicTYpe, Declaration, Expression, Statement, Type};
+use crate::Generator;
 use crate::utils::CompileErr;
-
-pub struct Generator<'ctx> {
-    source_path: &'ctx str,
-    context: &'ctx Context,
-    module: Module<'ctx>,
-    builder: Builder<'ctx>,
-
-    //>>>>>>>>>>>>>>>>>>>>>>>>
-    //      LLVM Blocks
-    //<<<<<<<<<<<<<<<<<<<<<<<<
-
-    addr_map_stack: Vec<HashMap<String, (CC99BasicTYpe, PointerValue<'ctx>)>>,
-    // current function block
-    current_function: Option<(FunctionValue<'ctx>, Option<CC99BasicTYpe>)>,
-    // break labels (in loop statements)
-    break_labels: VecDeque<BasicBlock<'ctx>>,
-    // continue labels (in loop statements)
-    continue_labels: VecDeque<BasicBlock<'ctx>>,
-    // hashset for functions
-    function_map: HashMap<String, (Option<CC99BasicTYpe>, Vec<CC99BasicTYpe>)>,
-    // hashset for global variable
-    global_variable_map: HashMap<String, (CC99BasicTYpe, PointerValue<'ctx>)>,
-}
 
 impl<'ctx> Generator<'ctx> {
     // new LLVM context
@@ -99,7 +77,6 @@ impl<'ctx> Generator<'ctx> {
             .collect::<Result<()>>()
     }
 
-    // FIXME: implement this
     fn gen_function_proto(
         &mut self,
         ret_type: &CC99BasicTYpe,
@@ -177,7 +154,14 @@ impl<'ctx> Generator<'ctx> {
                   cur_val: &BasicValueEnum<'ctx>,
                   cast_ty: &BaseType,
     ) -> Result<BasicValueEnum<'ctx>> {
-        unimplemented!();
+        if cur_ty == cast_ty {
+            return Ok(cur_val.to_owned());
+        }
+
+        Ok(self.builder.build_cast(
+            self.gen_cast_llvm_instruction(cur_ty, cast_ty)?, *cur_val,
+            cast_ty.to_llvm_type(self.context), "cast",
+        ))
     }
 
     // FIXME: implement this
