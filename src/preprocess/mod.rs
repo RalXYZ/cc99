@@ -183,4 +183,26 @@ int main() {
         let include_dirs = vec![];
         assert_eq!(expected, preprocess(code, &include_dirs).unwrap());
     }
+
+    #[test]
+    fn process_recursive_define() {
+        let code = r#"
+#define a b
+#define b a
+int main() {
+    int a = 0;
+    int c = a;
+    return c;
+}
+"#;
+        let expected = r#"
+int main() {
+    int a = 0;
+    int c = a;
+    return c;
+}
+"#;
+        let include_dirs = vec![];
+        assert_eq!(expected, preprocess(code, &include_dirs).unwrap());
+    }
 }

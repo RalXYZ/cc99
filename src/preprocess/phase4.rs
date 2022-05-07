@@ -413,7 +413,10 @@ fn build_token_string<'a>(
                         result.push_str(token.as_str());
                     }
                     Rule::identifier => {
-                        if let Some(macro_) = defined.get(token.as_str()) {
+                        if let (Some(macro_), false) = (
+                            defined.get(token.as_str()),
+                            extracting_macro.contains(token.as_str()),
+                        ) {
                             *modified = true;
                             extracting_macro.insert(token.as_str().to_owned());
                             match macro_ {
