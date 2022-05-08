@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::ast::{BasicType, Statement, Type};
+use crate::ast::{BasicType, Statement};
 use crate::Generator;
 use anyhow::Result;
 use inkwell::values::{BasicValue, PointerValue};
@@ -8,9 +8,9 @@ use crate::utils::CompileErr as CE;
 impl<'ctx> Generator<'ctx> {
     pub fn gen_func_def(
         &mut self,
-        func_type: &Type,
+        return_type: &BasicType,
         func_name: &String,
-        func_param: &Vec<Option<String>>,
+        func_param: &Vec<(BasicType, Option<String>)>,
         func_body: &Statement,
     ) -> Result<()> {
         let func = self.module.get_function(func_name.as_str()).unwrap();
@@ -24,8 +24,10 @@ impl<'ctx> Generator<'ctx> {
         self.builder.position_at_end(func_block);
 
         for (i, param) in func.get_param_iter().enumerate() {
-            if func_param[i].is_some() {
-                param.set_name(func_param[i].as_ref().unwrap().as_str());
+            // TODO: validate param type
+
+            if func_param[i].1.is_some() {
+                param.set_name(func_param[i].1.as_ref().unwrap().as_str());
             }
 
             let builder = self.context.create_builder();
@@ -37,14 +39,14 @@ impl<'ctx> Generator<'ctx> {
             }
 
             let alloca = builder.build_alloca(
-                param.get_type(),
-                func_param[i].as_ref().unwrap_or(
+                func_param[i].0.base_type.to_llvm_type(self.context),
+                func_param[i].1.as_ref().unwrap_or(
                     &("__param__".to_string() + func_name + &i.to_string())
                 ).as_str()
             );
 
-            if func_param[i].is_some() {
-                self.insert_to_val_map(&func_ty.1[i], &func_param[i].as_ref().unwrap(), alloca);
+            if func_param[i].1.is_some() {
+                self.insert_to_val_map(&func_param[i].0, &func_param[i].1.as_ref().unwrap(), alloca);
             }
         }
 

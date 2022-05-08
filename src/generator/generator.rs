@@ -6,7 +6,7 @@ use inkwell::values::{BasicValue, BasicValueEnum, PointerValue};
 use anyhow::Result;
 use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType};
 use crate::ast::IntegerType;
-use crate::ast::{AST, BaseType, BasicType as CC99BasicTYpe, Declaration, Expression, Statement, Type};
+use crate::ast::{AST, BaseType, BasicType as BT, Declaration, Expression, Type};
 use crate::Generator;
 use crate::utils::CompileErr;
 
@@ -19,7 +19,7 @@ impl<'ctx> Generator<'ctx> {
 
         // set variable scope
         let mut addr_map_stack = Vec::new();
-        let global_map: HashMap<String, (CC99BasicTYpe, PointerValue<'ctx>)> = HashMap::new();
+        let global_map: HashMap<String, (BT, PointerValue<'ctx>)> = HashMap::new();
         addr_map_stack.push(global_map); // push global variable hashmap
 
         Generator { // return value
@@ -74,12 +74,14 @@ impl<'ctx> Generator<'ctx> {
 
         declarations.iter().for_each(|declaration| {
            if let Declaration::FunctionDefinition(
+               _, _,
                ref return_type,
                ref identifier,
                ref params_type,
+               _,
                ref statements,
            ) = declaration {
-               self.gen_func_def(return_type, identifier, params_type, statements);
+               self.gen_func_def(&return_type, identifier, params_type, statements);
            }
         });
 
@@ -88,9 +90,9 @@ impl<'ctx> Generator<'ctx> {
 
     fn gen_function_proto(
         &mut self,
-        ret_type: &CC99BasicTYpe,
+        ret_type: &BT,
         func_name: &String,
-        func_param: &Vec<CC99BasicTYpe>
+        func_param: &Vec<BT>
     ) -> Result<()> {
         // cannot handle duplicate function
         if self.function_map.contains_key(func_name) {
@@ -102,7 +104,7 @@ impl<'ctx> Generator<'ctx> {
 
         // function parameter should be added in this llvm_func_type
         let mut llvm_params: Vec<BasicTypeEnum<'ctx>> = Vec::new();
-        let mut params: Vec<CC99BasicTYpe> = Vec::new();
+        let mut params: Vec<BT> = Vec::new();
 
         for param in func_param {
             params.push(param.to_owned());
@@ -127,7 +129,7 @@ impl<'ctx> Generator<'ctx> {
     // add void type as return type
     fn to_return_type(
         &self,
-        in_type: &CC99BasicTYpe,
+        in_type: &BT,
         param_types: &Vec<BasicTypeEnum<'ctx>>
     ) -> Result<FunctionType<'ctx>> {
         let param_types_meta = param_types.iter()
@@ -162,7 +164,7 @@ impl<'ctx> Generator<'ctx> {
         ))
     }
 
-    fn get_variable(&self, identifier: &String) -> Result<(CC99BasicTYpe, PointerValue<'ctx>)> {
+    fn get_variable(&self, identifier: &String) -> Result<(BT, PointerValue<'ctx>)> {
         let mut result = None;
 
         self.val_map_block_stack.iter().rev().for_each(|addr_map| {
@@ -297,7 +299,7 @@ impl<'ctx> Generator<'ctx> {
             },
             Expression::StringLiteral(ref string) => {
                 Ok((
-                    BaseType::Pointer(Box::new(CC99BasicTYpe{
+                    BaseType::Pointer(Box::new(BT{
                         qualifier: vec![],
                         base_type: BaseType::SignedInteger(IntegerType::Char),
                     })),
