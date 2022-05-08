@@ -26,4 +26,7 @@ pub enum CompileErr {
 
     #[error("missing variable: {}", .0.as_str())]
     MissingVariable(String),
+
+    #[error("there are duplicate local variables: {}", .0.as_str())]
+    DuplicatedVariable(String),
 }

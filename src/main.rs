@@ -63,7 +63,11 @@ fn main() {
 
         let context = Context::create();
         let mut code_gen = Generator::new(&context, &args.file);
-        code_gen.gen(&ast);
+        let gen_result = code_gen.gen(&ast);
+
+        if let Err(e) = gen_result {
+            panic!("{}", e);
+        }
 
         unimplemented!();
     }

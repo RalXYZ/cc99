@@ -4,10 +4,11 @@ use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::values::{FunctionValue, PointerValue};
-use crate::ast::BasicType as CC99BasicTYpe;
+use crate::ast::BasicType as BT;
 
 pub mod generator;
 pub mod cast_instruction;
+pub mod func_def;
 
 pub struct Generator<'ctx> {
     source_path: &'ctx str,
@@ -19,15 +20,16 @@ pub struct Generator<'ctx> {
     //      LLVM Blocks
     //<<<<<<<<<<<<<<<<<<<<<<<<
 
-    addr_map_stack: Vec<HashMap<String, (CC99BasicTYpe, PointerValue<'ctx>)>>,
+    // LLVM blocks for the current function
+    val_map_block_stack: Vec<HashMap<String, (BT, PointerValue<'ctx>)>>,
     // current function block
-    current_function: Option<(FunctionValue<'ctx>, Option<CC99BasicTYpe>)>,
+    current_function: Option<(FunctionValue<'ctx>, Option<BT>)>,
     // break labels (in loop statements)
     break_labels: VecDeque<BasicBlock<'ctx>>,
     // continue labels (in loop statements)
     continue_labels: VecDeque<BasicBlock<'ctx>>,
     // hashset for functions
-    function_map: HashMap<String, (Option<CC99BasicTYpe>, Vec<CC99BasicTYpe>)>,
+    function_map: HashMap<String, (Option<BT>, Vec<BT>)>,
     // hashset for global variable
-    global_variable_map: HashMap<String, (CC99BasicTYpe, PointerValue<'ctx>)>,
+    global_variable_map: HashMap<String, (BT, PointerValue<'ctx>)>,
 }

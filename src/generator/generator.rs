@@ -28,7 +28,7 @@ impl<'ctx> Generator<'ctx> {
             context,
             module,
             builder,
-            addr_map_stack,
+            val_map_block_stack: addr_map_stack,
             current_function: None,
             break_labels: VecDeque::new(),
             continue_labels: VecDeque::new(),
@@ -52,7 +52,7 @@ impl<'ctx> Generator<'ctx> {
                     None
                 }
             })
-            .map(|(type_info, identifier, initializer)| {
+            .for_each(|(type_info, identifier, initializer)| {
                 if let BaseType::Function(
                     ref return_type,
                     ref params_type,
@@ -62,16 +62,28 @@ impl<'ctx> Generator<'ctx> {
                         return_type,
                         identifier.as_ref().unwrap(),
                         params_type
-                    )
+                    );
                 } else {
                     self.gen_global_variable(
                         type_info,
                         identifier.as_ref().unwrap(),
                         initializer,
-                    )
+                    );
                 }
-            })
-            .collect::<Result<()>>()
+            });
+
+        declarations.iter().for_each(|declaration| {
+           if let Declaration::FunctionDefinition(
+               ref return_type,
+               ref identifier,
+               ref params_type,
+               ref statements,
+           ) = declaration {
+               self.gen_func_def(return_type, identifier, params_type, statements);
+           }
+        });
+
+        unimplemented!()
     }
 
     fn gen_function_proto(
@@ -134,21 +146,11 @@ impl<'ctx> Generator<'ctx> {
         }
     }
 
-    // FIXME: implement this
-    fn gen_function_def(
-        &mut self,
-        func_type: &Type,
-        func_name: &String,
-        func_param: &Vec<Option<String>>,
-        func_body: &Statement
-    ) -> Result<()> {
-        unimplemented!();
-    }
-
-    fn cast_value(&self,
-                  cur_ty: &BaseType,
-                  cur_val: &BasicValueEnum<'ctx>,
-                  cast_ty: &BaseType,
+    fn cast_value(
+        &self,
+        cur_ty: &BaseType,
+        cur_val: &BasicValueEnum<'ctx>,
+        cast_ty: &BaseType,
     ) -> Result<BasicValueEnum<'ctx>> {
         if cur_ty == cast_ty {
             return Ok(cur_val.to_owned());
@@ -163,7 +165,7 @@ impl<'ctx> Generator<'ctx> {
     fn get_variable(&self, identifier: &String) -> Result<(CC99BasicTYpe, PointerValue<'ctx>)> {
         let mut result = None;
 
-        self.addr_map_stack.iter().rev().for_each(|addr_map| {
+        self.val_map_block_stack.iter().rev().for_each(|addr_map| {
             if let Some(val) = addr_map.get(identifier) {
                 result = Some(val.to_owned());
             }
