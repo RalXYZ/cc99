@@ -103,7 +103,6 @@ impl<'ctx> Generator<'ctx> {
                 Ty::SignedInteger(IT::Int) | Ty::UnsignedInteger(IT::Int) |
                 Ty::SignedInteger(IT::Long) | Ty::UnsignedInteger(IT::Long) => Op::Trunc,
                 Ty::SignedInteger(IT::LongLong) => Op::BitCast,
-                Ty::SignedInteger(_) | Ty::UnsignedInteger(_) => Op::ZExt,
                 Ty::Float | Ty::Double => Op::UIToFP,
                 Ty::Pointer(_) => Op::IntToPtr,
                 _ => return Err(InvalidCast(curr.clone(), dest.clone()).into()),

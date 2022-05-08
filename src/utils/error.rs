@@ -23,4 +23,7 @@ pub enum CompileErr {
 
     #[error("redefinition of symbol: {}", .0.as_str())]
     Redefinition(String),
+
+    #[error("missing variable: {}", .0.as_str())]
+    MissingVariable(String),
 }

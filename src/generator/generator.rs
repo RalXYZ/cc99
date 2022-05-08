@@ -1,11 +1,8 @@
 use std::collections::{HashMap, VecDeque};
 use std::ops::Deref;
 use std::path::Path;
-use inkwell::basic_block::BasicBlock;
-use inkwell::builder::Builder;
 use inkwell::context::Context;
-use inkwell::module::Module;
-use inkwell::values::{BasicValue, BasicValueEnum, FunctionValue, PointerValue};
+use inkwell::values::{BasicValue, BasicValueEnum, PointerValue};
 use anyhow::Result;
 use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType};
 use crate::ast::IntegerType;
@@ -148,7 +145,6 @@ impl<'ctx> Generator<'ctx> {
         unimplemented!();
     }
 
-    // FIXME: implement this
     fn cast_value(&self,
                   cur_ty: &BaseType,
                   cur_val: &BasicValueEnum<'ctx>,
@@ -164,9 +160,24 @@ impl<'ctx> Generator<'ctx> {
         ))
     }
 
-    // FIXME: implement this
     fn get_variable(&self, identifier: &String) -> Result<(CC99BasicTYpe, PointerValue<'ctx>)> {
-        unimplemented!();
+        let mut result = None;
+
+        self.addr_map_stack.iter().rev().for_each(|addr_map| {
+            if let Some(val) = addr_map.get(identifier) {
+                result = Some(val.to_owned());
+            }
+        });
+
+        if result.is_none() {
+            result = self.global_variable_map.get(identifier).cloned();
+        }
+
+        if result.is_none() {
+            return Err(CompileErr::MissingVariable(identifier.to_string()).into());
+        }
+
+        Ok(result.unwrap())
     }
 
     fn gen_global_variable(
