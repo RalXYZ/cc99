@@ -177,35 +177,33 @@ mod tests {
             parse(code).unwrap(),
             Box::new(AST::GlobalDeclaration(vec![
                 Declaration::FunctionDefinition(
-                    Type {
-                        function_specifier: vec![FunctionSpecifier::Inline],
-                        storage_class_specifier: StorageClassSpecifier::Auto,
-                        basic_type: BasicType {
+                    vec![FunctionSpecifier::Inline],
+                    StorageClassSpecifier::Auto,
+                    Box::new(BasicType {
+                        qualifier: vec![TypeQualifier::Const],
+                        base_type: BaseType::Pointer(Box::new(BasicType {
                             qualifier: vec![],
-                            base_type: BaseType::Function(
-                                Box::new(BasicType {
-                                    qualifier: vec![TypeQualifier::Const],
-                                    base_type: BaseType::Pointer(Box::new(BasicType {
-                                        qualifier: vec![],
-                                        base_type: Default::default(),
-                                    })),
-                                }),
-                                vec![
-                                    BasicType {
-                                        qualifier: vec![],
-                                        base_type: Default::default(),
-                                    },
-                                    BasicType {
-                                        qualifier: vec![],
-                                        base_type: BaseType::Float,
-                                    },
-                                ],
-                                false
-                            ),
-                        },
-                    },
+                            base_type: BaseType::SignedInteger(IntegerType::Int),
+                        })),
+                    }),
                     "bar".to_string(),
-                    vec![Some("x".to_string()), None],
+                    vec![
+                        (
+                            BasicType {
+                                qualifier: vec![],
+                                base_type: Default::default(),
+                            },
+                            Some("x".to_string())
+                        ),
+                        (
+                            BasicType {
+                                qualifier: vec![],
+                                base_type: BaseType::Float,
+                            },
+                            None
+                        ),
+                    ],
+                    false,
                     Statement::Compound(vec![]),
                 ),
             ]))
