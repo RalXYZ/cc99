@@ -34,12 +34,28 @@ function node2tree(astNode) {
       treeNode.children = node2tree([expression]);
     } else if (node.hasOwnProperty("FunctionDefinition")) {
       treeNode.label = "Function";
-      const [type, name, params, body] = node.FunctionDefinition;
+      const [specifier, storage, return_type, name, p, isVariadic, body] =
+        node.FunctionDefinition;
+      let paramsList = {};
+      let anonyvar = 1;
+      p.forEach((param) => {
+        if (param[1]) {
+          paramsList[param[1]] = parseBasicType(param[0]);
+        } else {
+          paramsList["anony_var" + anonyvar] = parseBasicType(param[0]);
+          anonyvar += 1;
+        }
+      });
       treeNode.attrs = {
         name: name,
-        params: params.join(" "),
-        type: parseType(type),
+        storage: storage,
+        return_type: parseBasicType(return_type),
+        params: paramsList,
+        is_variadic: isVariadic,
       };
+      if (specifier.length > 0) {
+        treeNode.attrs.specifier = specifier.join(" ");
+      }
       treeNode.children = node2tree([body]);
     } else if (node.hasOwnProperty("Labeled")) {
       treeNode.label = "Labeled";

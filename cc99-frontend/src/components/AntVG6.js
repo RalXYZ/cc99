@@ -20,7 +20,10 @@ export default function AntvTree(props) {
           outDiv.style.width = "180px";
           outDiv.style.whiteSpace = "pre";
           let content = `<h4><b>${e.item.getModel().label}</b></h4>`;
-          if (e.item.getModel().attrs) {
+          if (
+            e.item.getModel().attrs &&
+            Object.keys(e.item.getModel().attrs).length > 0
+          ) {
             const attrs = e.item.getModel().attrs;
             content += `<div>`;
             content += yaml.dump(attrs, {
