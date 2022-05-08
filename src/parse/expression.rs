@@ -182,7 +182,6 @@ fn build_binary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn E
 }
 
 fn build_unary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
-    let mut cast_type: Option<BasicType> = None;
     let mut unary_operation: UnaryOperation = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
@@ -202,27 +201,15 @@ fn build_unary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Er
                     Rule::dereference_op => UnaryOperation::Dereference,
                     Rule::reference_op => UnaryOperation::Reference,
                     Rule::sizeof_ => UnaryOperation::SizeofExpr,
-                    Rule::type_name => {
-                        cast_type = Some(build_type_name(sub_token)?);
-                        Default::default()
-                    }
                     _ => unreachable!(),
                 };
             }
-            Rule::unary_expression => match cast_type {
-                Some(cast_type) => {
-                    return Ok(Expression::TypeCast(
-                        cast_type,
-                        Box::new(build_unary_expression(token)?),
-                    ));
-                }
-                None => {
-                    return Ok(Expression::Unary(
-                        unary_operation,
-                        Box::new(build_unary_expression(token)?),
-                    ));
-                }
-            },
+            Rule::unary_expression => {
+                return Ok(Expression::Unary(
+                    unary_operation,
+                    Box::new(build_unary_expression(token)?),
+                ));
+            }
             Rule::postfix_unary_expression => {
                 return build_postfix_unary_expression(token);
             }
@@ -279,6 +266,10 @@ fn build_postfix_unary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Bo
                     }
                 };
             }
+            Rule::type_name => {
+                expression = Expression::TypeCast(build_type_name(token)?, Box::new(expression));
+            }
+            Rule::as_ => {}
             _ => unreachable!(),
         }
     }

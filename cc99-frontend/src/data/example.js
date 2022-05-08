@@ -157,7 +157,7 @@ int foo() {
 
     double a = 10.5;
 
-    int b = (int) a;
+    int b = a as int;
 
     return b;
 }`,
