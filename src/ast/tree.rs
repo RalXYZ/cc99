@@ -18,11 +18,16 @@ pub enum Declaration {
         Option<Box<Expression>>,
     ),
     FunctionDefinition(
-        Type,
+        Vec<FunctionSpecifier>,
+        StorageClassSpecifier,
+        /// return type
+        Box<BasicType>,
         /// identifier
         String,
-        /// parameters
-        Vec<Option<String>>,
+        /// parameters and their names
+        Vec<(BasicType, Option<String>)>,
+        /// is variadic
+        bool,
         /// body
         Statement,
     ),

@@ -85,7 +85,7 @@ pub fn build_compound_statement(pair: Pair<'_, Rule>) -> Result<Statement, Box<d
                                 Declaration::Declaration(declaration_type, identifier, initializer),
                             ));
                         }
-                        Declaration::FunctionDefinition(_, _, _, _) => {
+                        Declaration::FunctionDefinition(_, _, _, _, _, _, _) => {
                             unreachable!();
                         }
                     }

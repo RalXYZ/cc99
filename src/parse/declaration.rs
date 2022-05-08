@@ -52,13 +52,30 @@ pub fn build_function_definition(
         _ => unreachable!(),
     }
 
-    ast.push(Declaration::FunctionDefinition(
-        derived_type,
-        identifier,
-        parameter_names,
-        function_body,
-    ));
-    Ok(())
+    if let BaseType::Function(mut return_type, parameter_types, is_variadic) =
+        derived_type.basic_type.base_type
+    {
+        return_type
+            .qualifier
+            .extend(derived_type.basic_type.qualifier);
+        let parameters = parameter_types
+            .into_iter()
+            .zip(parameter_names.into_iter())
+            .collect::<Vec<_>>();
+
+        ast.push(Declaration::FunctionDefinition(
+            derived_type.function_specifier,
+            derived_type.storage_class_specifier,
+            return_type,
+            identifier,
+            parameters,
+            is_variadic,
+            function_body,
+        ));
+        Ok(())
+    } else {
+        unreachable!()
+    }
 }
 
 pub fn build_declaration(
@@ -482,7 +499,7 @@ fn build_struct_specifier(
                                             member_name,
                                         });
                                     }
-                                    Declaration::FunctionDefinition(_, _, _, _) => {
+                                    Declaration::FunctionDefinition(_, _, _, _, _, _, _) => {
                                         unreachable!();
                                     }
                                 }
