@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use crate::ast::{BasicType, Statement};
+use crate::ast::{BasicType, Statement, Declaration, StatementOrDeclaration, BaseType};
 use crate::Generator;
 use anyhow::Result;
 use inkwell::values::{BasicValue, PointerValue};
@@ -46,11 +46,49 @@ impl<'ctx> Generator<'ctx> {
             );
 
             if func_param[i].1.is_some() {
-                self.insert_to_val_map(&func_param[i].0, &func_param[i].1.as_ref().unwrap(), alloca);
+                self.insert_to_val_map(&func_param[i].0, &func_param[i].1.as_ref().unwrap(), alloca)?;
             }
         }
 
-        unimplemented!()
+        // generate IR for each statement or declaration in function body
+        if let Statement::Compound(state_or_decl) = &func_body {
+            for element in state_or_decl {
+                match element {
+                    StatementOrDeclaration::Statement(state) => {
+                        self.gen_state(state)?;
+                    },
+                    StatementOrDeclaration::LocalDeclaration(decl) => {
+                        self.gen_local_decl(decl)?;
+                    },
+                }
+            }
+        } else {
+            panic!("internal error: func_body is not Statement::Compound");
+        }
+
+        // build terminator for any block that is not terminated
+        let mut iter_block = func.get_first_basic_block();
+        while iter_block.is_some() {
+            let block = iter_block.unwrap();
+            if block.get_terminator().is_none() {
+                let terminator_builder = self.context.create_builder();
+                terminator_builder.position_at_end(block);
+                match return_type.base_type {
+                    BaseType::Void => {
+                        terminator_builder.build_return(None);
+                    }
+                    _ => {
+                        let null_val = self.context.i32_type().const_zero();
+                        terminator_builder.build_return(Some(&null_val));
+                    }
+                }
+            }
+            iter_block = block.get_next_basic_block();
+        }
+
+        self.val_map_block_stack.pop();
+        self.current_function = None;
+        return Ok(())
     }
 
     fn insert_to_val_map(
@@ -67,5 +105,13 @@ impl<'ctx> Generator<'ctx> {
 
         local_map.insert(identifier.to_string(), (var_type.clone(), ptr));
         Ok(())
+    }
+
+    fn gen_state(&mut self, state: &Statement) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn gen_local_decl(&mut self, decl: &Declaration) -> Result<()> {
+        unimplemented!()
     }
 }
