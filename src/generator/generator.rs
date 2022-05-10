@@ -7,28 +7,27 @@ use anyhow::Result;
 use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType};
 use crate::ast::IntegerType;
 use crate::ast::{AST, BaseType, BasicType as BT, Declaration, Expression, Type};
-use crate::Generator;
+use crate::generator::Generator;
 use crate::utils::CompileErr;
 
 impl<'ctx> Generator<'ctx> {
     // new LLVM context
     pub fn new(context: &'ctx Context, source_path: &'ctx str) -> Generator<'ctx> {
-        let module_name = Path::new(source_path).file_stem().unwrap().to_str().unwrap().to_string();
-        let module = context.create_module(module_name.as_str());
+        let module_name = Path::new(source_path).file_stem().unwrap().to_str().unwrap();
+        let module = context.create_module(module_name);
         let builder = context.create_builder();
 
         // set variable scope
-        let mut addr_map_stack = Vec::new();
+        let mut val_map_block_stack = Vec::new();
         let global_map: HashMap<String, (BT, PointerValue<'ctx>)> = HashMap::new();
-        addr_map_stack.push(global_map); // push global variable hashmap
+        val_map_block_stack.push(global_map); // push global variable hashmap
 
-        Generator { // return value
-            source_path,
-            // module_name,
+        Generator {
+            module_name,
             context,
             module,
             builder,
-            val_map_block_stack: addr_map_stack,
+            val_map_block_stack,
             current_function: None,
             break_labels: VecDeque::new(),
             continue_labels: VecDeque::new(),
@@ -85,7 +84,10 @@ impl<'ctx> Generator<'ctx> {
            }
         });
 
-        unimplemented!()
+        self.out_asm()?;
+        self.out_bc();
+
+        Ok(())
     }
 
     fn gen_function_proto(
@@ -94,7 +96,6 @@ impl<'ctx> Generator<'ctx> {
         func_name: &String,
         func_param: &Vec<BT>
     ) -> Result<()> {
-        // cannot handle duplicate function
         if self.function_map.contains_key(func_name) {
             return Err(CompileErr::DuplicateFunction(func_name.to_string()).into());
         }
@@ -150,17 +151,17 @@ impl<'ctx> Generator<'ctx> {
 
     fn cast_value(
         &self,
-        cur_ty: &BaseType,
-        cur_val: &BasicValueEnum<'ctx>,
-        cast_ty: &BaseType,
+        curr_type: &BaseType,
+        curr_val: &BasicValueEnum<'ctx>,
+        dest_type: &BaseType,
     ) -> Result<BasicValueEnum<'ctx>> {
-        if cur_ty == cast_ty {
-            return Ok(cur_val.to_owned());
+        if curr_type == dest_type {
+            return Ok(curr_val.to_owned());
         }
 
         Ok(self.builder.build_cast(
-            self.gen_cast_llvm_instruction(cur_ty, cast_ty)?, *cur_val,
-            cast_ty.to_llvm_type(self.context), "cast",
+            self.gen_cast_llvm_instruction(curr_type, dest_type)?, *curr_val,
+            dest_type.to_llvm_type(self.context), "cast",
         ))
     }
 
@@ -205,10 +206,10 @@ impl<'ctx> Generator<'ctx> {
         // if ptr_to_init is not None
         if let Some(ptr_to_init) = ptr_to_init {
             let init_val_pair = self.gen_expression(&**ptr_to_init)?;
-            let cast_ty = init_val_pair.0.default_cast(&var_type.basic_type.base_type)?;
-            let cast_v = self.cast_value(&init_val_pair.0, &init_val_pair.1, &cast_ty)?;
+            let target_type = init_val_pair.0.default_cast(&var_type.basic_type.base_type)?;
+            let value_after_cast = self.cast_value(&init_val_pair.0, &init_val_pair.1, &target_type)?;
 
-            global_value.set_initializer(&cast_v);
+            global_value.set_initializer(&value_after_cast);
         }
 
         self.global_variable_map.insert(
@@ -294,10 +295,18 @@ impl<'ctx> Generator<'ctx> {
             },
             Expression::Identifier(ref string_literal) => {
                 let deref = self.get_variable(string_literal)?;
-                let val = self.builder.build_load(deref.1, "load");
+                let val = self.builder.build_load(deref.1, "load val");
                 Ok((deref.0.base_type, val))
             },
             Expression::StringLiteral(ref string) => {
+                // let i32_type = self.context.i32_type();
+                // let i32_ptr_type = i32_type.ptr_type(AddressSpace::Generic);
+                // let fn_type = i32_type.fn_type(&[i32_ptr_type.into()], false);
+                // let fn_value = self.module.add_function("ret", fn_type, None);
+                // let entry = self.context.append_basic_block(fn_value, "entry");
+                // self.builder.position_at_end(entry);
+                // self.builder.build_return(None);
+
                 Ok((
                     BaseType::Pointer(Box::new(BT{
                         qualifier: vec![],

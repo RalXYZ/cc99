@@ -2,8 +2,11 @@ extern crate cc99;
 
 #[cfg(test)]
 mod tests {
-    use cc99::*;
+    use inkwell::context::Context;
     use walkdir::WalkDir;
+    use cc99::*;
+    use cc99::generator::Generator;
+    use crate::*;
 
     #[test]
     fn parse_test_file() {
@@ -30,4 +33,15 @@ mod tests {
             println!(">>> {} <<<", "Finish Parsing");
         }
     }
+
+    // #[test]
+    // fn test_gen() {
+    //     let res = preprocess_file("./tests/global/decl.c", vec![].as_slice()).unwrap();
+    //     let ast = parse(&res).unwrap();
+    //
+    //     let context = Context::create();
+    //     let mut code_gen = Generator::new(&context, "./tests/global/decl.c");
+    //     let gen_result = code_gen.gen(&ast).unwrap();
+    //
+    // }
 }

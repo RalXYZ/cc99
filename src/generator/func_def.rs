@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use crate::ast::{BasicType, Statement, Declaration, StatementOrDeclaration, BaseType};
-use crate::Generator;
+use crate::generator::Generator;
 use anyhow::Result;
 use inkwell::values::{BasicValue, PointerValue};
 use crate::utils::CompileErr as CE;

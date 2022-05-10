@@ -9,9 +9,10 @@ use crate::ast::BasicType as BT;
 pub mod generator;
 pub mod cast_instruction;
 pub mod func_def;
+mod out;
 
 pub struct Generator<'ctx> {
-    source_path: &'ctx str,
+    module_name: &'ctx str,
     context: &'ctx Context,
     module: Module<'ctx>,
     builder: Builder<'ctx>,

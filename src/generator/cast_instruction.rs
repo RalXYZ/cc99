@@ -2,7 +2,7 @@ use inkwell::values::InstructionOpcode as Op;
 use crate::ast::{BaseType as Ty, IntegerType as IT};
 use anyhow::Result;
 use crate::utils::CompileErr::InvalidCast;
-use crate::Generator;
+use crate::generator::Generator;
 
 impl<'ctx> Generator<'ctx> {
     pub fn gen_cast_llvm_instruction(&self, curr: &Ty, dest: &Ty) -> Result<Op> {
