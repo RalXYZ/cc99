@@ -51,7 +51,7 @@ impl<'ctx> Generator<'ctx> {
                     None
                 }
             })
-            .for_each(|(type_info, identifier, initializer)| {
+            .try_for_each(|(type_info, identifier, initializer)| -> Result<()> {
                 if let BaseType::Function(
                     ref return_type,
                     ref params_type,
@@ -61,17 +61,18 @@ impl<'ctx> Generator<'ctx> {
                         return_type,
                         identifier.as_ref().unwrap(),
                         params_type
-                    );
+                    )?;
                 } else {
                     self.gen_global_variable(
                         type_info,
                         identifier.as_ref().unwrap(),
                         initializer,
-                    );
+                    )?;
                 }
+                Ok(())
             });
 
-        declarations.iter().for_each(|declaration| {
+        declarations.iter().try_for_each(|declaration| -> Result<()> {
            if let Declaration::FunctionDefinition(
                _, _,
                ref return_type,
@@ -80,8 +81,9 @@ impl<'ctx> Generator<'ctx> {
                _,
                ref statements,
            ) = declaration {
-               self.gen_func_def(&return_type, identifier, params_type, statements);
+               self.gen_func_def(&return_type, identifier, params_type, statements)?;
            }
+           Ok(())
         });
 
         self.out_asm()?;
@@ -220,7 +222,7 @@ impl<'ctx> Generator<'ctx> {
         Ok(())
     }
 
-    fn gen_expression(&self, expr: &Expression) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
+    pub(crate) fn gen_expression(&self, expr: &Expression) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
         match expr {
             Expression::CharacterConstant(ref value) => {
                 Ok((

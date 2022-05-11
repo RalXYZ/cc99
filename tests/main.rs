@@ -34,14 +34,14 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_gen() {
-    //     let res = preprocess_file("./tests/global/decl.c", vec![].as_slice()).unwrap();
-    //     let ast = parse(&res).unwrap();
-    //
-    //     let context = Context::create();
-    //     let mut code_gen = Generator::new(&context, "./tests/global/decl.c");
-    //     let gen_result = code_gen.gen(&ast).unwrap();
-    //
-    // }
+    #[test]
+    fn test_gen() {
+        let res = preprocess_file("./tests/global/decl2.c", vec![].as_slice()).unwrap();
+        let ast = parse(&res).unwrap();
+
+        let context = Context::create();
+        let mut code_gen = Generator::new(&context, "./tests/global/decl2.c");
+        let gen_result = code_gen.gen(&ast).unwrap();
+
+    }
 }

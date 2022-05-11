@@ -7,8 +7,9 @@ use inkwell::values::{FunctionValue, PointerValue};
 use crate::ast::BasicType as BT;
 
 pub mod generator;
-pub mod cast_instruction;
-pub mod func_def;
+mod cast_instruction;
+mod func_def;
+mod statement;
 mod out;
 
 pub struct Generator<'ctx> {

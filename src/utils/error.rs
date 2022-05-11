@@ -29,4 +29,10 @@ pub enum CompileErr {
 
     #[error("there are duplicate local variables: {}", .0.as_str())]
     DuplicatedVariable(String),
+
+    #[error("keyword {} is not in a loop", .0.as_str())]
+    KeywordNotInLoop(String),
+
+    #[error("error: {}", .0.as_str())]
+    Error(String),
 }

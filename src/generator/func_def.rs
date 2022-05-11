@@ -6,7 +6,7 @@ use inkwell::values::{BasicValue, PointerValue};
 use crate::utils::CompileErr as CE;
 
 impl<'ctx> Generator<'ctx> {
-    pub fn gen_func_def(
+    pub(crate) fn gen_func_def(
         &mut self,
         return_type: &BasicType,
         func_name: &String,
@@ -55,10 +55,10 @@ impl<'ctx> Generator<'ctx> {
             for element in state_or_decl {
                 match element {
                     StatementOrDeclaration::Statement(state) => {
-                        self.gen_state(state)?;
+                        self.gen_statement(state)?;
                     },
                     StatementOrDeclaration::LocalDeclaration(decl) => {
-                        self.gen_local_decl(decl)?;
+                        self.gen_decl_in_fn(decl)?;
                     },
                 }
             }
@@ -107,11 +107,13 @@ impl<'ctx> Generator<'ctx> {
         Ok(())
     }
 
-    fn gen_state(&mut self, state: &Statement) -> Result<()> {
-        unimplemented!()
-    }
-
-    fn gen_local_decl(&mut self, decl: &Declaration) -> Result<()> {
-        unimplemented!()
+    pub(crate) fn gen_decl_in_fn(&mut self, decl: &Declaration) -> Result<()> {
+        if let Declaration::Declaration(var_type, identifier, expr) = decl {
+            let p_val = self.builder.build_alloca(var_type.basic_type.base_type.to_llvm_type(self.context), &identifier.to_owned().unwrap());
+            self.insert_to_val_map(&var_type.basic_type, &identifier.to_owned().unwrap(), p_val)?;
+            Ok(())
+        } else {
+            Err(CE::Error("FunctionDefinition cannot exist in function".to_string()).into())
+        }
     }
 }
