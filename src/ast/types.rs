@@ -151,18 +151,17 @@ impl<'ctx> BaseType {
         }
     }
 
-    // default cast
-    pub fn default_cast(&self, cast_ty: &BaseType) -> Result<BaseType> {
+    pub(crate) fn test_cast(&self, dest: &BaseType) -> Result<()> {
         // same type, directly cast
-        if self == cast_ty {
-            return Ok(cast_ty.clone());
+        if self == dest {
+            return Ok(());
         }
 
-        if self.cast_rank() < cast_ty.cast_rank() {
-            return Ok(cast_ty.clone());
+        if self.cast_rank() < dest.cast_rank() {
+            return Ok(());
         }
 
-        Err(CompileErr::InvalidDefaultCast(self.clone(), cast_ty.clone()).into())
+        Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into())
     }
 }
 

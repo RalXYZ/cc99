@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use anyhow::Result;
-use pest::consumes_to;
 use crate::generator::Generator;
 use crate::ast::{Expression, ForInitClause, Statement, StatementOrDeclaration};
 use crate::utils::CompileErr as CE;
@@ -151,16 +150,19 @@ impl<'ctx> Generator<'ctx> {
     }
 
     fn gen_return_statement(&mut self, expr: &Option<Box<Expression>>) -> Result<()> {
-        // if expr.is_none() {
-        //     self.builder.build_return(None);
-        //     return Ok(());
-        // }
-        //
-        // let expr = expr.unwrap()
-        //
-        // let func_type = self.current_function.as_ref().unwrap().1;
-        //
-        // Ok(())
-        unimplemented!()
+        if expr.is_none() {
+            self.builder.build_return(None);
+            return Ok(());
+        }
+
+        let func_return_type = self.current_function.as_ref().unwrap().to_owned().1.base_type;
+        let expr = self.gen_expression(&expr.to_owned().unwrap())?;
+
+        expr.0.test_cast(&func_return_type)?;
+
+        let return_val = self.cast_value(&expr.0, &expr.1, &func_return_type)?;
+        self.builder.build_return(Some(&return_val));
+
+        Ok(())
     }
 }

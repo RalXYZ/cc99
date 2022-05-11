@@ -70,7 +70,7 @@ impl<'ctx> Generator<'ctx> {
                     )?;
                 }
                 Ok(())
-            });
+            })?;
 
         declarations.iter().try_for_each(|declaration| -> Result<()> {
            if let Declaration::FunctionDefinition(
@@ -84,7 +84,7 @@ impl<'ctx> Generator<'ctx> {
                self.gen_func_def(&return_type, identifier, params_type, statements)?;
            }
            Ok(())
-        });
+        })?;
 
         self.out_asm()?;
         self.out_bc();
@@ -118,14 +118,7 @@ impl<'ctx> Generator<'ctx> {
 
         // create function
         self.module.add_function(func_name.as_str(), llvm_func_ty, None);
-
-        let ret_ty = if ret_type.base_type != BaseType::Void {
-            Some(ret_type.to_owned())
-        } else {
-            None
-        };
-
-        self.function_map.insert(func_name.to_owned(), (ret_ty, params));
+        self.function_map.insert(func_name.to_owned(), (ret_type.to_owned(), params));
         Ok(())
     }
 
@@ -151,7 +144,7 @@ impl<'ctx> Generator<'ctx> {
         }
     }
 
-    fn cast_value(
+    pub(crate) fn cast_value(
         &self,
         curr_type: &BaseType,
         curr_val: &BasicValueEnum<'ctx>,
@@ -208,8 +201,8 @@ impl<'ctx> Generator<'ctx> {
         // if ptr_to_init is not None
         if let Some(ptr_to_init) = ptr_to_init {
             let init_val_pair = self.gen_expression(&**ptr_to_init)?;
-            let target_type = init_val_pair.0.default_cast(&var_type.basic_type.base_type)?;
-            let value_after_cast = self.cast_value(&init_val_pair.0, &init_val_pair.1, &target_type)?;
+            init_val_pair.0.test_cast(&var_type.basic_type.base_type)?;
+            let value_after_cast = self.cast_value(&init_val_pair.0, &init_val_pair.1, &var_type.basic_type.base_type)?;
 
             global_value.set_initializer(&value_after_cast);
         }
