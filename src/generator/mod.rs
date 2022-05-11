@@ -6,11 +6,12 @@ use inkwell::module::Module;
 use inkwell::values::{FunctionValue, PointerValue};
 use crate::ast::BasicType as BT;
 
-pub mod generator;
-mod cast_instruction;
+pub mod gen;
+mod cast_inst;
 mod func_def;
-mod statement;
+mod stmt;
 mod out;
+mod expr;
 
 pub struct Generator<'ctx> {
     module_name: &'ctx str,
