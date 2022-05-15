@@ -1,12 +1,16 @@
+use std::ops::Deref;
 use inkwell::values::{BasicValue, BasicValueEnum};
 use anyhow::Result;
-use crate::{BaseType, Expression, IntegerType};
+use inkwell::IntPredicate;
+use crate::ast::{BaseType, BasicType, Expression, IntegerType, UnaryOperation};
 use crate::generator::Generator;
 use crate::utils::CompileErr;
 
 impl<'ctx> Generator<'ctx> {
-    pub(crate) fn gen_expression(&self, expr: &Expression) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
+    pub(crate) fn gen_expression(&mut self, expr: &Expression) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
         match expr {
+            Expression::Unary(op, expr) =>
+                self.gen_unary_expr(op, expr),
             Expression::CharacterConstant(ref value) =>
                 Ok((
                     BaseType::SignedInteger(IntegerType::Char),
@@ -59,7 +63,7 @@ impl<'ctx> Generator<'ctx> {
                 // self.builder.build_return(None);
 
                 Ok((
-                    BaseType::Pointer(Box::new(BT{
+                    BaseType::Pointer(Box::new(BasicType{
                         qualifier: vec![],
                         base_type: BaseType::SignedInteger(IntegerType::Char),
                     })),
@@ -70,5 +74,110 @@ impl<'ctx> Generator<'ctx> {
             },
             _ => return Err(CompileErr::UnknownExpression(expr.to_string()).into()),
         }
+    }
+
+    fn gen_unary_expr(
+        &mut self, op: &UnaryOperation, expr: &Box<Expression>
+    ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
+        let (expr_type, expr_value) = self.gen_expression(expr)?;
+
+        match op {
+            UnaryOperation::UnaryPlus =>
+                match expr_type {
+                    BaseType::Bool |
+                    BaseType::SignedInteger(_) |
+                    BaseType::UnsignedInteger(_) |
+                    BaseType::Float |
+                    BaseType::Double =>
+                        Ok((expr_type, expr_value)),
+                    _ => return Err(CompileErr::InvalidUnary.into()),
+                },
+            UnaryOperation::UnaryMinus => {
+                match expr_type {
+                    BaseType::Bool |
+                    BaseType::SignedInteger(_) |
+                    BaseType::UnsignedInteger(_) =>
+                        Ok((
+                            expr_type,
+                            self.builder.build_int_neg(
+                                expr_value.into_int_value(), "int neg"
+                            ).as_basic_value_enum()
+                        )),
+                    BaseType::Float |
+                    BaseType::Double =>
+                        Ok((
+                            expr_type,
+                            self.builder.build_float_neg(
+                                expr_value.into_float_value(), "float neg"
+                            ).as_basic_value_enum()
+                        )),
+                    _ => return Err(CompileErr::InvalidUnary.into()),
+                }
+            },
+            UnaryOperation::BitwiseNot => {
+                match expr_type {
+                    BaseType::SignedInteger(_) |
+                    BaseType::UnsignedInteger(_) =>
+                        Ok((
+                            expr_type,
+                            self.builder.build_not(
+                                expr_value.into_int_value(), "bitwise not"
+                            ).as_basic_value_enum()
+                        )),
+                    _ => return Err(CompileErr::InvalidUnary.into()),
+                }
+            },
+            UnaryOperation::LogicalNot => {
+                match expr_type {
+                    BaseType::SignedInteger(_) => {
+                        let result_int = self.builder.build_int_compare(
+                            IntPredicate::EQ,
+                            expr_type.to_llvm_type(self.context)
+                                .into_int_type().const_int(0 as u64, true),
+                            expr_value.into_int_value(),
+                            "logical not result int",
+                        );
+
+                        Ok((
+                            BaseType::Bool, self.builder.build_int_cast(
+                                result_int,
+                                BaseType::Bool.to_llvm_type(self.context).into_int_type(),
+                                "cast logical not result to bool",
+                            ).as_basic_value_enum()
+                        ))
+                    },
+                    _ => return Err(CompileErr::InvalidUnary.into()),
+                }
+            },
+            UnaryOperation::Reference => {
+                match expr.deref().deref() {
+                    Expression::Identifier(ref id) => {
+                        let (t, ptr) = self.get_variable(id)?;
+                        Ok((
+                            BaseType::Pointer(Box::new(t)),
+                            ptr.as_basic_value_enum(),
+                        ))
+                    },
+                    _ => return Err(CompileErr::InvalidUnary.into()),
+
+                }
+            },
+            UnaryOperation::Dereference => {
+                match expr_type {
+                    BaseType::Pointer(ref t) => {
+                        Ok((
+                            t.base_type.clone(),
+                            self.builder.build_load(
+                                expr_value.into_pointer_value(),
+                                "dereference",
+                            ).as_basic_value_enum(),
+                        ))
+                    },
+                    _ => return Err(CompileErr::InvalidUnary.into()),
+                }
+            },
+            _ => unimplemented!()
+        }
+
     }
 }

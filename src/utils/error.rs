@@ -18,6 +18,9 @@ pub enum CompileErr {
     #[error("invalid cast from {} to {}", .0.to_string(), .1.to_string())]
     InvalidCast(BaseType, BaseType),
 
+    #[error("invalid unary operator")]
+    InvalidUnary,
+
     #[error("there are duplicate functions: {}", .0.as_str())]
     DuplicateFunction(String),
 
