@@ -21,6 +21,9 @@ pub enum CompileErr {
     #[error("invalid unary operator")]
     InvalidUnary,
 
+    #[error("invalid binary operator")]
+    InvalidBinary,
+
     #[error("invalid lvalue")]
     InvalidLvalue,
 

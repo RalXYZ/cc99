@@ -1,5 +1,5 @@
 use std::ops::Deref;
-use inkwell::values::{BasicValue, BasicValueEnum, PointerValue};
+use inkwell::values::{BasicValue, BasicValueEnum, IntValue, PointerValue};
 use anyhow::Result;
 use inkwell::IntPredicate;
 use crate::ast::{BaseType, BasicType, Expression, IntegerType, UnaryOperation, AssignOperation, BinaryOperation};
@@ -209,14 +209,73 @@ impl<'ctx> Generator<'ctx> {
                     _ => return Err(CompileErr::InvalidUnary.into()),
                 }
             },
-            _ => unimplemented!()
+            _ => return Err(CompileErr::InvalidUnary.into())
         }
     }
 
     fn gen_binary_expr(
-        &self, op: &BinaryOperation, lhs: &Box<Expression>, rhs: &Box<Expression>
+        &mut self, op: &BinaryOperation, lhs: &Box<Expression>, rhs: &Box<Expression>
     ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
-        unimplemented!()
+        let (l_t, l_v) = self.gen_expression(lhs)?;
+        let (r_t, r_v) = self.gen_expression(rhs)?;
+
+        let cast_t = BaseType::upcast(&l_t, &r_t)?;
+        let l_cast_v = self.cast_value(&l_t, &l_v, &cast_t)?;
+        let r_cast_v = self.cast_value(&r_t, &r_v, &cast_t)?;
+
+        match cast_t {
+            BaseType::SignedInteger(_) | BaseType::UnsignedInteger(_) => {
+                Ok((
+                    cast_t,
+                    self.build_int_binary_op(
+                        op,
+                        l_cast_v.into_int_value(),
+                        r_cast_v.into_int_value()
+                    )?,
+                ))
+            }
+            _ => unimplemented!()
+        }
+    }
+
+    fn build_int_binary_op(
+        &self, op: &BinaryOperation, lhs: IntValue<'ctx>, rhs: IntValue<'ctx>
+    ) -> Result<BasicValueEnum<'ctx>> {
+        let result_v = match op {
+            // arithmetic
+            BinaryOperation::Addition => self.builder.build_int_add(lhs, rhs, "int add"),
+            BinaryOperation::Subtraction => self.builder.build_int_sub(lhs, rhs, "int sub"),
+            BinaryOperation::Multiplication => self.builder.build_int_mul(lhs, rhs, "int mul"),
+            BinaryOperation::Division => self.builder.build_int_signed_div(lhs, rhs, "int div"),
+            BinaryOperation::Modulo => self.builder.build_int_signed_rem(lhs, rhs, "int mod"),
+            BinaryOperation::BitwiseAnd => self.builder.build_and(lhs, rhs, "int and"),
+            BinaryOperation::BitwiseOr => self.builder.build_or(lhs, rhs, "int or"),
+            BinaryOperation::BitwiseXor => self.builder.build_xor(lhs, rhs, "int xor"),
+            BinaryOperation::LeftShift => self.builder.build_left_shift(lhs, rhs, "int shl"),
+            BinaryOperation::RightShift => self.builder.build_right_shift(lhs, rhs, true, "int shr"),
+            // comparison
+            BinaryOperation::LessThan => self.builder.build_int_compare(IntPredicate::SLT, lhs, rhs, "int lt"),
+            BinaryOperation::LessThanOrEqual => self.builder.build_int_compare(IntPredicate::SLE, lhs, rhs, "int le"),
+            BinaryOperation::GreaterThan => self.builder.build_int_compare(IntPredicate::SGT, lhs, rhs, "int gt"),
+            BinaryOperation::GreaterThanOrEqual => self.builder.build_int_compare(IntPredicate::SGE, lhs, rhs, "int ge"),
+            BinaryOperation::Equal => self.builder.build_int_compare(IntPredicate::EQ, lhs, rhs, "int eq"),
+            BinaryOperation::NotEqual => self.builder.build_int_compare(IntPredicate::NE, lhs, rhs, "int ne"),
+            // logical
+            BinaryOperation::LogicalAnd => self.builder.build_and(
+                self.builder.build_int_cast(lhs, self.context.bool_type(), "cast i32 to i1"),
+                self.builder.build_int_cast(rhs, self.context.bool_type(), "cast i32 to i1"),
+                "logical int and",
+            ),
+            BinaryOperation::LogicalOr => self.builder.build_or(
+                self.builder.build_int_cast(lhs, self.context.bool_type(), "cast i32 to i1"),
+                self.builder.build_int_cast(rhs, self.context.bool_type(), "cast i32 to i1"),
+                "logical int or"
+            ),
+
+            _ => return Err(CompileErr::InvalidBinary.into())
+        };
+
+        Ok(result_v.as_basic_value_enum())
     }
 
     fn get_lvalue(&self, expr: &Expression) -> Result<(BasicType, PointerValue<'ctx>)> {

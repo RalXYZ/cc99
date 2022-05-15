@@ -123,6 +123,14 @@ impl<'ctx> BaseType {
         }
     }
 
+    pub(crate) fn upcast(lhs: &BaseType, rhs: &BaseType) -> Result<BaseType> {
+        if lhs.cast_rank() >= rhs.cast_rank() {
+            Ok(lhs.clone())
+        } else {
+            Ok(rhs.clone())
+        }
+    }
+
     pub(crate) fn test_cast(&self, dest: &BaseType) -> Result<()> {
         // same type, directly cast
         if self == dest {
