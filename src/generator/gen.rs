@@ -4,8 +4,9 @@ use std::path::Path;
 use inkwell::context::Context;
 use inkwell::values::{BasicValueEnum, PointerValue};
 use anyhow::Result;
+use inkwell::AddressSpace;
 use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType};
-use crate::ast::{AST, BaseType, BasicType as BT, Declaration, Expression, Type};
+use crate::ast::{AST, BaseType, BasicType as BT, Declaration, Expression, Type, IntegerType};
 use crate::generator::Generator;
 use crate::utils::CompileErr;
 
@@ -110,7 +111,7 @@ impl<'ctx> Generator<'ctx> {
 
         for param in func_param {
             params.push(param.to_owned());
-            llvm_params.push(param.base_type.to_llvm_type(self.context));
+            llvm_params.push(self.convert_llvm_type(&param.base_type));
         }
 
         let llvm_func_ty = self.to_return_type(ret_type, &llvm_params)?;
@@ -123,7 +124,7 @@ impl<'ctx> Generator<'ctx> {
 
     // add void type as return type
     fn to_return_type(
-        &self,
+        &mut self,
         in_type: &BT,
         param_types: &Vec<BasicTypeEnum<'ctx>>
     ) -> Result<FunctionType<'ctx>> {
@@ -137,14 +138,14 @@ impl<'ctx> Generator<'ctx> {
                 false,
             )),
             _ => {
-                let basic_type = in_type.base_type.to_llvm_type(self.context);
+                let basic_type = self.convert_llvm_type(&in_type.base_type);
                 Ok(basic_type.fn_type(&param_types_meta, false))
             }
         }
     }
 
     pub(crate) fn cast_value(
-        &self,
+        &mut self,
         curr_type: &BaseType,
         curr_val: &BasicValueEnum<'ctx>,
         dest_type: &BaseType,
@@ -153,9 +154,13 @@ impl<'ctx> Generator<'ctx> {
             return Ok(curr_val.to_owned());
         }
 
+        let llvm_type = self.convert_llvm_type(dest_type);
+
         Ok(self.builder.build_cast(
-            self.gen_cast_llvm_instruction(curr_type, dest_type)?, *curr_val,
-            dest_type.to_llvm_type(self.context), "cast",
+            self.gen_cast_llvm_instruction(curr_type, dest_type)?,
+            *curr_val,
+            llvm_type,
+            "cast",
         ))
     }
 
@@ -191,8 +196,9 @@ impl<'ctx> Generator<'ctx> {
             return Err(CompileErr::DuplicatedSymbol(var_name.to_string()).into());
         }
 
+        let llvm_type = self.convert_llvm_type(&var_type.basic_type.base_type);
         let global_value = self.module.add_global(
-            var_type.basic_type.base_type.to_llvm_type(self.context),
+            llvm_type,
             None,
             var_name.as_str(),
         );
@@ -212,5 +218,36 @@ impl<'ctx> Generator<'ctx> {
         );
 
         Ok(())
+    }
+
+    pub(crate) fn convert_llvm_type(&mut self, base_type: &BaseType) -> BasicTypeEnum<'ctx> {
+        match base_type {
+            &BaseType::Bool => self.context.bool_type().as_basic_type_enum(),
+            &BaseType::SignedInteger(IntegerType::Char) => self.context.i8_type().as_basic_type_enum(),
+            &BaseType::UnsignedInteger(IntegerType::Char) => self.context.i8_type().as_basic_type_enum(),
+            &BaseType::SignedInteger(IntegerType::Short) => self.context.i16_type().as_basic_type_enum(),
+            &BaseType::UnsignedInteger(IntegerType::Short) => self.context.i16_type().as_basic_type_enum(),
+            &BaseType::SignedInteger(IntegerType::Int) => self.context.i32_type().as_basic_type_enum(),
+            &BaseType::UnsignedInteger(IntegerType::Int) => self.context.i32_type().as_basic_type_enum(),
+            &BaseType::SignedInteger(IntegerType::Long) => self.context.i64_type().as_basic_type_enum(),
+            &BaseType::UnsignedInteger(IntegerType::Long) => self.context.i64_type().as_basic_type_enum(),
+            &BaseType::SignedInteger(IntegerType::LongLong) => self.context.i64_type().as_basic_type_enum(),
+            &BaseType::UnsignedInteger(IntegerType::LongLong) => self.context.i64_type().as_basic_type_enum(),
+            &BaseType::Float => self.context.f32_type().as_basic_type_enum(),
+            &BaseType::Double => self.context.f64_type().as_basic_type_enum(),
+            &BaseType::Pointer(ref basic_type) => {
+                self.convert_llvm_type(&basic_type.base_type)
+                    .ptr_type(AddressSpace::Generic).as_basic_type_enum()
+            },
+            &BaseType::Array(ref basic_type, ref length) => {
+                self.convert_llvm_type(&basic_type.base_type)
+                    .array_type(
+                        self.gen_expression(length).unwrap().1
+                            .into_int_value().get_zero_extended_constant().unwrap() as u32
+                    )
+                    .as_basic_type_enum()
+            },
+            _ => panic!()
+        }
     }
 }

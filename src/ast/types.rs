@@ -1,9 +1,6 @@
 use std::fmt;
-use inkwell::AddressSpace;
 use super::*;
 use anyhow::Result;
-use inkwell::context::Context;
-use inkwell::types::{BasicType as LlvmBasicType, BasicTypeEnum};
 use super::super::utils::CompileErr;
 
 use serde::Serialize;
@@ -106,31 +103,6 @@ impl Default for BaseType {
 }
 
 impl<'ctx> BaseType {
-    // convert from internal type to llvm type
-    pub fn to_llvm_type(&self, ctx: &'ctx Context) -> BasicTypeEnum<'ctx> {
-        match self {
-            &BaseType::Bool => ctx.bool_type().as_basic_type_enum(),
-            &BaseType::SignedInteger(IntegerType::Char) => ctx.i8_type().as_basic_type_enum(),
-            &BaseType::UnsignedInteger(IntegerType::Char) => ctx.i8_type().as_basic_type_enum(),
-            &BaseType::SignedInteger(IntegerType::Short) => ctx.i16_type().as_basic_type_enum(),
-            &BaseType::UnsignedInteger(IntegerType::Short) => ctx.i16_type().as_basic_type_enum(),
-            &BaseType::SignedInteger(IntegerType::Int) => ctx.i32_type().as_basic_type_enum(),
-            &BaseType::UnsignedInteger(IntegerType::Int) => ctx.i32_type().as_basic_type_enum(),
-            &BaseType::SignedInteger(IntegerType::Long) => ctx.i64_type().as_basic_type_enum(),
-            &BaseType::UnsignedInteger(IntegerType::Long) => ctx.i64_type().as_basic_type_enum(),
-            &BaseType::SignedInteger(IntegerType::LongLong) => ctx.i64_type().as_basic_type_enum(),
-            &BaseType::UnsignedInteger(IntegerType::LongLong) => ctx.i64_type().as_basic_type_enum(),
-            &BaseType::Float => ctx.f32_type().as_basic_type_enum(),
-            &BaseType::Double => ctx.f64_type().as_basic_type_enum(),
-            &BaseType::Pointer(ref basic_type) => {
-                basic_type.base_type
-                    .to_llvm_type(ctx)
-                    .ptr_type(AddressSpace::Generic).as_basic_type_enum()
-            }
-            _ => panic!()
-        }
-    }
-
     fn cast_rank(&self) -> i32 {
         match self {
             &BaseType::Void => 0,

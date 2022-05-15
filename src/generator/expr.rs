@@ -130,18 +130,19 @@ impl<'ctx> Generator<'ctx> {
             UnaryOperation::LogicalNot => {
                 match expr_type {
                     BaseType::SignedInteger(_) => {
+                        let llvm_type = self.convert_llvm_type(&expr_type);
                         let result_int = self.builder.build_int_compare(
                             IntPredicate::EQ,
-                            expr_type.to_llvm_type(self.context)
-                                .into_int_type().const_int(0 as u64, true),
+                            llvm_type.into_int_type().const_int(0 as u64, true),
                             expr_value.into_int_value(),
                             "logical not result int",
                         );
 
+                        let llvm_type = self.convert_llvm_type(&BaseType::Bool);
                         Ok((
                             BaseType::Bool, self.builder.build_int_cast(
                                 result_int,
-                                BaseType::Bool.to_llvm_type(self.context).into_int_type(),
+                                llvm_type.into_int_type(),
                                 "cast logical not result to bool",
                             ).as_basic_value_enum()
                         ))
