@@ -21,6 +21,9 @@ pub enum CompileErr {
     #[error("invalid unary operator")]
     InvalidUnary,
 
+    #[error("invalid lvalue")]
+    InvalidLvalue,
+
     #[error("there are duplicate functions: {}", .0.as_str())]
     DuplicateFunction(String),
 

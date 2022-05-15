@@ -1,14 +1,46 @@
 use std::ops::Deref;
-use inkwell::values::{BasicValue, BasicValueEnum};
+use inkwell::values::{BasicValue, BasicValueEnum, PointerValue};
 use anyhow::Result;
 use inkwell::IntPredicate;
-use crate::ast::{BaseType, BasicType, Expression, IntegerType, UnaryOperation};
+use crate::ast::{BaseType, BasicType, Expression, IntegerType, UnaryOperation, AssignOperation, BinaryOperation};
 use crate::generator::Generator;
 use crate::utils::CompileErr;
 
 impl<'ctx> Generator<'ctx> {
     pub(crate) fn gen_expression(&mut self, expr: &Expression) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
         match expr {
+            Expression::Assignment(ref op, ref lhs, ref rhs) => {
+                let (l_t, l_pv) = self.get_lvalue(lhs)?;
+
+                let (r_t, r_v) = if let AssignOperation::Naive = op {
+                    self.gen_expression(rhs)?
+                } else {
+                    self.gen_binary_expr(
+                        &match op {
+                            AssignOperation::Addition => BinaryOperation::Addition,
+                            AssignOperation::Subtraction => BinaryOperation::Subtraction,
+                            AssignOperation::Multiplication => BinaryOperation::Multiplication,
+                            AssignOperation::Division => BinaryOperation::Division,
+                            AssignOperation::Modulo => BinaryOperation::Modulo,
+                            AssignOperation::BitwiseAnd => BinaryOperation::BitwiseAnd,
+                            AssignOperation::BitwiseOr => BinaryOperation::BitwiseOr,
+                            AssignOperation::BitwiseXor => BinaryOperation::BitwiseXor,
+                            AssignOperation::LeftShift => BinaryOperation::LeftShift,
+                            AssignOperation::RightShift => BinaryOperation::RightShift,
+                            AssignOperation::Naive => unreachable!(),
+                        },
+                        lhs,
+                        rhs,
+                    )?
+                };
+
+                r_t.test_cast(&l_t.base_type)?;
+                let cast_v = self.cast_value(&r_t, &r_v, &l_t.base_type)?;
+
+                self.builder.build_store(l_pv, cast_v);
+
+                Ok((l_t.base_type, cast_v))
+            },
             Expression::Unary(op, expr) =>
                 self.gen_unary_expr(op, expr),
             Expression::CharacterConstant(ref value) =>
@@ -179,6 +211,19 @@ impl<'ctx> Generator<'ctx> {
             },
             _ => unimplemented!()
         }
+    }
 
+    fn gen_binary_expr(
+        &self, op: &BinaryOperation, lhs: &Box<Expression>, rhs: &Box<Expression>
+    ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
+        unimplemented!()
+    }
+
+    fn get_lvalue(&self, expr: &Expression) -> Result<(BasicType, PointerValue<'ctx>)> {
+        match expr {
+            Expression::Identifier(ref id) =>
+                Ok(self.get_variable(id)?),
+            _ => Err(CompileErr::InvalidLvalue.into()),
+        }
     }
 }

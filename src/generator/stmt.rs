@@ -23,8 +23,13 @@ impl<'ctx> Generator<'ctx> {
                 self.gen_if_statement(cond, then_stmt, else_stmt)?,
             Statement::Return(expr) =>
                 self.gen_return_statement(expr)?,
-            _ =>
+            Statement::Expression(expr) => {
+                self.gen_expression(expr)?;
+            }
+            _ => {
+                dbg!(statement);
                 unimplemented!()
+            }
         };
         Ok(())
     }
