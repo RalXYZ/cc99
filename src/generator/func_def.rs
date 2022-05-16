@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use crate::ast::{BasicType, Statement, Declaration, StatementOrDeclaration, BaseType};
 use crate::generator::Generator;
 use anyhow::Result;
-use inkwell::values::{BasicValue, PointerValue};
+use inkwell::values::{AnyValue, BasicValue, PointerValue};
 use crate::utils::CompileErr as CE;
 
 impl<'ctx> Generator<'ctx> {
@@ -84,6 +84,11 @@ impl<'ctx> Generator<'ctx> {
                 }
             }
             iter_block = block.get_next_basic_block();
+        }
+
+        if !func.verify(true) {
+            func.print_to_stderr();
+            panic!()
         }
 
         self.val_map_block_stack.pop();

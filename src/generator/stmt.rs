@@ -69,21 +69,24 @@ impl<'ctx> Generator<'ctx> {
         self.builder.build_unconditional_branch(before_while_block);
         self.builder.position_at_end(before_while_block);
         let condition_val_int_val = self.gen_expression(cond)?.1.into_int_value();
-        if is_do_while {
-            self.builder.build_unconditional_branch(while_block);
-        } else {
-            self.builder.build_conditional_branch(condition_val_int_val,while_block, after_while_block);
+        if self.no_terminator() {
+            if is_do_while {
+                self.builder.build_unconditional_branch(while_block);
+            } else {
+                self.builder.build_conditional_branch(condition_val_int_val, while_block, after_while_block);
+            }
         }
 
         self.builder.position_at_end(while_block);
 
         // body must be Statement::Compound
         self.gen_statement(body)?;
-        // FIXME: maybe we need to add if self.no_terminator()
-        if is_do_while {
-            self.builder.build_conditional_branch(condition_val_int_val, before_while_block, after_while_block);
-        } else {
-            self.builder.build_unconditional_branch(before_while_block);
+        if self.no_terminator() {
+            if is_do_while {
+                self.builder.build_conditional_branch(condition_val_int_val, before_while_block, after_while_block);
+            } else {
+                self.builder.build_unconditional_branch(before_while_block);
+            }
         }
 
         self.builder.position_at_end(after_while_block);
@@ -139,14 +142,16 @@ impl<'ctx> Generator<'ctx> {
 
         self.builder.position_at_end(if_block);
         self.gen_statement(then_stmt)?;
-        // FIXME: maybe we need to add if self.no_terminator()
-        self.builder.build_unconditional_branch(after_block);
+        if self.no_terminator() {
+            self.builder.build_unconditional_branch(after_block);
+        };
 
         if let Some(ref else_stmt) = *else_stmt {
             self.builder.position_at_end(else_block);
             self.gen_statement(else_stmt)?;
-            // FIXME: maybe we need to add if self.no_terminator()
-            self.builder.build_unconditional_branch(after_block);
+            if self.no_terminator() {
+                self.builder.build_unconditional_branch(after_block);
+            }
         }
 
         self.builder.position_at_end(after_block);
@@ -167,6 +172,11 @@ impl<'ctx> Generator<'ctx> {
 
         let return_val = self.cast_value(&expr.0, &expr.1, &func_return_type)?;
         self.builder.build_return(Some(&return_val));
+
+        let func_block = self.context.append_basic_block(
+            self.current_function.as_ref().unwrap().0, "after ret"
+        );
+        self.builder.position_at_end(func_block);
 
         Ok(())
     }

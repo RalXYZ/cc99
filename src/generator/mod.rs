@@ -12,6 +12,7 @@ mod func_def;
 mod stmt;
 mod out;
 mod expr;
+mod utils;
 
 pub struct Generator<'ctx> {
     module_name: &'ctx str,

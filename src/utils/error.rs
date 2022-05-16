@@ -44,4 +44,7 @@ pub enum CompileErr {
 
     #[error("error: {}", .0.as_str())]
     Error(String),
+
+    #[error("parameter count of {} mismatch: expect {}, got {}", .0.as_str(), .1.to_string(), .2.to_string())]
+    ParameterCountMismatch(String, usize, usize),
 }

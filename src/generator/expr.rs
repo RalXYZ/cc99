@@ -1,8 +1,9 @@
 use std::borrow::Borrow;
 use std::ops::Deref;
-use inkwell::values::{BasicValue, BasicValueEnum, IntValue, PointerValue};
+use inkwell::values::{BasicMetadataValueEnum, BasicValue, BasicValueEnum, IntValue, PointerValue};
 use anyhow::Result;
 use inkwell::{AddressSpace, IntPredicate};
+use inkwell::types::AnyType;
 use crate::ast::{BaseType, BasicType, Expression, IntegerType, UnaryOperation, AssignOperation, BinaryOperation};
 use crate::generator::Generator;
 use crate::utils::CompileErr;
@@ -16,6 +17,8 @@ impl<'ctx> Generator<'ctx> {
                 self.gen_unary_expr(op, expr),
             Expression::Binary(op, lhs, rhs) =>
                 self.gen_binary_expr(op, lhs, rhs),
+            Expression::FunctionCall(ref name, ref args) =>
+                self.gen_function_call(name, args),
             Expression::CharacterConstant(ref value) =>
                 Ok((
                     BaseType::SignedInteger(IntegerType::Char),
@@ -340,6 +343,51 @@ impl<'ctx> Generator<'ctx> {
                 }
             },
             _ => panic!()
+        }
+    }
+
+    fn gen_function_call(
+        &mut self, name: &Box<Expression>, args: &Vec<Expression>
+    ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
+        if let Expression::Identifier(ref id) = name.deref().deref() {
+            let (ret_t, args_t) = self.function_map.get(id).unwrap().to_owned();
+            let fv = self.module.get_function(id).unwrap();
+
+            if args.len() != fv.get_type().count_param_types() as usize {
+                return Err(
+                    CompileErr::ParameterCountMismatch(
+                        id.to_string(),
+                        fv.get_type().count_param_types() as usize,
+                        args.len(),
+                    ).into()
+                )
+            }
+
+            let mut casted_args = Vec::with_capacity(args.len());
+
+            for (i, e) in args.iter().enumerate() {
+                let t = args_t.get(i).unwrap();
+
+                let (e_t, e_v) = self.gen_expression(e)?;
+
+                e_t.test_cast(&t.base_type)?;
+                let cast_v = self.cast_value(&e_t, &e_v, &t.base_type)?;
+
+                casted_args.push(BasicMetadataValueEnum::from(cast_v));
+            }
+
+            let ret_v = self.builder.build_call(fv, casted_args.as_slice(), id)
+                .try_as_basic_value()
+                .left();
+
+            if ret_t.base_type == BaseType::Void && ret_v.is_none()
+                || ret_t.base_type != BaseType::Void && ret_v.is_some() {
+                Ok((ret_t.base_type, ret_v.unwrap_or(self.context.i32_type().const_zero().as_basic_value_enum())))
+            } else {
+                unreachable!()
+            }
+        } else {
+            unreachable!()
         }
     }
 }
