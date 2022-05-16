@@ -1,7 +1,8 @@
+use std::borrow::Borrow;
 use std::ops::Deref;
 use inkwell::values::{BasicValue, BasicValueEnum, IntValue, PointerValue};
 use anyhow::Result;
-use inkwell::IntPredicate;
+use inkwell::{AddressSpace, IntPredicate};
 use crate::ast::{BaseType, BasicType, Expression, IntegerType, UnaryOperation, AssignOperation, BinaryOperation};
 use crate::generator::Generator;
 use crate::utils::CompileErr;
@@ -9,38 +10,8 @@ use crate::utils::CompileErr;
 impl<'ctx> Generator<'ctx> {
     pub(crate) fn gen_expression(&mut self, expr: &Expression) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
         match expr {
-            Expression::Assignment(ref op, ref lhs, ref rhs) => {
-                let (l_t, l_pv) = self.get_lvalue(lhs)?;
-
-                let (r_t, r_v) = if let AssignOperation::Naive = op {
-                    self.gen_expression(rhs)?
-                } else {
-                    self.gen_binary_expr(
-                        &match op {
-                            AssignOperation::Addition => BinaryOperation::Addition,
-                            AssignOperation::Subtraction => BinaryOperation::Subtraction,
-                            AssignOperation::Multiplication => BinaryOperation::Multiplication,
-                            AssignOperation::Division => BinaryOperation::Division,
-                            AssignOperation::Modulo => BinaryOperation::Modulo,
-                            AssignOperation::BitwiseAnd => BinaryOperation::BitwiseAnd,
-                            AssignOperation::BitwiseOr => BinaryOperation::BitwiseOr,
-                            AssignOperation::BitwiseXor => BinaryOperation::BitwiseXor,
-                            AssignOperation::LeftShift => BinaryOperation::LeftShift,
-                            AssignOperation::RightShift => BinaryOperation::RightShift,
-                            AssignOperation::Naive => unreachable!(),
-                        },
-                        lhs,
-                        rhs,
-                    )?
-                };
-
-                r_t.test_cast(&l_t.base_type)?;
-                let cast_v = self.cast_value(&r_t, &r_v, &l_t.base_type)?;
-
-                self.builder.build_store(l_pv, cast_v);
-
-                Ok((l_t.base_type, cast_v))
-            },
+            Expression::Assignment(ref op, ref lhs, ref rhs) =>
+                self.gen_assignment(op, lhs, rhs),
             Expression::Unary(op, expr) =>
                 self.gen_unary_expr(op, expr),
             Expression::CharacterConstant(ref value) =>
@@ -103,6 +74,32 @@ impl<'ctx> Generator<'ctx> {
                         .build_global_string_ptr(string.as_str(), "str")
                         .as_basic_value_enum(),
                 ))
+            },
+            Expression::ArraySubscript(ref id_expr, ref idx) => {
+                if let Expression::Identifier(id) = id_expr.deref() {
+                    let (l_t, l_pv) = self.get_variable(id)?;
+                    if let BaseType::Array(arr_t, arr_l) = l_t.base_type {
+                        let idx = self.gen_expression(idx).unwrap().1
+                            .into_int_value();
+                        Ok((
+                            arr_t.base_type,
+                            self.builder.build_load(
+                                unsafe {
+                                    self.builder.build_gep(
+                                        l_pv,
+                                        vec![self.context.i32_type().const_zero(), idx].as_ref(),
+                                        "arr subscript",
+                                    )
+                                },
+                                "load arr subscript",
+                            ),
+                        ))
+                    } else {
+                        unreachable!()
+                    }
+                } else {
+                    unreachable!()
+                }
             },
             _ => return Err(CompileErr::UnknownExpression(expr.to_string()).into()),
         }
@@ -278,11 +275,69 @@ impl<'ctx> Generator<'ctx> {
         Ok(result_v.as_basic_value_enum())
     }
 
-    fn get_lvalue(&self, expr: &Expression) -> Result<(BasicType, PointerValue<'ctx>)> {
-        match expr {
-            Expression::Identifier(ref id) =>
-                Ok(self.get_variable(id)?),
-            _ => Err(CompileErr::InvalidLvalue.into()),
+    fn gen_assignment(&mut self, op: &AssignOperation, lhs: &Box<Expression>, rhs: &Box<Expression>) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
+        let (l_t, l_pv) = self.get_lvalue(lhs)?;
+
+        let (r_t, r_v) = if let AssignOperation::Naive = op {
+            self.gen_expression(rhs)?
+        } else {
+            self.gen_binary_expr(
+                &match op {
+                    AssignOperation::Addition => BinaryOperation::Addition,
+                    AssignOperation::Subtraction => BinaryOperation::Subtraction,
+                    AssignOperation::Multiplication => BinaryOperation::Multiplication,
+                    AssignOperation::Division => BinaryOperation::Division,
+                    AssignOperation::Modulo => BinaryOperation::Modulo,
+                    AssignOperation::BitwiseAnd => BinaryOperation::BitwiseAnd,
+                    AssignOperation::BitwiseOr => BinaryOperation::BitwiseOr,
+                    AssignOperation::BitwiseXor => BinaryOperation::BitwiseXor,
+                    AssignOperation::LeftShift => BinaryOperation::LeftShift,
+                    AssignOperation::RightShift => BinaryOperation::RightShift,
+                    AssignOperation::Naive => unreachable!(),
+                },
+                lhs,
+                rhs,
+            )?
+        };
+
+        r_t.test_cast(&l_t.base_type)?;
+        let cast_v = self.cast_value(&r_t, &r_v, &l_t.base_type)?;
+
+        self.builder.build_store(l_pv, cast_v);
+
+        Ok((l_t.base_type, cast_v))
+    }
+
+    fn get_lvalue(&mut self, lhs: &Box<Expression>) -> Result<(BasicType, PointerValue<'ctx>)> {
+        match lhs.deref().deref() {
+            Expression::Identifier(ref id) => Ok(self.get_variable(id)?),
+            Expression::ArraySubscript(ref id_expr, ref idx) => {
+                if let Expression::Identifier(id) = id_expr.deref() {
+                    let (t, pv) = self.get_variable(id)?;
+
+                    if let BaseType::Array(arr_t, _) = t.base_type {
+                        let idx = self.gen_expression(idx).unwrap().1
+                            .into_int_value();
+                        Ok((
+                            *arr_t,
+                            unsafe {
+                                self.builder.build_gep(
+                                    // pv.const_cast(element_pt),
+                                    // pv.const_address_space_cast(self.context.i32_type().ptr_type(AddressSpace::Generic)),
+                                    pv,
+                                    vec![self.context.i32_type().const_zero(), idx].as_ref(),
+                                    "arr subscript",
+                                )
+                            },
+                        ))
+                    } else {
+                        unreachable!()
+                    }
+                } else {
+                    unreachable!()
+                }
+            },
+            _ => panic!()
         }
     }
 }
