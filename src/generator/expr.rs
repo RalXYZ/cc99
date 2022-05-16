@@ -14,6 +14,8 @@ impl<'ctx> Generator<'ctx> {
                 self.gen_assignment(op, lhs, rhs),
             Expression::Unary(op, expr) =>
                 self.gen_unary_expr(op, expr),
+            Expression::Binary(op, lhs, rhs) =>
+                self.gen_binary_expr(op, lhs, rhs),
             Expression::CharacterConstant(ref value) =>
                 Ok((
                     BaseType::SignedInteger(IntegerType::Char),
