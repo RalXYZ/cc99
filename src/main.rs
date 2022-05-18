@@ -3,13 +3,17 @@ extern crate pest;
 extern crate pest_derive;
 use clap::{ArgGroup, Parser};
 use std::fs;
+use inkwell::context::Context;
 
 mod ast;
 mod parse;
 mod preprocess;
+mod generator;
+mod utils;
 
 use parse::*;
 use preprocess::*;
+use generator::*;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -54,6 +58,17 @@ fn main() {
         fs::write(&args.output, &serde_json::to_string(&ast).unwrap())
             .unwrap_or_else(|_| panic!("Unable to write file {}", args.output));
     } else {
+        let code = preprocess_file(&args.file, &include_dirs).unwrap();
+        let ast = parse(&code).unwrap();
+
+        let context = Context::create();
+        let mut code_gen = Generator::new(&context, &args.file);
+        let gen_result = code_gen.gen(&ast);
+
+        if let Err(e) = gen_result {
+            panic!("{}", e);
+        }
+
         unimplemented!();
     }
 }

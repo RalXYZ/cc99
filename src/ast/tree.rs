@@ -1,3 +1,4 @@
+use std::fmt;
 use serde::Serialize;
 
 use super::operations::*;
@@ -162,5 +163,11 @@ impl Default for Statement {
 impl Default for Expression {
     fn default() -> Self {
         Expression::Empty
+    }
+}
+
+impl fmt::Display for Expression {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
