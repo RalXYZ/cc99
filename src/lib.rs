@@ -4,9 +4,9 @@ extern crate pest_derive;
 extern crate core;
 
 pub mod ast;
+pub mod generator;
 pub mod parse;
 pub mod preprocess;
-pub mod generator;
 #[cfg(feature = "web")]
 pub mod visual;
 

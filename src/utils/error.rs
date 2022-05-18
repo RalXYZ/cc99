@@ -1,5 +1,5 @@
-use thiserror::Error;
 use crate::ast::BaseType;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum CompileErr {

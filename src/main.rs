@@ -2,18 +2,18 @@ extern crate pest;
 #[macro_use]
 extern crate pest_derive;
 use clap::{ArgGroup, Parser};
-use std::fs;
 use inkwell::context::Context;
+use std::fs;
 
 mod ast;
+mod generator;
 mod parse;
 mod preprocess;
-mod generator;
 mod utils;
 
+use generator::*;
 use parse::*;
 use preprocess::*;
-use generator::*;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]

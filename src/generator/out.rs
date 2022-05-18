@@ -1,16 +1,16 @@
-use std::path::PathBuf;
-use inkwell::OptimizationLevel;
-use inkwell::targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine};
 use crate::generator::Generator;
 use anyhow::Result;
+use inkwell::targets::{
+    CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
+};
+use inkwell::OptimizationLevel;
+use std::path::PathBuf;
 
 impl<'ctx> Generator<'ctx> {
     pub fn out_bc(&mut self) -> bool {
         let mut target_path = PathBuf::from(self.module_name);
         target_path.set_extension("bc");
-        self.module.write_bitcode_to_path(
-            target_path.as_path()
-        )
+        self.module.write_bitcode_to_path(target_path.as_path())
     }
 
     pub fn out_asm(&mut self) -> Result<()> {
@@ -32,11 +32,9 @@ impl<'ctx> Generator<'ctx> {
 
         let mut target_path = PathBuf::from(self.module_name);
         target_path.set_extension("asm");
-        machine.write_to_file(
-            &self.module,
-            FileType::Assembly,
-            target_path.as_ref()
-        ).unwrap();
+        machine
+            .write_to_file(&self.module, FileType::Assembly, target_path.as_ref())
+            .unwrap();
 
         return Ok(());
     }

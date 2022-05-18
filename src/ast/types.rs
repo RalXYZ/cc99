@@ -1,7 +1,7 @@
-use std::fmt;
+use super::super::utils::CompileErr;
 use super::*;
 use anyhow::Result;
-use super::super::utils::CompileErr;
+use std::fmt;
 
 use serde::Serialize;
 
@@ -119,7 +119,7 @@ impl<'ctx> BaseType {
             &BaseType::UnsignedInteger(IntegerType::LongLong) => 6,
             &BaseType::Float => 7,
             &BaseType::Double => 8,
-            _ => panic!()
+            _ => panic!(),
         }
     }
 

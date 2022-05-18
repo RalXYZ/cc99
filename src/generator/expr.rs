@@ -1,66 +1,80 @@
-use std::borrow::Borrow;
-use std::ops::Deref;
-use inkwell::values::{BasicMetadataValueEnum, BasicValue, BasicValueEnum, IntValue, PointerValue};
-use anyhow::Result;
-use inkwell::{AddressSpace, IntPredicate};
-use inkwell::types::AnyType;
-use crate::ast::{BaseType, BasicType, Expression, IntegerType, UnaryOperation, AssignOperation, BinaryOperation};
+use crate::ast::{
+    AssignOperation, BaseType, BasicType, BinaryOperation, Expression, IntegerType, UnaryOperation,
+};
 use crate::generator::Generator;
 use crate::utils::CompileErr;
+use anyhow::Result;
+use inkwell::types::AnyType;
+use inkwell::values::{BasicMetadataValueEnum, BasicValue, BasicValueEnum, IntValue, PointerValue};
+use inkwell::{AddressSpace, IntPredicate};
+use std::borrow::Borrow;
+use std::ops::Deref;
 
 impl<'ctx> Generator<'ctx> {
-    pub(crate) fn gen_expression(&mut self, expr: &Expression) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
+    pub(crate) fn gen_expression(
+        &mut self,
+        expr: &Expression,
+    ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
         match expr {
-            Expression::Assignment(ref op, ref lhs, ref rhs) =>
-                self.gen_assignment(op, lhs, rhs),
-            Expression::Unary(op, expr) =>
-                self.gen_unary_expr(op, expr),
-            Expression::Binary(op, lhs, rhs) =>
-                self.gen_binary_expr(op, lhs, rhs),
-            Expression::FunctionCall(ref name, ref args) =>
-                self.gen_function_call(name, args),
-            Expression::CharacterConstant(ref value) =>
-                Ok((
-                    BaseType::SignedInteger(IntegerType::Char),
-                    self.context.i8_type().const_int(*value as u64, false).as_basic_value_enum(),
-                )),
-            Expression::IntegerConstant(ref value) =>
-                Ok((
-                    BaseType::SignedInteger(IntegerType::Int),
-                    self.context.i32_type().const_int(*value as u64, false).as_basic_value_enum(),
-                )),
-            Expression::UnsignedIntegerConstant(ref value) =>
-                Ok((
-                    BaseType::UnsignedInteger(IntegerType::Int),
-                    self.context.i32_type().const_int(*value as u64, false).as_basic_value_enum(),
-                )),
-            Expression::LongConstant(ref value) |
-            Expression::LongLongConstant(ref value) =>
-                Ok((
-                    BaseType::SignedInteger(IntegerType::Long),
-                    self.context.i64_type().const_int(*value as u64, false).as_basic_value_enum(),
-                )),
-            Expression::UnsignedLongConstant(ref value) |
-            Expression::UnsignedLongLongConstant(ref value) =>
-                Ok((
-                    BaseType::UnsignedInteger(IntegerType::Long),
-                    self.context.i64_type().const_int(*value as u64, false).as_basic_value_enum(),
-                )),
-            Expression::FloatConstant(ref value) =>
-                Ok((
-                    BaseType::Float,
-                    self.context.f32_type().const_float(*value as f64).as_basic_value_enum(),
-                )),
-            Expression::DoubleConstant(ref value) =>
-                Ok((
-                    BaseType::Float,
-                    self.context.f64_type().const_float(*value as f64).as_basic_value_enum(),
-                )),
+            Expression::Assignment(ref op, ref lhs, ref rhs) => self.gen_assignment(op, lhs, rhs),
+            Expression::Unary(op, expr) => self.gen_unary_expr(op, expr),
+            Expression::Binary(op, lhs, rhs) => self.gen_binary_expr(op, lhs, rhs),
+            Expression::FunctionCall(ref name, ref args) => self.gen_function_call(name, args),
+            Expression::CharacterConstant(ref value) => Ok((
+                BaseType::SignedInteger(IntegerType::Char),
+                self.context
+                    .i8_type()
+                    .const_int(*value as u64, false)
+                    .as_basic_value_enum(),
+            )),
+            Expression::IntegerConstant(ref value) => Ok((
+                BaseType::SignedInteger(IntegerType::Int),
+                self.context
+                    .i32_type()
+                    .const_int(*value as u64, false)
+                    .as_basic_value_enum(),
+            )),
+            Expression::UnsignedIntegerConstant(ref value) => Ok((
+                BaseType::UnsignedInteger(IntegerType::Int),
+                self.context
+                    .i32_type()
+                    .const_int(*value as u64, false)
+                    .as_basic_value_enum(),
+            )),
+            Expression::LongConstant(ref value) | Expression::LongLongConstant(ref value) => Ok((
+                BaseType::SignedInteger(IntegerType::Long),
+                self.context
+                    .i64_type()
+                    .const_int(*value as u64, false)
+                    .as_basic_value_enum(),
+            )),
+            Expression::UnsignedLongConstant(ref value)
+            | Expression::UnsignedLongLongConstant(ref value) => Ok((
+                BaseType::UnsignedInteger(IntegerType::Long),
+                self.context
+                    .i64_type()
+                    .const_int(*value as u64, false)
+                    .as_basic_value_enum(),
+            )),
+            Expression::FloatConstant(ref value) => Ok((
+                BaseType::Float,
+                self.context
+                    .f32_type()
+                    .const_float(*value as f64)
+                    .as_basic_value_enum(),
+            )),
+            Expression::DoubleConstant(ref value) => Ok((
+                BaseType::Float,
+                self.context
+                    .f64_type()
+                    .const_float(*value as f64)
+                    .as_basic_value_enum(),
+            )),
             Expression::Identifier(ref string_literal) => {
                 let deref = self.get_variable(string_literal)?;
                 let val = self.builder.build_load(deref.1, "load val");
                 Ok((deref.0.base_type, val))
-            },
+            }
             Expression::StringLiteral(ref string) => {
                 // let i32_type = self.context.i32_type();
                 // let i32_ptr_type = i32_type.ptr_type(AddressSpace::Generic);
@@ -71,7 +85,7 @@ impl<'ctx> Generator<'ctx> {
                 // self.builder.build_return(None);
 
                 Ok((
-                    BaseType::Pointer(Box::new(BasicType{
+                    BaseType::Pointer(Box::new(BasicType {
                         qualifier: vec![],
                         base_type: BaseType::SignedInteger(IntegerType::Char),
                     })),
@@ -79,13 +93,12 @@ impl<'ctx> Generator<'ctx> {
                         .build_global_string_ptr(string.as_str(), "str")
                         .as_basic_value_enum(),
                 ))
-            },
+            }
             Expression::ArraySubscript(ref id_expr, ref idx) => {
                 if let Expression::Identifier(id) = id_expr.deref() {
                     let (l_t, l_pv) = self.get_variable(id)?;
                     if let BaseType::Array(arr_t, arr_l) = l_t.base_type {
-                        let idx = self.gen_expression(idx).unwrap().1
-                            .into_int_value();
+                        let idx = self.gen_expression(idx).unwrap().1.into_int_value();
                         Ok((
                             arr_t.base_type,
                             self.builder.build_load(
@@ -105,118 +118,100 @@ impl<'ctx> Generator<'ctx> {
                 } else {
                     unreachable!()
                 }
-            },
+            }
             _ => return Err(CompileErr::UnknownExpression(expr.to_string()).into()),
         }
     }
 
     fn gen_unary_expr(
-        &mut self, op: &UnaryOperation, expr: &Box<Expression>
+        &mut self,
+        op: &UnaryOperation,
+        expr: &Box<Expression>,
     ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
         let (expr_type, expr_value) = self.gen_expression(expr)?;
 
         match op {
-            UnaryOperation::UnaryPlus =>
-                match expr_type {
-                    BaseType::Bool |
-                    BaseType::SignedInteger(_) |
-                    BaseType::UnsignedInteger(_) |
-                    BaseType::Float |
-                    BaseType::Double =>
-                        Ok((expr_type, expr_value)),
-                    _ => return Err(CompileErr::InvalidUnary.into()),
-                },
-            UnaryOperation::UnaryMinus => {
-                match expr_type {
-                    BaseType::Bool |
-                    BaseType::SignedInteger(_) |
-                    BaseType::UnsignedInteger(_) =>
-                        Ok((
-                            expr_type,
-                            self.builder.build_int_neg(
-                                expr_value.into_int_value(), "int neg"
-                            ).as_basic_value_enum()
-                        )),
-                    BaseType::Float |
-                    BaseType::Double =>
-                        Ok((
-                            expr_type,
-                            self.builder.build_float_neg(
-                                expr_value.into_float_value(), "float neg"
-                            ).as_basic_value_enum()
-                        )),
-                    _ => return Err(CompileErr::InvalidUnary.into()),
-                }
+            UnaryOperation::UnaryPlus => match expr_type {
+                BaseType::Bool
+                | BaseType::SignedInteger(_)
+                | BaseType::UnsignedInteger(_)
+                | BaseType::Float
+                | BaseType::Double => Ok((expr_type, expr_value)),
+                _ => return Err(CompileErr::InvalidUnary.into()),
             },
-            UnaryOperation::BitwiseNot => {
-                match expr_type {
-                    BaseType::SignedInteger(_) |
-                    BaseType::UnsignedInteger(_) =>
-                        Ok((
-                            expr_type,
-                            self.builder.build_not(
-                                expr_value.into_int_value(), "bitwise not"
-                            ).as_basic_value_enum()
-                        )),
-                    _ => return Err(CompileErr::InvalidUnary.into()),
-                }
+            UnaryOperation::UnaryMinus => match expr_type {
+                BaseType::Bool | BaseType::SignedInteger(_) | BaseType::UnsignedInteger(_) => Ok((
+                    expr_type,
+                    self.builder
+                        .build_int_neg(expr_value.into_int_value(), "int neg")
+                        .as_basic_value_enum(),
+                )),
+                BaseType::Float | BaseType::Double => Ok((
+                    expr_type,
+                    self.builder
+                        .build_float_neg(expr_value.into_float_value(), "float neg")
+                        .as_basic_value_enum(),
+                )),
+                _ => return Err(CompileErr::InvalidUnary.into()),
             },
-            UnaryOperation::LogicalNot => {
-                match expr_type {
-                    BaseType::SignedInteger(_) => {
-                        let llvm_type = self.convert_llvm_type(&expr_type);
-                        let result_int = self.builder.build_int_compare(
-                            IntPredicate::EQ,
-                            llvm_type.into_int_type().const_int(0 as u64, true),
-                            expr_value.into_int_value(),
-                            "logical not result int",
-                        );
+            UnaryOperation::BitwiseNot => match expr_type {
+                BaseType::SignedInteger(_) | BaseType::UnsignedInteger(_) => Ok((
+                    expr_type,
+                    self.builder
+                        .build_not(expr_value.into_int_value(), "bitwise not")
+                        .as_basic_value_enum(),
+                )),
+                _ => return Err(CompileErr::InvalidUnary.into()),
+            },
+            UnaryOperation::LogicalNot => match expr_type {
+                BaseType::SignedInteger(_) => {
+                    let llvm_type = self.convert_llvm_type(&expr_type);
+                    let result_int = self.builder.build_int_compare(
+                        IntPredicate::EQ,
+                        llvm_type.into_int_type().const_int(0 as u64, true),
+                        expr_value.into_int_value(),
+                        "logical not result int",
+                    );
 
-                        let llvm_type = self.convert_llvm_type(&BaseType::Bool);
-                        Ok((
-                            BaseType::Bool, self.builder.build_int_cast(
+                    let llvm_type = self.convert_llvm_type(&BaseType::Bool);
+                    Ok((
+                        BaseType::Bool,
+                        self.builder
+                            .build_int_cast(
                                 result_int,
                                 llvm_type.into_int_type(),
                                 "cast logical not result to bool",
-                            ).as_basic_value_enum()
-                        ))
-                    },
-                    _ => return Err(CompileErr::InvalidUnary.into()),
+                            )
+                            .as_basic_value_enum(),
+                    ))
                 }
+                _ => return Err(CompileErr::InvalidUnary.into()),
             },
-            UnaryOperation::Reference => {
-                match expr.deref().deref() {
-                    Expression::Identifier(ref id) => {
-                        let (t, ptr) = self.get_variable(id)?;
-                        Ok((
-                            BaseType::Pointer(Box::new(t)),
-                            ptr.as_basic_value_enum(),
-                        ))
-                    },
-                    _ => return Err(CompileErr::InvalidUnary.into()),
-
+            UnaryOperation::Reference => match expr.deref().deref() {
+                Expression::Identifier(ref id) => {
+                    let (t, ptr) = self.get_variable(id)?;
+                    Ok((BaseType::Pointer(Box::new(t)), ptr.as_basic_value_enum()))
                 }
+                _ => return Err(CompileErr::InvalidUnary.into()),
             },
-            UnaryOperation::Dereference => {
-                match expr_type {
-                    BaseType::Pointer(ref t) => {
-                        Ok((
-                            t.base_type.clone(),
-                            self.builder.build_load(
-                                expr_value.into_pointer_value(),
-                                "dereference",
-                            ).as_basic_value_enum(),
-                        ))
-                    },
-                    _ => return Err(CompileErr::InvalidUnary.into()),
-                }
+            UnaryOperation::Dereference => match expr_type {
+                BaseType::Pointer(ref t) => Ok((
+                    t.base_type.clone(),
+                    self.builder
+                        .build_load(expr_value.into_pointer_value(), "dereference")
+                        .as_basic_value_enum(),
+                )),
+                _ => return Err(CompileErr::InvalidUnary.into()),
             },
-            _ => return Err(CompileErr::InvalidUnary.into())
+            _ => return Err(CompileErr::InvalidUnary.into()),
         }
     }
 
     fn gen_binary_expr(
-        &mut self, op: &BinaryOperation, lhs: &Box<Expression>, rhs: &Box<Expression>
+        &mut self,
+        op: &BinaryOperation,
+        lhs: &Box<Expression>,
+        rhs: &Box<Expression>,
     ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
         let (l_t, l_v) = self.gen_expression(lhs)?;
         let (r_t, r_v) = self.gen_expression(rhs)?;
@@ -226,22 +221,19 @@ impl<'ctx> Generator<'ctx> {
         let r_cast_v = self.cast_value(&r_t, &r_v, &cast_t)?;
 
         match cast_t {
-            BaseType::SignedInteger(_) | BaseType::UnsignedInteger(_) => {
-                Ok((
-                    cast_t,
-                    self.build_int_binary_op(
-                        op,
-                        l_cast_v.into_int_value(),
-                        r_cast_v.into_int_value()
-                    )?,
-                ))
-            }
-            _ => unimplemented!()
+            BaseType::SignedInteger(_) | BaseType::UnsignedInteger(_) => Ok((
+                cast_t,
+                self.build_int_binary_op(op, l_cast_v.into_int_value(), r_cast_v.into_int_value())?,
+            )),
+            _ => unimplemented!(),
         }
     }
 
     fn build_int_binary_op(
-        &self, op: &BinaryOperation, lhs: IntValue<'ctx>, rhs: IntValue<'ctx>
+        &self,
+        op: &BinaryOperation,
+        lhs: IntValue<'ctx>,
+        rhs: IntValue<'ctx>,
     ) -> Result<BasicValueEnum<'ctx>> {
         let result_v = match op {
             // arithmetic
@@ -254,33 +246,62 @@ impl<'ctx> Generator<'ctx> {
             BinaryOperation::BitwiseOr => self.builder.build_or(lhs, rhs, "int or"),
             BinaryOperation::BitwiseXor => self.builder.build_xor(lhs, rhs, "int xor"),
             BinaryOperation::LeftShift => self.builder.build_left_shift(lhs, rhs, "int shl"),
-            BinaryOperation::RightShift => self.builder.build_right_shift(lhs, rhs, true, "int shr"),
+            BinaryOperation::RightShift => {
+                self.builder.build_right_shift(lhs, rhs, true, "int shr")
+            }
             // comparison
-            BinaryOperation::LessThan => self.builder.build_int_compare(IntPredicate::SLT, lhs, rhs, "int lt"),
-            BinaryOperation::LessThanOrEqual => self.builder.build_int_compare(IntPredicate::SLE, lhs, rhs, "int le"),
-            BinaryOperation::GreaterThan => self.builder.build_int_compare(IntPredicate::SGT, lhs, rhs, "int gt"),
-            BinaryOperation::GreaterThanOrEqual => self.builder.build_int_compare(IntPredicate::SGE, lhs, rhs, "int ge"),
-            BinaryOperation::Equal => self.builder.build_int_compare(IntPredicate::EQ, lhs, rhs, "int eq"),
-            BinaryOperation::NotEqual => self.builder.build_int_compare(IntPredicate::NE, lhs, rhs, "int ne"),
+            BinaryOperation::LessThan => {
+                self.builder
+                    .build_int_compare(IntPredicate::SLT, lhs, rhs, "int lt")
+            }
+            BinaryOperation::LessThanOrEqual => {
+                self.builder
+                    .build_int_compare(IntPredicate::SLE, lhs, rhs, "int le")
+            }
+            BinaryOperation::GreaterThan => {
+                self.builder
+                    .build_int_compare(IntPredicate::SGT, lhs, rhs, "int gt")
+            }
+            BinaryOperation::GreaterThanOrEqual => {
+                self.builder
+                    .build_int_compare(IntPredicate::SGE, lhs, rhs, "int ge")
+            }
+            BinaryOperation::Equal => {
+                self.builder
+                    .build_int_compare(IntPredicate::EQ, lhs, rhs, "int eq")
+            }
+            BinaryOperation::NotEqual => {
+                self.builder
+                    .build_int_compare(IntPredicate::NE, lhs, rhs, "int ne")
+            }
             // logical
             BinaryOperation::LogicalAnd => self.builder.build_and(
-                self.builder.build_int_cast(lhs, self.context.bool_type(), "cast i32 to i1"),
-                self.builder.build_int_cast(rhs, self.context.bool_type(), "cast i32 to i1"),
+                self.builder
+                    .build_int_cast(lhs, self.context.bool_type(), "cast i32 to i1"),
+                self.builder
+                    .build_int_cast(rhs, self.context.bool_type(), "cast i32 to i1"),
                 "logical int and",
             ),
             BinaryOperation::LogicalOr => self.builder.build_or(
-                self.builder.build_int_cast(lhs, self.context.bool_type(), "cast i32 to i1"),
-                self.builder.build_int_cast(rhs, self.context.bool_type(), "cast i32 to i1"),
-                "logical int or"
+                self.builder
+                    .build_int_cast(lhs, self.context.bool_type(), "cast i32 to i1"),
+                self.builder
+                    .build_int_cast(rhs, self.context.bool_type(), "cast i32 to i1"),
+                "logical int or",
             ),
 
-            _ => return Err(CompileErr::InvalidBinary.into())
+            _ => return Err(CompileErr::InvalidBinary.into()),
         };
 
         Ok(result_v.as_basic_value_enum())
     }
 
-    fn gen_assignment(&mut self, op: &AssignOperation, lhs: &Box<Expression>, rhs: &Box<Expression>) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
+    fn gen_assignment(
+        &mut self,
+        op: &AssignOperation,
+        lhs: &Box<Expression>,
+        rhs: &Box<Expression>,
+    ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
         let (l_t, l_pv) = self.get_lvalue(lhs)?;
 
         let (r_t, r_v) = if let AssignOperation::Naive = op {
@@ -321,46 +342,43 @@ impl<'ctx> Generator<'ctx> {
                     let (t, pv) = self.get_variable(id)?;
 
                     if let BaseType::Array(arr_t, _) = t.base_type {
-                        let idx = self.gen_expression(idx).unwrap().1
-                            .into_int_value();
-                        Ok((
-                            *arr_t,
-                            unsafe {
-                                self.builder.build_gep(
-                                    // pv.const_cast(element_pt),
-                                    // pv.const_address_space_cast(self.context.i32_type().ptr_type(AddressSpace::Generic)),
-                                    pv,
-                                    vec![self.context.i32_type().const_zero(), idx].as_ref(),
-                                    "arr subscript",
-                                )
-                            },
-                        ))
+                        let idx = self.gen_expression(idx).unwrap().1.into_int_value();
+                        Ok((*arr_t, unsafe {
+                            self.builder.build_gep(
+                                // pv.const_cast(element_pt),
+                                // pv.const_address_space_cast(self.context.i32_type().ptr_type(AddressSpace::Generic)),
+                                pv,
+                                vec![self.context.i32_type().const_zero(), idx].as_ref(),
+                                "arr subscript",
+                            )
+                        }))
                     } else {
                         unreachable!()
                     }
                 } else {
                     unreachable!()
                 }
-            },
-            _ => panic!()
+            }
+            _ => panic!(),
         }
     }
 
     fn gen_function_call(
-        &mut self, name: &Box<Expression>, args: &Vec<Expression>
+        &mut self,
+        name: &Box<Expression>,
+        args: &Vec<Expression>,
     ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
         if let Expression::Identifier(ref id) = name.deref().deref() {
             let (ret_t, args_t) = self.function_map.get(id).unwrap().to_owned();
             let fv = self.module.get_function(id).unwrap();
 
             if args.len() != fv.get_type().count_param_types() as usize {
-                return Err(
-                    CompileErr::ParameterCountMismatch(
-                        id.to_string(),
-                        fv.get_type().count_param_types() as usize,
-                        args.len(),
-                    ).into()
+                return Err(CompileErr::ParameterCountMismatch(
+                    id.to_string(),
+                    fv.get_type().count_param_types() as usize,
+                    args.len(),
                 )
+                .into());
             }
 
             let mut casted_args = Vec::with_capacity(args.len());
@@ -376,13 +394,19 @@ impl<'ctx> Generator<'ctx> {
                 casted_args.push(BasicMetadataValueEnum::from(cast_v));
             }
 
-            let ret_v = self.builder.build_call(fv, casted_args.as_slice(), id)
+            let ret_v = self
+                .builder
+                .build_call(fv, casted_args.as_slice(), id)
                 .try_as_basic_value()
                 .left();
 
             if ret_t.base_type == BaseType::Void && ret_v.is_none()
-                || ret_t.base_type != BaseType::Void && ret_v.is_some() {
-                Ok((ret_t.base_type, ret_v.unwrap_or(self.context.i32_type().const_zero().as_basic_value_enum())))
+                || ret_t.base_type != BaseType::Void && ret_v.is_some()
+            {
+                Ok((
+                    ret_t.base_type,
+                    ret_v.unwrap_or(self.context.i32_type().const_zero().as_basic_value_enum()),
+                ))
             } else {
                 unreachable!()
             }

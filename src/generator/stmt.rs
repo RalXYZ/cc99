@@ -1,28 +1,24 @@
-use std::collections::HashMap;
-use anyhow::Result;
-use crate::generator::Generator;
 use crate::ast::{Expression, ForInitClause, Statement, StatementOrDeclaration};
+use crate::generator::Generator;
 use crate::utils::CompileErr as CE;
+use anyhow::Result;
+use std::collections::HashMap;
 
 impl<'ctx> Generator<'ctx> {
     pub(crate) fn gen_statement(&mut self, statement: &Statement) -> Result<()> {
         match statement {
-            Statement::Compound(state_or_decl) =>
-                self.gen_compound_statement(state_or_decl)?,
-            Statement::While(cond, body) =>
-                self.gen_while_statement(cond, body, false)?,
-            Statement::DoWhile(body, cond) =>
-                self.gen_while_statement(cond, body, true)?,
-            Statement::For(init, cond, iter, body) =>
-                self.gen_for_statement(init, cond, iter, body)?,
-            Statement::Break =>
-                self.gen_break_statement()?,
-            Statement::Continue =>
-                self.gen_continue_statement()?,
-            Statement::If(cond, then_stmt, else_stmt) =>
-                self.gen_if_statement(cond, then_stmt, else_stmt)?,
-            Statement::Return(expr) =>
-                self.gen_return_statement(expr)?,
+            Statement::Compound(state_or_decl) => self.gen_compound_statement(state_or_decl)?,
+            Statement::While(cond, body) => self.gen_while_statement(cond, body, false)?,
+            Statement::DoWhile(body, cond) => self.gen_while_statement(cond, body, true)?,
+            Statement::For(init, cond, iter, body) => {
+                self.gen_for_statement(init, cond, iter, body)?
+            }
+            Statement::Break => self.gen_break_statement()?,
+            Statement::Continue => self.gen_continue_statement()?,
+            Statement::If(cond, then_stmt, else_stmt) => {
+                self.gen_if_statement(cond, then_stmt, else_stmt)?
+            }
+            Statement::Return(expr) => self.gen_return_statement(expr)?,
             Statement::Expression(expr) => {
                 self.gen_expression(expr)?;
             }
@@ -42,10 +38,10 @@ impl<'ctx> Generator<'ctx> {
             match element {
                 StatementOrDeclaration::Statement(state) => {
                     self.gen_statement(state)?;
-                },
+                }
                 StatementOrDeclaration::LocalDeclaration(decl) => {
                     self.gen_decl_in_fn(decl)?;
-                },
+                }
             }
         }
 
@@ -53,15 +49,19 @@ impl<'ctx> Generator<'ctx> {
         Ok(())
     }
 
-    fn gen_while_statement(&mut self, cond: &Expression, body: &Statement, is_do_while: bool) -> Result<()> {
+    fn gen_while_statement(
+        &mut self,
+        cond: &Expression,
+        body: &Statement,
+        is_do_while: bool,
+    ) -> Result<()> {
         let func_val = self.current_function.as_ref().unwrap().0;
 
-        let before_while_block =
-            self.context.append_basic_block(func_val, "before_while");
-        let while_block =
-            self.context.append_basic_block(func_val, if is_do_while { "do_while" } else { "while" });
-        let after_while_block =
-            self.context.append_basic_block(func_val, "after_loop");
+        let before_while_block = self.context.append_basic_block(func_val, "before_while");
+        let while_block = self
+            .context
+            .append_basic_block(func_val, if is_do_while { "do_while" } else { "while" });
+        let after_while_block = self.context.append_basic_block(func_val, "after_loop");
 
         self.continue_labels.push_back(after_while_block);
         self.break_labels.push_back(after_while_block);
@@ -73,7 +73,11 @@ impl<'ctx> Generator<'ctx> {
             if is_do_while {
                 self.builder.build_unconditional_branch(while_block);
             } else {
-                self.builder.build_conditional_branch(condition_val_int_val, while_block, after_while_block);
+                self.builder.build_conditional_branch(
+                    condition_val_int_val,
+                    while_block,
+                    after_while_block,
+                );
             }
         }
 
@@ -83,7 +87,11 @@ impl<'ctx> Generator<'ctx> {
         self.gen_statement(body)?;
         if self.no_terminator() {
             if is_do_while {
-                self.builder.build_conditional_branch(condition_val_int_val, before_while_block, after_while_block);
+                self.builder.build_conditional_branch(
+                    condition_val_int_val,
+                    before_while_block,
+                    after_while_block,
+                );
             } else {
                 self.builder.build_unconditional_branch(before_while_block);
             }
@@ -138,7 +146,8 @@ impl<'ctx> Generator<'ctx> {
         let after_block = self.context.append_basic_block(func_val, "after_block");
 
         let cond_int_value = self.gen_expression(cond)?.1.into_int_value();
-        self.builder.build_conditional_branch(cond_int_value, if_block, else_block);
+        self.builder
+            .build_conditional_branch(cond_int_value, if_block, else_block);
 
         self.builder.position_at_end(if_block);
         self.gen_statement(then_stmt)?;
@@ -165,7 +174,13 @@ impl<'ctx> Generator<'ctx> {
             return Ok(());
         }
 
-        let func_return_type = self.current_function.as_ref().unwrap().to_owned().1.base_type;
+        let func_return_type = self
+            .current_function
+            .as_ref()
+            .unwrap()
+            .to_owned()
+            .1
+            .base_type;
         let expr = self.gen_expression(&expr.to_owned().unwrap())?;
 
         expr.0.test_cast(&func_return_type)?;
@@ -173,9 +188,9 @@ impl<'ctx> Generator<'ctx> {
         let return_val = self.cast_value(&expr.0, &expr.1, &func_return_type)?;
         self.builder.build_return(Some(&return_val));
 
-        let func_block = self.context.append_basic_block(
-            self.current_function.as_ref().unwrap().0, "after ret"
-        );
+        let func_block = self
+            .context
+            .append_basic_block(self.current_function.as_ref().unwrap().0, "after ret");
         self.builder.position_at_end(func_block);
 
         Ok(())

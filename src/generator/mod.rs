@@ -1,17 +1,17 @@
-use std::collections::{HashMap, VecDeque};
+use crate::ast::BasicType as BT;
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
 use inkwell::module::Module;
 use inkwell::values::{FunctionValue, PointerValue};
-use crate::ast::BasicType as BT;
+use std::collections::{HashMap, VecDeque};
 
-pub mod gen;
 mod cast_inst;
-mod func_def;
-mod stmt;
-mod out;
 mod expr;
+mod func_def;
+pub mod gen;
+mod out;
+mod stmt;
 mod utils;
 
 pub struct Generator<'ctx> {

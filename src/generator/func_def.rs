@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-use crate::ast::{BasicType, Statement, Declaration, StatementOrDeclaration, BaseType};
+use crate::ast::{BaseType, BasicType, Declaration, Statement, StatementOrDeclaration};
 use crate::generator::Generator;
+use crate::utils::CompileErr as CE;
 use anyhow::Result;
 use inkwell::values::{AnyValue, BasicValue, PointerValue};
-use crate::utils::CompileErr as CE;
+use std::collections::HashMap;
 
 impl<'ctx> Generator<'ctx> {
     pub(crate) fn gen_func_def(
@@ -40,13 +40,19 @@ impl<'ctx> Generator<'ctx> {
 
             let alloca = builder.build_alloca(
                 self.convert_llvm_type(&func_param[i].0.base_type),
-                func_param[i].1.as_ref().unwrap_or(
-                    &("__param__".to_string() + func_name + &i.to_string())
-                ).as_str()
+                func_param[i]
+                    .1
+                    .as_ref()
+                    .unwrap_or(&("__param__".to_string() + func_name + &i.to_string()))
+                    .as_str(),
             );
 
             if func_param[i].1.is_some() {
-                self.insert_to_val_map(&func_param[i].0, &func_param[i].1.as_ref().unwrap(), alloca)?;
+                self.insert_to_val_map(
+                    &func_param[i].0,
+                    &func_param[i].1.as_ref().unwrap(),
+                    alloca,
+                )?;
             }
         }
 
@@ -56,10 +62,10 @@ impl<'ctx> Generator<'ctx> {
                 match element {
                     StatementOrDeclaration::Statement(state) => {
                         self.gen_statement(state)?;
-                    },
+                    }
                     StatementOrDeclaration::LocalDeclaration(decl) => {
                         self.gen_decl_in_fn(decl)?;
-                    },
+                    }
                 }
             }
         } else {
@@ -93,14 +99,14 @@ impl<'ctx> Generator<'ctx> {
 
         self.val_map_block_stack.pop();
         self.current_function = None;
-        return Ok(())
+        return Ok(());
     }
 
     fn insert_to_val_map(
         &mut self,
         var_type: &BasicType,
         identifier: &String,
-        ptr: PointerValue<'ctx>
+        ptr: PointerValue<'ctx>,
     ) -> Result<()> {
         let local_map = self.val_map_block_stack.last_mut().unwrap();
 
@@ -115,10 +121,9 @@ impl<'ctx> Generator<'ctx> {
     pub(crate) fn gen_decl_in_fn(&mut self, decl: &Declaration) -> Result<()> {
         if let Declaration::Declaration(var_type, identifier, expr) = decl {
             let llvm_type = self.convert_llvm_type(&var_type.basic_type.base_type);
-            let p_val = self.builder.build_alloca(
-                llvm_type,
-                &identifier.to_owned().unwrap()
-            );
+            let p_val = self
+                .builder
+                .build_alloca(llvm_type, &identifier.to_owned().unwrap());
             self.insert_to_val_map(&var_type.basic_type, &identifier.to_owned().unwrap(), p_val)?;
             Ok(())
         } else {
