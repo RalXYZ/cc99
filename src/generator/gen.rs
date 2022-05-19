@@ -87,9 +87,6 @@ impl<'ctx> Generator<'ctx> {
                 Ok(())
             })?;
 
-        self.out_asm()?;
-        self.out_bc();
-
         Ok(())
     }
 

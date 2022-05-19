@@ -42,5 +42,7 @@ mod tests {
         let context = Context::create();
         let mut code_gen = Generator::new(&context, "./tests/global/decl2.c");
         let gen_result = code_gen.gen(&ast).unwrap();
+        code_gen.out_asm_or_obj(false, None);
+        code_gen.out_bc(None);
     }
 }

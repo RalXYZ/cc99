@@ -7,13 +7,21 @@ use inkwell::OptimizationLevel;
 use std::path::PathBuf;
 
 impl<'ctx> Generator<'ctx> {
-    pub fn out_bc(&mut self) -> bool {
-        let mut target_path = PathBuf::from(self.module_name);
-        target_path.set_extension("bc");
+    /// * `output_file` - None if use default filename
+    pub fn out_bc(&mut self, output_file: Option<String>) -> bool {
+        let mut target_path;
+        if let Some(output_file) = output_file {
+            target_path = PathBuf::from(output_file);
+        } else {
+            target_path = PathBuf::from(self.module_name);
+            target_path.set_extension("bc");
+        }
         self.module.write_bitcode_to_path(target_path.as_path())
     }
 
-    pub fn out_asm(&mut self) -> Result<()> {
+    /// * `is_obj` - true if the output file is an object file, false if it is a asm file
+    /// * `output_file` - None if use default filename
+    pub fn out_asm_or_obj(&mut self, is_obj: bool, output_file: Option<String>) -> Result<()> {
         Target::initialize_native(&InitializationConfig::default()).unwrap();
 
         let triple = TargetMachine::get_default_triple();
@@ -30,10 +38,26 @@ impl<'ctx> Generator<'ctx> {
             )
             .unwrap();
 
-        let mut target_path = PathBuf::from(self.module_name);
-        target_path.set_extension("asm");
+        let mut target_path;
+        if let Some(output_file) = output_file {
+            target_path = PathBuf::from(output_file);
+        } else {
+            target_path = PathBuf::from(self.module_name);
+            target_path.set_extension(match is_obj {
+                true => "o",
+                false => "s",
+            });
+        }
+
         machine
-            .write_to_file(&self.module, FileType::Assembly, target_path.as_ref())
+            .write_to_file(
+                &self.module,
+                match is_obj {
+                    true => FileType::Object,
+                    false => FileType::Assembly,
+                },
+                target_path.as_ref(),
+            )
             .unwrap();
 
         return Ok(());
