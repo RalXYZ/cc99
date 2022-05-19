@@ -1,4 +1,7 @@
-use crate::ast::{BaseType, BasicType, Declaration, Statement, StatementOrDeclaration};
+use crate::ast::{
+    AssignOperation, BaseType, BasicType, Declaration, Expression, Statement,
+    StatementOrDeclaration,
+};
 use crate::generator::Generator;
 use crate::utils::CompileErr as CE;
 use anyhow::Result;
@@ -125,6 +128,13 @@ impl<'ctx> Generator<'ctx> {
                 .builder
                 .build_alloca(llvm_type, &identifier.to_owned().unwrap());
             self.insert_to_val_map(&var_type.basic_type, &identifier.to_owned().unwrap(), p_val)?;
+            if let Some(ref expr) = expr {
+                self.gen_assignment(
+                    &AssignOperation::Naive,
+                    &Box::new(Expression::Identifier(identifier.to_owned().unwrap())),
+                    expr,
+                )?;
+            }
             Ok(())
         } else {
             Err(CE::Error("FunctionDefinition cannot exist in function".to_string()).into())

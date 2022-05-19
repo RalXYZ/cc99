@@ -59,8 +59,8 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let include_dirs: Vec<&str> = match args.include.as_ref() {
-        Some(includes) => includes.split(',').collect(),
+    let include_dirs: Vec<&str> = match args.include {
+        Some(ref includes) => includes.split(',').collect(),
         None => Default::default(),
     };
     let basename = Path::new(&args.file).file_stem().unwrap().to_str().unwrap();

@@ -296,7 +296,7 @@ impl<'ctx> Generator<'ctx> {
         Ok(result_v.as_basic_value_enum())
     }
 
-    fn gen_assignment(
+    pub(crate) fn gen_assignment(
         &mut self,
         op: &AssignOperation,
         lhs: &Box<Expression>,

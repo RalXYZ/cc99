@@ -82,6 +82,13 @@ impl<'ctx> Generator<'ctx> {
                     ref statements,
                 ) = declaration
                 {
+                    if !self.function_map.contains_key(identifier) {
+                        self.gen_function_proto(
+                            return_type,
+                            identifier,
+                            &params_type.iter().map(|param| param.0.clone()).collect(),
+                        )?;
+                    }
                     self.gen_func_def(&return_type, identifier, params_type, statements)?;
                 }
                 Ok(())
