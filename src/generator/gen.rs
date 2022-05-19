@@ -1,8 +1,12 @@
-use crate::ast::{BaseType, BasicType as BT, Declaration, Expression, IntegerType, Type, AST};
+use crate::ast::{
+    BaseType, BasicType as BT, Declaration, Expression, IntegerType, StorageClassSpecifier, Type,
+    AST,
+};
 use crate::generator::Generator;
 use crate::utils::CompileErr;
 use anyhow::Result;
 use inkwell::context::Context;
+use inkwell::module::Linkage;
 use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType};
 use inkwell::values::{BasicValueEnum, PointerValue};
 use inkwell::AddressSpace;
@@ -59,6 +63,7 @@ impl<'ctx> Generator<'ctx> {
                     type_info.basic_type.base_type
                 {
                     self.gen_function_proto(
+                        &type_info.storage_class_specifier,
                         return_type,
                         identifier.as_ref().unwrap(),
                         params_type,
@@ -74,7 +79,7 @@ impl<'ctx> Generator<'ctx> {
             .try_for_each(|declaration| -> Result<()> {
                 if let Declaration::FunctionDefinition(
                     _,
-                    _,
+                    ref storage_class,
                     ref return_type,
                     ref identifier,
                     ref params_type,
@@ -84,6 +89,7 @@ impl<'ctx> Generator<'ctx> {
                 {
                     if !self.function_map.contains_key(identifier) {
                         self.gen_function_proto(
+                            storage_class,
                             return_type,
                             identifier,
                             &params_type.iter().map(|param| param.0.clone()).collect(),
@@ -99,6 +105,7 @@ impl<'ctx> Generator<'ctx> {
 
     fn gen_function_proto(
         &mut self,
+        storage_class: &StorageClassSpecifier,
         ret_type: &BT,
         func_name: &String,
         func_param: &Vec<BT>,
@@ -121,9 +128,17 @@ impl<'ctx> Generator<'ctx> {
 
         let llvm_func_ty = self.to_return_type(ret_type, &llvm_params)?;
 
+        let linkage = match storage_class {
+            StorageClassSpecifier::Static => Some(Linkage::Internal),
+            StorageClassSpecifier::Extern => Some(Linkage::External),
+            StorageClassSpecifier::Auto => None,
+            StorageClassSpecifier::Typedef => unimplemented!(),
+            _ => unreachable!(),
+        };
+
         // create function
         self.module
-            .add_function(func_name.as_str(), llvm_func_ty, None);
+            .add_function(func_name.as_str(), llvm_func_ty, linkage);
         self.function_map
             .insert(func_name.to_owned(), (ret_type.to_owned(), params));
         Ok(())
