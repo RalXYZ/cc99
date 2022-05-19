@@ -22,6 +22,8 @@ impl<'ctx> Generator<'ctx> {
         let func_ty = self.function_map.get(func_name).unwrap().to_owned();
         self.current_function = Some((func, func_ty.0));
 
+        let mut func_param_alloca = Vec::new();
+
         // create function block
         let func_block = self.context.append_basic_block(func, "entry");
         self.builder.position_at_end(func_block);
@@ -50,6 +52,8 @@ impl<'ctx> Generator<'ctx> {
                     .as_str(),
             );
 
+            func_param_alloca.push(alloca);
+
             if func_param[i].1.is_some() {
                 self.insert_to_val_map(
                     &func_param[i].0,
@@ -57,6 +61,11 @@ impl<'ctx> Generator<'ctx> {
                     alloca,
                 )?;
             }
+        }
+
+        // store params on the stack
+        for (i, param) in func.get_param_iter().enumerate() {
+            self.builder.build_store(func_param_alloca[i], param);
         }
 
         // generate IR for each statement or declaration in function body
