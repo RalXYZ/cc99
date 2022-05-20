@@ -227,18 +227,23 @@ impl<'ctx> Generator<'ctx> {
 
         let llvm_type = self.convert_llvm_type(&var_type.basic_type.base_type);
         let global_value = self.module.add_global(llvm_type, None, var_name.as_str());
+        global_value.set_linkage(Linkage::Common);
 
-        // if ptr_to_init is not None
-        if let Some(ptr_to_init) = ptr_to_init {
-            let init_val_pair = self.gen_expression(&**ptr_to_init)?;
-            init_val_pair.0.test_cast(&var_type.basic_type.base_type)?;
-            let value_after_cast = self.cast_value(
-                &init_val_pair.0,
-                &init_val_pair.1,
-                &var_type.basic_type.base_type,
-            )?;
+        match ptr_to_init {
+            Some(ptr_to_init) => {
+                let init_val_pair = self.gen_expression(&**ptr_to_init)?;
+                init_val_pair.0.test_cast(&var_type.basic_type.base_type)?;
+                let value_after_cast = self.cast_value(
+                    &init_val_pair.0,
+                    &init_val_pair.1,
+                    &var_type.basic_type.base_type,
+                )?;
 
-            global_value.set_initializer(&value_after_cast);
+                global_value.set_initializer(&value_after_cast);
+            }
+            None => {
+                global_value.set_initializer(&llvm_type.const_zero());
+            }
         }
 
         self.global_variable_map.insert(
