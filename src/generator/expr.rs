@@ -369,29 +369,41 @@ impl<'ctx> Generator<'ctx> {
         args: &Vec<Expression>,
     ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
         if let Expression::Identifier(ref id) = name.deref().deref() {
-            let (ret_t, args_t) = self.function_map.get(id).unwrap().to_owned();
+            let (ret_t, args_t, is_variadic) = self.function_map.get(id).unwrap().to_owned();
             let fv = self.module.get_function(id).unwrap();
 
             if args.len() != fv.get_type().count_param_types() as usize {
-                return Err(CompileErr::ParameterCountMismatch(
-                    id.to_string(),
-                    fv.get_type().count_param_types() as usize,
-                    args.len(),
-                )
-                .into());
+                if !(is_variadic && args.len() > fv.get_type().count_param_types() as usize) {
+                    return Err(CompileErr::ParameterCountMismatch(
+                        id.to_string(),
+                        fv.get_type().count_param_types() as usize,
+                        args.len(),
+                    )
+                    .into());
+                }
             }
 
             let mut casted_args = Vec::with_capacity(args.len());
 
             for (i, e) in args.iter().enumerate() {
-                let t = args_t.get(i).unwrap();
+                let t = args_t.get(i);
 
-                let (e_t, e_v) = self.gen_expression(e)?;
+                match t {
+                    Some(t) => {
+                        let (e_t, e_v) = self.gen_expression(e)?;
 
-                e_t.test_cast(&t.base_type)?;
-                let cast_v = self.cast_value(&e_t, &e_v, &t.base_type)?;
+                        e_t.test_cast(&t.base_type)?;
+                        let cast_v = self.cast_value(&e_t, &e_v, &t.base_type)?;
 
-                casted_args.push(BasicMetadataValueEnum::from(cast_v));
+                        casted_args.push(BasicMetadataValueEnum::from(cast_v));
+                    }
+                    None => {
+                        // variadic
+                        let (_, e_v) = self.gen_expression(e)?;
+
+                        casted_args.push(BasicMetadataValueEnum::from(e_v));
+                    }
+                }
             }
 
             let ret_v = self

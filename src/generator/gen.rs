@@ -59,7 +59,7 @@ impl<'ctx> Generator<'ctx> {
                 }
             })
             .try_for_each(|(type_info, identifier, initializer)| -> Result<()> {
-                if let BaseType::Function(ref return_type, ref params_type, ref param_identifier) =
+                if let BaseType::Function(ref return_type, ref params_type, is_variadic) =
                     type_info.basic_type.base_type
                 {
                     self.gen_function_proto(
@@ -67,6 +67,7 @@ impl<'ctx> Generator<'ctx> {
                         return_type,
                         identifier.as_ref().unwrap(),
                         params_type,
+                        is_variadic,
                     )?;
                 } else {
                     self.gen_global_variable(type_info, identifier.as_ref().unwrap(), initializer)?;
@@ -83,7 +84,7 @@ impl<'ctx> Generator<'ctx> {
                     ref return_type,
                     ref identifier,
                     ref params_type,
-                    _,
+                    is_variadic,
                     ref statements,
                 ) = declaration
                 {
@@ -93,6 +94,7 @@ impl<'ctx> Generator<'ctx> {
                             return_type,
                             identifier,
                             &params_type.iter().map(|param| param.0.clone()).collect(),
+                            *is_variadic,
                         )?;
                     }
                     self.gen_func_def(&return_type, identifier, params_type, statements)?;
@@ -109,6 +111,7 @@ impl<'ctx> Generator<'ctx> {
         ret_type: &BT,
         func_name: &String,
         func_param: &Vec<BT>,
+        is_variadic: bool,
     ) -> Result<()> {
         if self.function_map.contains_key(func_name) {
             return Err(CompileErr::DuplicateFunction(func_name.to_string()).into());
@@ -126,7 +129,7 @@ impl<'ctx> Generator<'ctx> {
             llvm_params.push(self.convert_llvm_type(&param.base_type));
         }
 
-        let llvm_func_ty = self.to_return_type(ret_type, &llvm_params)?;
+        let llvm_func_ty = self.to_return_type(ret_type, &llvm_params, is_variadic)?;
 
         let linkage = match storage_class {
             StorageClassSpecifier::Static => Some(Linkage::Internal),
@@ -139,8 +142,10 @@ impl<'ctx> Generator<'ctx> {
         // create function
         self.module
             .add_function(func_name.as_str(), llvm_func_ty, linkage);
-        self.function_map
-            .insert(func_name.to_owned(), (ret_type.to_owned(), params));
+        self.function_map.insert(
+            func_name.to_owned(),
+            (ret_type.to_owned(), params, is_variadic),
+        );
         Ok(())
     }
 
@@ -149,6 +154,7 @@ impl<'ctx> Generator<'ctx> {
         &mut self,
         in_type: &BT,
         param_types: &Vec<BasicTypeEnum<'ctx>>,
+        is_variadic: bool,
     ) -> Result<FunctionType<'ctx>> {
         let param_types_meta = param_types
             .iter()
@@ -156,10 +162,13 @@ impl<'ctx> Generator<'ctx> {
             .collect::<Vec<BasicMetadataTypeEnum>>();
 
         match in_type.base_type {
-            BaseType::Void => Ok(self.context.void_type().fn_type(&param_types_meta, false)),
+            BaseType::Void => Ok(self
+                .context
+                .void_type()
+                .fn_type(&param_types_meta, is_variadic)),
             _ => {
                 let basic_type = self.convert_llvm_type(&in_type.base_type);
-                Ok(basic_type.fn_type(&param_types_meta, false))
+                Ok(basic_type.fn_type(&param_types_meta, is_variadic))
             }
         }
     }
@@ -170,7 +179,7 @@ impl<'ctx> Generator<'ctx> {
         curr_val: &BasicValueEnum<'ctx>,
         dest_type: &BaseType,
     ) -> Result<BasicValueEnum<'ctx>> {
-        if curr_type == dest_type {
+        if curr_type.equal_discarding_qualifiers(dest_type) {
             return Ok(curr_val.to_owned());
         }
 
