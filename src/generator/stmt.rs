@@ -189,12 +189,12 @@ impl<'ctx> Generator<'ctx> {
             self.builder.build_unconditional_branch(after_block);
         };
 
+        self.builder.position_at_end(else_block);
         if let Some(ref else_stmt) = *else_stmt {
-            self.builder.position_at_end(else_block);
             self.gen_statement(else_stmt)?;
-            if self.no_terminator() {
-                self.builder.build_unconditional_branch(after_block);
-            }
+        }
+        if self.no_terminator() {
+            self.builder.build_unconditional_branch(after_block);
         }
 
         self.builder.position_at_end(after_block);
