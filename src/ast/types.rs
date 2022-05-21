@@ -56,8 +56,8 @@ pub enum BaseType {
     Array(
         /// element type
         Box<BasicType>,
-        /// array length
-        Box<Expression>,
+        /// array length, from high-dimension to low-dimension
+        Vec<Expression>,
     ),
     Function(
         /// return type

@@ -296,17 +296,17 @@ impl<'ctx> Generator<'ctx> {
                 .convert_llvm_type(&basic_type.base_type)
                 .ptr_type(AddressSpace::Generic)
                 .as_basic_type_enum(),
-            &BaseType::Array(ref basic_type, ref length) => self
-                .convert_llvm_type(&basic_type.base_type)
-                .array_type(
-                    self.gen_expression(length)
-                        .unwrap()
-                        .1
-                        .into_int_value()
-                        .get_zero_extended_constant()
-                        .unwrap() as u32,
-                )
-                .as_basic_type_enum(),
+            // &BaseType::Array(ref basic_type, ref length) => self
+            //     .convert_llvm_type(&basic_type.base_type)
+            //     .array_type(
+            //         self.gen_expression(length)
+            //             .unwrap()
+            //             .1
+            //             .into_int_value()
+            //             .get_zero_extended_constant()
+            //             .unwrap() as u32,
+            //     )
+            //     .as_basic_type_enum(),
             _ => panic!(),
         }
     }

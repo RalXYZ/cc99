@@ -209,4 +209,34 @@ mod tests {
             ]))
         );
     }
+
+    #[test]
+    fn array() {
+        let code = r#"const int x[10][9][8];"#;
+        assert_eq!(
+            parse(code).unwrap(),
+            Box::new(AST::GlobalDeclaration(vec![Declaration::Declaration(
+                Type {
+                    function_specifier: vec![],
+                    storage_class_specifier: StorageClassSpecifier::Auto,
+                    basic_type: BasicType {
+                        qualifier: vec![],
+                        base_type: BaseType::Array(
+                            Box::new(BasicType {
+                                qualifier: vec![TypeQualifier::Const],
+                                base_type: BaseType::SignedInteger(IntegerType::Int),
+                            }),
+                            vec![
+                                Expression::IntegerConstant(10),
+                                Expression::IntegerConstant(9),
+                                Expression::IntegerConstant(8)
+                            ],
+                        ),
+                    },
+                },
+                Some("x".to_string()),
+                None
+            ),]))
+        );
+    }
 }

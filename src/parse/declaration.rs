@@ -338,11 +338,9 @@ fn build_raw_declarator(
             _ => unreachable!(),
         }
     }
-    while !dimensions.is_empty() {
-        derived_type.basic_type.base_type = BaseType::Array(
-            Box::new(derived_type.basic_type.to_owned()),
-            Box::new(dimensions.pop().unwrap()),
-        );
+    if !dimensions.is_empty() {
+        derived_type.basic_type.base_type =
+            BaseType::Array(Box::new(derived_type.basic_type.to_owned()), dimensions);
         derived_type.basic_type.qualifier = Default::default();
     }
     Ok(())
