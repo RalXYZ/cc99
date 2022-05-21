@@ -4,10 +4,11 @@ use crate::ast::{
 use crate::generator::Generator;
 use crate::utils::CompileErr;
 use anyhow::Result;
-use inkwell::types::AnyType;
-use inkwell::values::{BasicMetadataValueEnum, BasicValue, BasicValueEnum, IntValue, PointerValue};
-use inkwell::{AddressSpace, IntPredicate};
-use std::borrow::Borrow;
+use inkwell::values::{
+    BasicMetadataValueEnum, BasicValue, BasicValueEnum, FloatValue, IntValue, PointerValue,
+};
+use inkwell::{FloatPredicate, IntPredicate};
+use std::fmt::Error;
 use std::ops::Deref;
 
 impl<'ctx> Generator<'ctx> {
@@ -221,10 +222,41 @@ impl<'ctx> Generator<'ctx> {
         let r_cast_v = self.cast_value(&r_t, &r_v, &cast_t)?;
 
         match cast_t {
-            BaseType::SignedInteger(_) | BaseType::UnsignedInteger(_) => Ok((
-                cast_t,
-                self.build_int_binary_op(op, l_cast_v.into_int_value(), r_cast_v.into_int_value())?,
-            )),
+            BaseType::Void => {
+                Err(CompileErr::Error("Invalid void type for binary operation".to_string()).into())
+            }
+            BaseType::SignedInteger(_) | BaseType::UnsignedInteger(_) | BaseType::Bool => {
+                let int_or_bool_value = self.build_int_binary_op(
+                    op,
+                    l_cast_v.into_int_value(),
+                    r_cast_v.into_int_value(),
+                )?;
+                if int_or_bool_value
+                    .into_int_value()
+                    .get_type()
+                    .get_bit_width()
+                    == 1
+                {
+                    let bool_to_int =
+                        self.cast_value(&BaseType::Bool, &int_or_bool_value, &cast_t)?;
+                    Ok((cast_t, bool_to_int))
+                } else {
+                    Ok((cast_t, int_or_bool_value))
+                }
+            }
+            BaseType::Float | BaseType::Double => {
+                let float_or_bool_value = self.build_float_binary_op(
+                    op,
+                    l_cast_v.into_float_value(),
+                    r_cast_v.into_float_value(),
+                )?;
+                if float_or_bool_value.is_int_value() {
+                    let bool_to_float =
+                        self.cast_value(&BaseType::Bool, &float_or_bool_value, &cast_t)?;
+                    return Ok((cast_t, bool_to_float));
+                }
+                Ok((cast_t, float_or_bool_value))
+            }
             _ => unimplemented!(),
         }
     }
@@ -275,18 +307,19 @@ impl<'ctx> Generator<'ctx> {
                     .build_int_compare(IntPredicate::NE, lhs, rhs, "int ne")
             }
             // logical
+            //TODO FIXME 这里and 和 or 是完全错误的，这个build_int_cast只是截取了最后一位！！
             BinaryOperation::LogicalAnd => self.builder.build_and(
                 self.builder
-                    .build_int_cast(lhs, self.context.bool_type(), "cast i32 to i1"),
+                    .build_int_cast(lhs, self.context.bool_type(), "cast i32 to i1_1"),
                 self.builder
-                    .build_int_cast(rhs, self.context.bool_type(), "cast i32 to i1"),
+                    .build_int_cast(rhs, self.context.bool_type(), "cast i32 to i1_2"),
                 "logical int and",
             ),
             BinaryOperation::LogicalOr => self.builder.build_or(
                 self.builder
-                    .build_int_cast(lhs, self.context.bool_type(), "cast i32 to i1"),
+                    .build_int_cast(lhs, self.context.bool_type(), "cast i32 to i1_1"),
                 self.builder
-                    .build_int_cast(rhs, self.context.bool_type(), "cast i32 to i1"),
+                    .build_int_cast(rhs, self.context.bool_type(), "cast i32 to i1_2"),
                 "logical int or",
             ),
 
@@ -295,7 +328,125 @@ impl<'ctx> Generator<'ctx> {
 
         Ok(result_v.as_basic_value_enum())
     }
-
+    fn build_float_binary_op(
+        &self,
+        op: &BinaryOperation,
+        lhs: FloatValue<'ctx>,
+        rhs: FloatValue<'ctx>,
+    ) -> Result<BasicValueEnum<'ctx>> {
+        let result_f = match op {
+            // arithmetic
+            BinaryOperation::Addition => Ok(self.builder.build_float_add(lhs, rhs, "float add")),
+            BinaryOperation::Subtraction => Ok(self.builder.build_float_sub(lhs, rhs, "float sub")),
+            BinaryOperation::Multiplication => {
+                Ok(self.builder.build_float_mul(lhs, rhs, "float mul"))
+            }
+            BinaryOperation::Division => Ok(self.builder.build_float_div(lhs, rhs, "float div")),
+            BinaryOperation::Modulo => Ok(self.builder.build_float_rem(lhs, rhs, "float mod")),
+            _ => Err(Error),
+        };
+        //return FloatValue
+        if result_f.is_ok() {
+            return Ok(result_f.unwrap().as_basic_value_enum());
+        }
+        let result_i = match op {
+            BinaryOperation::LessThan => {
+                self.builder
+                    .build_float_compare(FloatPredicate::OLT, lhs, rhs, "float lt")
+            }
+            BinaryOperation::LessThanOrEqual => {
+                self.builder
+                    .build_float_compare(FloatPredicate::OLE, lhs, rhs, "float le")
+            }
+            BinaryOperation::GreaterThan => {
+                self.builder
+                    .build_float_compare(FloatPredicate::OGT, lhs, rhs, "float gt")
+            }
+            BinaryOperation::GreaterThanOrEqual => {
+                self.builder
+                    .build_float_compare(FloatPredicate::OGE, lhs, rhs, "float ge")
+            }
+            BinaryOperation::Equal => {
+                self.builder
+                    .build_float_compare(FloatPredicate::OEQ, lhs, rhs, "float eq")
+            }
+            BinaryOperation::NotEqual => {
+                self.builder
+                    .build_float_compare(FloatPredicate::ONE, lhs, rhs, "float ne")
+            }
+            // logical
+            //TODO FIXME 这里and 和 or 是完全错误的，这个build_int_cast只是截取了最后一位！！
+            BinaryOperation::LogicalAnd => self.builder.build_and(
+                self.builder.build_int_cast(
+                    self.builder
+                        .build_cast(
+                            self.gen_cast_llvm_instruction(
+                                &BaseType::Double,
+                                &BaseType::SignedInteger(IntegerType::Int),
+                            )?,
+                            lhs,
+                            self.context.i32_type(),
+                            "cast float to i32",
+                        )
+                        .into_int_value(),
+                    self.context.bool_type(),
+                    "cast float to i1",
+                ),
+                self.builder.build_int_cast(
+                    self.builder
+                        .build_cast(
+                            self.gen_cast_llvm_instruction(
+                                &BaseType::Double,
+                                &BaseType::SignedInteger(IntegerType::Int),
+                            )?,
+                            rhs,
+                            self.context.i32_type(),
+                            "cast float to i32",
+                        )
+                        .into_int_value(),
+                    self.context.bool_type(),
+                    "cast float to i1",
+                ),
+                "logical float and",
+            ),
+            BinaryOperation::LogicalOr => self.builder.build_or(
+                self.builder.build_int_cast(
+                    self.builder
+                        .build_cast(
+                            self.gen_cast_llvm_instruction(
+                                &BaseType::Double,
+                                &BaseType::SignedInteger(IntegerType::Int),
+                            )?,
+                            lhs,
+                            self.context.i32_type(),
+                            "cast float to i32",
+                        )
+                        .into_int_value(),
+                    self.context.bool_type(),
+                    "cast float to i1",
+                ),
+                self.builder.build_int_cast(
+                    self.builder
+                        .build_cast(
+                            self.gen_cast_llvm_instruction(
+                                &BaseType::Double,
+                                &BaseType::SignedInteger(IntegerType::Int),
+                            )?,
+                            rhs,
+                            self.context.i32_type(),
+                            "cast float to i32",
+                        )
+                        .into_int_value(),
+                    self.context.bool_type(),
+                    "cast float to i1",
+                ),
+                "logical float or",
+            ),
+            _ => return Err(CompileErr::InvalidBinary.into()),
+        };
+        //return IntValue
+        Ok(result_i.as_basic_value_enum())
+    }
     pub(crate) fn gen_assignment(
         &mut self,
         op: &AssignOperation,
@@ -327,6 +478,7 @@ impl<'ctx> Generator<'ctx> {
         };
 
         r_t.test_cast(&l_t.base_type)?;
+
         let cast_v = self.cast_value(&r_t, &r_v, &l_t.base_type)?;
 
         self.builder.build_store(l_pv, cast_v);
