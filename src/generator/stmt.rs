@@ -190,7 +190,7 @@ impl<'ctx> Generator<'ctx> {
 
         let func_block = self
             .context
-            .append_basic_block(self.current_function.as_ref().unwrap().0, "after ret");
+            .append_basic_block(self.current_function.as_ref().unwrap().0, "after_ret");
         self.builder.position_at_end(func_block);
 
         Ok(())

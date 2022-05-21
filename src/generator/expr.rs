@@ -72,18 +72,10 @@ impl<'ctx> Generator<'ctx> {
             )),
             Expression::Identifier(ref string_literal) => {
                 let deref = self.get_variable(string_literal)?;
-                let val = self.builder.build_load(deref.1, "load val");
+                let val = self.builder.build_load(deref.1, "load_val");
                 Ok((deref.0.base_type, val))
             }
             Expression::StringLiteral(ref string) => {
-                // let i32_type = self.context.i32_type();
-                // let i32_ptr_type = i32_type.ptr_type(AddressSpace::Generic);
-                // let fn_type = i32_type.fn_type(&[i32_ptr_type.into()], false);
-                // let fn_value = self.module.add_function("ret", fn_type, None);
-                // let entry = self.context.append_basic_block(fn_value, "entry");
-                // self.builder.position_at_end(entry);
-                // self.builder.build_return(None);
-
                 Ok((
                     BaseType::Pointer(Box::new(BasicType {
                         qualifier: vec![],
@@ -106,10 +98,10 @@ impl<'ctx> Generator<'ctx> {
                                     self.builder.build_gep(
                                         l_pv,
                                         vec![self.context.i32_type().const_zero(), idx].as_ref(),
-                                        "arr subscript",
+                                        "arr_subscript",
                                     )
                                 },
-                                "load arr subscript",
+                                "load_arr_subscript",
                             ),
                         ))
                     } else {
@@ -143,13 +135,13 @@ impl<'ctx> Generator<'ctx> {
                 BaseType::Bool | BaseType::SignedInteger(_) | BaseType::UnsignedInteger(_) => Ok((
                     expr_type,
                     self.builder
-                        .build_int_neg(expr_value.into_int_value(), "int neg")
+                        .build_int_neg(expr_value.into_int_value(), "int_neg")
                         .as_basic_value_enum(),
                 )),
                 BaseType::Float | BaseType::Double => Ok((
                     expr_type,
                     self.builder
-                        .build_float_neg(expr_value.into_float_value(), "float neg")
+                        .build_float_neg(expr_value.into_float_value(), "float_neg")
                         .as_basic_value_enum(),
                 )),
                 _ => return Err(CompileErr::InvalidUnary.into()),
@@ -158,7 +150,7 @@ impl<'ctx> Generator<'ctx> {
                 BaseType::SignedInteger(_) | BaseType::UnsignedInteger(_) => Ok((
                     expr_type,
                     self.builder
-                        .build_not(expr_value.into_int_value(), "bitwise not")
+                        .build_not(expr_value.into_int_value(), "bitwise_not")
                         .as_basic_value_enum(),
                 )),
                 _ => return Err(CompileErr::InvalidUnary.into()),
@@ -170,7 +162,7 @@ impl<'ctx> Generator<'ctx> {
                         IntPredicate::EQ,
                         llvm_type.into_int_type().const_int(0 as u64, true),
                         expr_value.into_int_value(),
-                        "logical not result int",
+                        "logical_not_result_int",
                     );
 
                     let llvm_type = self.convert_llvm_type(&BaseType::Bool);
@@ -180,7 +172,7 @@ impl<'ctx> Generator<'ctx> {
                             .build_int_cast(
                                 result_int,
                                 llvm_type.into_int_type(),
-                                "cast logical not result to bool",
+                                "cast_logical_not_result_to_bool",
                             )
                             .as_basic_value_enum(),
                     ))
@@ -237,57 +229,57 @@ impl<'ctx> Generator<'ctx> {
     ) -> Result<BasicValueEnum<'ctx>> {
         let result_v = match op {
             // arithmetic
-            BinaryOperation::Addition => self.builder.build_int_add(lhs, rhs, "int add"),
-            BinaryOperation::Subtraction => self.builder.build_int_sub(lhs, rhs, "int sub"),
-            BinaryOperation::Multiplication => self.builder.build_int_mul(lhs, rhs, "int mul"),
-            BinaryOperation::Division => self.builder.build_int_signed_div(lhs, rhs, "int div"),
-            BinaryOperation::Modulo => self.builder.build_int_signed_rem(lhs, rhs, "int mod"),
-            BinaryOperation::BitwiseAnd => self.builder.build_and(lhs, rhs, "int and"),
-            BinaryOperation::BitwiseOr => self.builder.build_or(lhs, rhs, "int or"),
-            BinaryOperation::BitwiseXor => self.builder.build_xor(lhs, rhs, "int xor"),
-            BinaryOperation::LeftShift => self.builder.build_left_shift(lhs, rhs, "int shl"),
+            BinaryOperation::Addition => self.builder.build_int_add(lhs, rhs, "int_add"),
+            BinaryOperation::Subtraction => self.builder.build_int_sub(lhs, rhs, "int_sub"),
+            BinaryOperation::Multiplication => self.builder.build_int_mul(lhs, rhs, "int_mul"),
+            BinaryOperation::Division => self.builder.build_int_signed_div(lhs, rhs, "int_div"),
+            BinaryOperation::Modulo => self.builder.build_int_signed_rem(lhs, rhs, "int_mod"),
+            BinaryOperation::BitwiseAnd => self.builder.build_and(lhs, rhs, "int_and"),
+            BinaryOperation::BitwiseOr => self.builder.build_or(lhs, rhs, "int_or"),
+            BinaryOperation::BitwiseXor => self.builder.build_xor(lhs, rhs, "int_xor"),
+            BinaryOperation::LeftShift => self.builder.build_left_shift(lhs, rhs, "int_shl"),
             BinaryOperation::RightShift => {
-                self.builder.build_right_shift(lhs, rhs, true, "int shr")
+                self.builder.build_right_shift(lhs, rhs, true, "int_shr")
             }
             // comparison
             BinaryOperation::LessThan => {
                 self.builder
-                    .build_int_compare(IntPredicate::SLT, lhs, rhs, "int lt")
+                    .build_int_compare(IntPredicate::SLT, lhs, rhs, "int_lt")
             }
             BinaryOperation::LessThanOrEqual => {
                 self.builder
-                    .build_int_compare(IntPredicate::SLE, lhs, rhs, "int le")
+                    .build_int_compare(IntPredicate::SLE, lhs, rhs, "int_le")
             }
             BinaryOperation::GreaterThan => {
                 self.builder
-                    .build_int_compare(IntPredicate::SGT, lhs, rhs, "int gt")
+                    .build_int_compare(IntPredicate::SGT, lhs, rhs, "int_gt")
             }
             BinaryOperation::GreaterThanOrEqual => {
                 self.builder
-                    .build_int_compare(IntPredicate::SGE, lhs, rhs, "int ge")
+                    .build_int_compare(IntPredicate::SGE, lhs, rhs, "int_ge")
             }
             BinaryOperation::Equal => {
                 self.builder
-                    .build_int_compare(IntPredicate::EQ, lhs, rhs, "int eq")
+                    .build_int_compare(IntPredicate::EQ, lhs, rhs, "int_eq")
             }
             BinaryOperation::NotEqual => {
                 self.builder
-                    .build_int_compare(IntPredicate::NE, lhs, rhs, "int ne")
+                    .build_int_compare(IntPredicate::NE, lhs, rhs, "int_ne")
             }
             // logical
             BinaryOperation::LogicalAnd => self.builder.build_and(
                 self.builder
-                    .build_int_cast(lhs, self.context.bool_type(), "cast i32 to i1"),
+                    .build_int_cast(lhs, self.context.bool_type(), "cast_i32_to_i1"),
                 self.builder
-                    .build_int_cast(rhs, self.context.bool_type(), "cast i32 to i1"),
-                "logical int and",
+                    .build_int_cast(rhs, self.context.bool_type(), "cast_i32_to_i1"),
+                "logical_int_and",
             ),
             BinaryOperation::LogicalOr => self.builder.build_or(
                 self.builder
-                    .build_int_cast(lhs, self.context.bool_type(), "cast i32 to i1"),
+                    .build_int_cast(lhs, self.context.bool_type(), "cast_i32_to_i1"),
                 self.builder
-                    .build_int_cast(rhs, self.context.bool_type(), "cast i32 to i1"),
-                "logical int or",
+                    .build_int_cast(rhs, self.context.bool_type(), "cast_i32_to_i1"),
+                "logical_int_or",
             ),
 
             _ => return Err(CompileErr::InvalidBinary.into()),
@@ -345,11 +337,9 @@ impl<'ctx> Generator<'ctx> {
                         let idx = self.gen_expression(idx).unwrap().1.into_int_value();
                         Ok((*arr_t, unsafe {
                             self.builder.build_gep(
-                                // pv.const_cast(element_pt),
-                                // pv.const_address_space_cast(self.context.i32_type().ptr_type(AddressSpace::Generic)),
                                 pv,
                                 vec![self.context.i32_type().const_zero(), idx].as_ref(),
-                                "arr subscript",
+                                "arr_subscript",
                             )
                         }))
                     } else {
