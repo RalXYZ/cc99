@@ -75,17 +75,15 @@ impl<'ctx> Generator<'ctx> {
                 let val = self.builder.build_load(deref.1, "load_val");
                 Ok((deref.0.base_type, val))
             }
-            Expression::StringLiteral(ref string) => {
-                Ok((
-                    BaseType::Pointer(Box::new(BasicType {
-                        qualifier: vec![],
-                        base_type: BaseType::SignedInteger(IntegerType::Char),
-                    })),
-                    self.builder
-                        .build_global_string_ptr(string.as_str(), "str")
-                        .as_basic_value_enum(),
-                ))
-            }
+            Expression::StringLiteral(ref string) => Ok((
+                BaseType::Pointer(Box::new(BasicType {
+                    qualifier: vec![],
+                    base_type: BaseType::SignedInteger(IntegerType::Char),
+                })),
+                self.builder
+                    .build_global_string_ptr(string.as_str(), "str")
+                    .as_basic_value_enum(),
+            )),
             Expression::ArraySubscript(ref id_expr, ref idx) => {
                 if let Expression::Identifier(id) = id_expr.deref() {
                     let (l_t, l_pv) = self.get_variable(id)?;
