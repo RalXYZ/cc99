@@ -113,12 +113,14 @@ impl<'ctx> Generator<'ctx> {
     fn process_arr_subscript(&self, l_t: BasicType, idx_vec: Vec<Expression>) -> Result<(BasicType, Vec<IntValue<'ctx>>)> {
         if let BaseType::Array(ref arr_t, arr_len_vec) = l_t.base_type {
             let res_t: BaseType;
-            if arr_len_vec.len() == idx_vec.len() {
+            if idx_vec.len() > arr_len_vec.len() {
+                return Err(CompileErr::ArrayDimensionNotMatch(arr_len_vec.len(), idx_vec.len()).into());
+            } else if idx_vec.len() == arr_len_vec.len() {
                 res_t = arr_t.base_type.clone();
             } else {
                 res_t = BaseType::Array(
                     arr_t.clone(),
-                    (arr_len_vec.len()..idx_vec.len()).fold(
+                    (idx_vec.len()..arr_len_vec.len()).fold(
                         vec![],
                         |mut acc, i| {
                             acc.push(idx_vec[i].clone());

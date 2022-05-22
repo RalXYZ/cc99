@@ -42,6 +42,9 @@ pub enum CompileErr {
     #[error("keyword {} is not in a loop", .0.as_str())]
     KeywordNotInLoop(String),
 
+    #[error("array dimension not match, expect {}, found {}", .0.to_string(), .1.to_string())]
+    ArrayDimensionNotMatch(usize, usize),
+
     #[error("error: {}", .0.as_str())]
     Error(String),
 
