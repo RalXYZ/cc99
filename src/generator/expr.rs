@@ -13,7 +13,7 @@ use std::ops::Deref;
 
 impl<'ctx> Generator<'ctx> {
     pub(crate) fn gen_expression(
-        &mut self,
+        &self,
         expr: &Expression,
     ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
         match expr {
@@ -115,7 +115,7 @@ impl<'ctx> Generator<'ctx> {
     }
 
     fn gen_unary_expr(
-        &mut self,
+        &self,
         op: &UnaryOperation,
         expr: &Box<Expression>,
     ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
@@ -199,7 +199,7 @@ impl<'ctx> Generator<'ctx> {
     }
 
     fn gen_binary_expr(
-        &mut self,
+        &self,
         op: &BinaryOperation,
         lhs: &Box<Expression>,
         rhs: &Box<Expression>,
@@ -438,7 +438,7 @@ impl<'ctx> Generator<'ctx> {
         Ok(result_i.as_basic_value_enum())
     }
     pub(crate) fn gen_assignment(
-        &mut self,
+        &self,
         op: &AssignOperation,
         lhs: &Box<Expression>,
         rhs: &Box<Expression>,
@@ -476,7 +476,7 @@ impl<'ctx> Generator<'ctx> {
         Ok((l_t.base_type, cast_v))
     }
 
-    fn get_lvalue(&mut self, lhs: &Box<Expression>) -> Result<(BasicType, PointerValue<'ctx>)> {
+    fn get_lvalue(&self, lhs: &Box<Expression>) -> Result<(BasicType, PointerValue<'ctx>)> {
         match lhs.deref().deref() {
             Expression::Identifier(ref id) => Ok(self.get_variable(id)?),
             Expression::ArraySubscript(ref id_expr, ref idx) => {
@@ -504,7 +504,7 @@ impl<'ctx> Generator<'ctx> {
     }
 
     fn gen_function_call(
-        &mut self,
+        &self,
         name: &Box<Expression>,
         args: &Vec<Expression>,
     ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {

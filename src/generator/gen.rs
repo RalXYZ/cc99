@@ -174,7 +174,7 @@ impl<'ctx> Generator<'ctx> {
     }
 
     pub(crate) fn cast_value(
-        &mut self,
+        &self,
         curr_type: &BaseType,
         curr_val: &BasicValueEnum<'ctx>,
         dest_type: &BaseType,
@@ -257,7 +257,7 @@ impl<'ctx> Generator<'ctx> {
         Ok(())
     }
 
-    pub(crate) fn convert_llvm_type(&mut self, base_type: &BaseType) -> BasicTypeEnum<'ctx> {
+    pub(crate) fn convert_llvm_type(&self, base_type: &BaseType) -> BasicTypeEnum<'ctx> {
         match base_type {
             &BaseType::Bool => self.context.bool_type().as_basic_type_enum(),
             &BaseType::SignedInteger(IntegerType::Char) => {
@@ -307,6 +307,20 @@ impl<'ctx> Generator<'ctx> {
             //             .unwrap() as u32,
             //     )
             //     .as_basic_type_enum(),
+            &BaseType::Array(ref basic_type, ref size) => size
+                .into_iter()
+                .map(|x| {
+                    self.gen_expression(x)
+                        .unwrap()
+                        .1
+                        .into_int_value()
+                        .get_zero_extended_constant()
+                        .unwrap() as u32
+                })
+                .fold(self.convert_llvm_type(&basic_type.base_type), |acc, len| {
+                    acc.array_type(len).as_basic_type_enum()
+                })
+                .as_basic_type_enum(),
             _ => panic!(),
         }
     }
