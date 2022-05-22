@@ -194,6 +194,41 @@ impl<'ctx> Generator<'ctx> {
                 )),
                 _ => return Err(CompileErr::InvalidUnary.into()),
             },
+            UnaryOperation::PostfixDecrement | UnaryOperation::PostfixIncrement => {
+                match expr_type {
+                    BaseType::SignedInteger(_)
+                    | BaseType::UnsignedInteger(_)
+                    | BaseType::Double
+                    | BaseType::Float => {
+                        let _ = self.gen_assignment(
+                            if *op == UnaryOperation::PostfixIncrement {
+                                &AssignOperation::Addition
+                            } else {
+                                &AssignOperation::Subtraction
+                            },
+                            expr,
+                            &Box::new(Expression::IntegerConstant(1)),
+                        )?;
+                        Ok((expr_type, expr_value))
+                    }
+                    _ => return Err(CompileErr::InvalidUnary.into()),
+                }
+            }
+            UnaryOperation::PrefixIncrement | UnaryOperation::PrefixDecrement => match expr_type {
+                BaseType::SignedInteger(_)
+                | BaseType::UnsignedInteger(_)
+                | BaseType::Double
+                | BaseType::Float => self.gen_assignment(
+                    if *op == UnaryOperation::PrefixIncrement {
+                        &AssignOperation::Addition
+                    } else {
+                        &AssignOperation::Subtraction
+                    },
+                    expr,
+                    &Box::new(Expression::IntegerConstant(1)),
+                ),
+                _ => return Err(CompileErr::InvalidUnary.into()),
+            },
             _ => return Err(CompileErr::InvalidUnary.into()),
         }
     }
