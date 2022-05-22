@@ -21,7 +21,12 @@ impl<'ctx> Generator<'ctx> {
 
     /// * `is_obj` - true if the output file is an object file, false if it is a asm file
     /// * `output_file` - None if use default filename
-    pub fn out_asm_or_obj(&mut self, is_obj: bool, output_file: Option<String>, opt: OptimizationLevel) -> Result<()> {
+    pub fn out_asm_or_obj(
+        &mut self,
+        is_obj: bool,
+        output_file: Option<String>,
+        opt: OptimizationLevel,
+    ) -> Result<()> {
         Target::initialize_native(&InitializationConfig::default()).unwrap();
 
         let triple = TargetMachine::get_default_triple();
