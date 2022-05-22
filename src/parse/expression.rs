@@ -245,10 +245,14 @@ fn build_postfix_unary_expression(pair: Pair<'_, Rule>) -> Result<Expression, Bo
                 expression = Expression::FunctionCall(Box::new(expression), arguments);
             }
             Rule::expression => {
-                expression = Expression::ArraySubscript(
-                    Box::new(expression),
-                    Box::new(build_expression(token)?),
-                );
+                let expr = build_expression(token)?;
+                expression = match expression {
+                    Expression::ArraySubscript(base, ref mut index) => {
+                        index.push(expr);
+                        Expression::ArraySubscript(base, index.to_owned())
+                    }
+                    _ => Expression::ArraySubscript(Box::new(expression.to_owned()), vec![expr]),
+                }
             }
             Rule::member_of_object_op => {
                 object_or_pointer = true;

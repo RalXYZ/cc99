@@ -125,7 +125,7 @@ pub enum Expression {
         /// array
         Box<Expression>,
         /// index
-        Box<Expression>,
+        Vec<Expression>,
     ),
 
     Identifier(String),
