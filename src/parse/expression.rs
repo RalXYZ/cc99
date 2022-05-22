@@ -291,6 +291,7 @@ fn build_type_name(pair: Pair<'_, Rule>) -> Result<BasicType, Box<dyn Error>> {
     let span = pair.as_span();
     let mut fake_ast: Vec<Declaration> = Default::default();
     let mut derived_type: Type = Default::default();
+    let mut dimensions: Vec<Expression> = Default::default();
     for token in pair.into_inner() {
         match token.as_rule() {
             Rule::declaration_specifiers => {
@@ -303,16 +304,15 @@ fn build_type_name(pair: Pair<'_, Rule>) -> Result<BasicType, Box<dyn Error>> {
                 build_function_parameter_list(&mut fake_ast, &mut derived_type, token)?;
             }
             Rule::assignment_expression => {
-                derived_type.basic_type = BasicType {
-                    qualifier: vec![],
-                    base_type: BaseType::Array(
-                        Box::new(derived_type.basic_type),
-                        Box::new(build_assignment_expression(token)?),
-                    ),
-                };
+                dimensions.push(build_assignment_expression(token)?);
             }
             _ => unreachable!(),
         }
+    }
+    if !dimensions.is_empty() {
+        derived_type.basic_type.base_type =
+            BaseType::Array(Box::new(derived_type.basic_type.to_owned()), dimensions);
+        derived_type.basic_type.qualifier = Default::default();
     }
     if derived_type.storage_class_specifier != StorageClassSpecifier::Auto {
         return Err(Box::new(pest::error::Error::<Rule>::new_from_span(

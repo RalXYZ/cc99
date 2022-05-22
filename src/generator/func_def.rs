@@ -1,4 +1,7 @@
-use crate::ast::{BaseType, BasicType, Declaration, Statement, StatementOrDeclaration};
+use crate::ast::{
+    AssignOperation, BaseType, BasicType, Declaration, Expression, Statement,
+    StatementOrDeclaration,
+};
 use crate::generator::Generator;
 use crate::utils::CompileErr as CE;
 use anyhow::Result;
@@ -18,6 +21,8 @@ impl<'ctx> Generator<'ctx> {
 
         let func_ty = self.function_map.get(func_name).unwrap().to_owned();
         self.current_function = Some((func, func_ty.0));
+
+        let mut func_param_alloca = Vec::new();
 
         // create function block
         let func_block = self.context.append_basic_block(func, "entry");
@@ -47,6 +52,8 @@ impl<'ctx> Generator<'ctx> {
                     .as_str(),
             );
 
+            func_param_alloca.push(alloca);
+
             if func_param[i].1.is_some() {
                 self.insert_to_val_map(
                     &func_param[i].0,
@@ -54,6 +61,11 @@ impl<'ctx> Generator<'ctx> {
                     alloca,
                 )?;
             }
+        }
+
+        // store params on the stack
+        for (i, param) in func.get_param_iter().enumerate() {
+            self.builder.build_store(func_param_alloca[i], param);
         }
 
         // generate IR for each statement or declaration in function body
@@ -125,6 +137,13 @@ impl<'ctx> Generator<'ctx> {
                 .builder
                 .build_alloca(llvm_type, &identifier.to_owned().unwrap());
             self.insert_to_val_map(&var_type.basic_type, &identifier.to_owned().unwrap(), p_val)?;
+            if let Some(ref expr) = expr {
+                self.gen_assignment(
+                    &AssignOperation::Naive,
+                    &Box::new(Expression::Identifier(identifier.to_owned().unwrap())),
+                    expr,
+                )?;
+            }
             Ok(())
         } else {
             Err(CE::Error("FunctionDefinition cannot exist in function".to_string()).into())

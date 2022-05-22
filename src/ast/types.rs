@@ -1,5 +1,7 @@
+#[cfg(not(feature = "web"))]
 use super::super::utils::CompileErr;
 use super::*;
+#[cfg(not(feature = "web"))]
 use anyhow::Result;
 use std::fmt;
 
@@ -54,8 +56,8 @@ pub enum BaseType {
     Array(
         /// element type
         Box<BasicType>,
-        /// array length
-        Box<Expression>,
+        /// array length, from high-dimension to low-dimension
+        Vec<Expression>,
     ),
     Function(
         /// return type
@@ -102,6 +104,7 @@ impl Default for BaseType {
     }
 }
 
+#[cfg(not(feature = "web"))]
 impl<'ctx> BaseType {
     fn cast_rank(&self) -> i32 {
         match self {
@@ -131,10 +134,43 @@ impl<'ctx> BaseType {
         }
     }
 
+    pub(crate) fn equal_discarding_qualifiers(&self, rhs: &BaseType) -> bool {
+        if self == rhs {
+            return true;
+        }
+
+        if let BaseType::Pointer(lhs_inner) = self {
+            if let BaseType::Pointer(rhs_inner) = rhs {
+                return lhs_inner
+                    .base_type
+                    .equal_discarding_qualifiers(&rhs_inner.base_type);
+            }
+        }
+
+        false
+    }
+
     pub(crate) fn test_cast(&self, dest: &BaseType) -> Result<()> {
         // same type, directly cast
         if self == dest {
             return Ok(());
+        }
+
+        if let (BaseType::Pointer(lhs_ptr), BaseType::Pointer(rhs_ptr)) = (self, dest) {
+            // TODO: handle const
+            if lhs_ptr
+                .base_type
+                .equal_discarding_qualifiers(&rhs_ptr.base_type)
+            {
+                return Ok(());
+            };
+            return Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into());
+        }
+        if let BaseType::Pointer(_) = self {
+            return Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into());
+        }
+        if let BaseType::Pointer(_) = dest {
+            return Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into());
         }
 
         if self.cast_rank() < dest.cast_rank() {

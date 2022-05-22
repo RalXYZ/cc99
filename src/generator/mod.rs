@@ -33,7 +33,7 @@ pub struct Generator<'ctx> {
     // continue labels (in loop statements)
     continue_labels: VecDeque<BasicBlock<'ctx>>,
     // hashset for functions
-    function_map: HashMap<String, (BT, Vec<BT>)>,
+    function_map: HashMap<String, (BT, Vec<BT>, bool)>,
     // hashset for global variable
     global_variable_map: HashMap<String, (BT, PointerValue<'ctx>)>,
 }

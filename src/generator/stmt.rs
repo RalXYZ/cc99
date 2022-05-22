@@ -3,6 +3,7 @@ use crate::generator::Generator;
 use crate::utils::CompileErr as CE;
 use anyhow::Result;
 use std::collections::HashMap;
+use std::ops::Deref;
 
 impl<'ctx> Generator<'ctx> {
     pub(crate) fn gen_statement(&mut self, statement: &Statement) -> Result<()> {
@@ -112,7 +113,40 @@ impl<'ctx> Generator<'ctx> {
         iter: &Option<Box<Expression>>,
         body: &Statement,
     ) -> Result<()> {
-        unimplemented!()
+        let mut new_block: Vec<StatementOrDeclaration> = vec![];
+        if let Some(init) = init {
+            match init.deref() {
+                ForInitClause::Expression(expr) => {
+                    new_block.push(StatementOrDeclaration::Statement(Statement::Expression(
+                        Box::new(expr.to_owned()),
+                    )));
+                }
+                ForInitClause::ForDeclaration(decl) => {
+                    new_block.append(
+                        decl.iter()
+                            .map(|d| StatementOrDeclaration::LocalDeclaration(d.to_owned()))
+                            .collect::<Vec<StatementOrDeclaration>>()
+                            .as_mut(),
+                    );
+                }
+            }
+        }
+        let mut new_body = vec![StatementOrDeclaration::Statement(body.to_owned())];
+        if let Some(iter) = iter {
+            new_body.push(StatementOrDeclaration::Statement(Statement::Expression(
+                iter.to_owned(),
+            )));
+        }
+        let new_cond = match cond {
+            Some(cond) => cond.to_owned(),
+            None => Box::new(Expression::Empty),
+        };
+        new_block.push(StatementOrDeclaration::Statement(Statement::While(
+            new_cond,
+            Box::new(Statement::Compound(new_body)),
+        )));
+        self.gen_compound_statement(&new_block)?;
+        Ok(())
     }
 
     fn gen_break_statement(&mut self) -> Result<()> {
@@ -155,12 +189,12 @@ impl<'ctx> Generator<'ctx> {
             self.builder.build_unconditional_branch(after_block);
         };
 
+        self.builder.position_at_end(else_block);
         if let Some(ref else_stmt) = *else_stmt {
-            self.builder.position_at_end(else_block);
             self.gen_statement(else_stmt)?;
-            if self.no_terminator() {
-                self.builder.build_unconditional_branch(after_block);
-            }
+        }
+        if self.no_terminator() {
+            self.builder.build_unconditional_branch(after_block);
         }
 
         self.builder.position_at_end(after_block);

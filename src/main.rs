@@ -59,8 +59,8 @@ struct Args {
 
 fn main() {
     let args = Args::parse();
-    let include_dirs: Vec<&str> = match args.include.as_ref() {
-        Some(includes) => includes.split(',').collect(),
+    let include_dirs: Vec<&str> = match args.include {
+        Some(ref includes) => includes.split(',').collect(),
         None => Default::default(),
     };
     let basename = Path::new(&args.file).file_stem().unwrap().to_str().unwrap();
@@ -129,9 +129,10 @@ fn main() {
                 }
                 if !args.assemble {
                     // generate binary
-                    let clang_result = Command::new("sh")
-                        .arg("-c")
-                        .arg("clang ".to_owned() + basename + ".o -o " + output_file.as_str())
+                    let clang_result = Command::new("clang")
+                        .arg(basename.to_string() + ".o")
+                        .arg("-o")
+                        .arg(output_file.as_str())
                         .output()
                         .expect("Unable to generate binary");
                     if !clang_result.status.success() {

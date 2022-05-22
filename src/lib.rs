@@ -4,6 +4,7 @@ extern crate pest_derive;
 extern crate core;
 
 pub mod ast;
+#[cfg(not(feature = "web"))]
 pub mod generator;
 pub mod parse;
 pub mod preprocess;

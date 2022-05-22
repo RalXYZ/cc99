@@ -108,6 +108,7 @@ pub fn build_declaration_specifiers(
     ast: &mut Vec<Declaration>,
     pair: Pair<'_, Rule>,
 ) -> Result<Type, Box<dyn Error>> {
+    let span = pair.as_span();
     let mut qualifier: Vec<TypeQualifier> = Default::default();
     let mut storage_class_specifier: Vec<StorageClassSpecifier> = Default::default();
     let mut function_specifier: Vec<FunctionSpecifier> = Default::default();
@@ -151,7 +152,29 @@ pub fn build_declaration_specifiers(
             _ => unreachable!(),
         }
     }
+
     assert!(storage_class_specifier.len() <= 1);
+    if let BaseType::Function(_, _, _) = base_type {
+        if storage_class_specifier[0] == StorageClassSpecifier::Register {
+            return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                ErrorVariant::CustomError {
+                    message: "register storage class specifier is not allowed for function"
+                        .to_string(),
+                },
+                span,
+            )));
+        }
+        if storage_class_specifier[0] == StorageClassSpecifier::ThreadLocal {
+            return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                ErrorVariant::CustomError {
+                    message: "thread local storage class specifier is not allowed for function"
+                        .to_string(),
+                },
+                span,
+            )));
+        }
+    }
+
     Ok(Type {
         function_specifier,
         storage_class_specifier: if !storage_class_specifier.is_empty() {
@@ -315,11 +338,9 @@ fn build_raw_declarator(
             _ => unreachable!(),
         }
     }
-    while !dimensions.is_empty() {
-        derived_type.basic_type.base_type = BaseType::Array(
-            Box::new(derived_type.basic_type.to_owned()),
-            Box::new(dimensions.pop().unwrap()),
-        );
+    if !dimensions.is_empty() {
+        derived_type.basic_type.base_type =
+            BaseType::Array(Box::new(derived_type.basic_type.to_owned()), dimensions);
         derived_type.basic_type.qualifier = Default::default();
     }
     Ok(())
