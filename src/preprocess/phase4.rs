@@ -401,6 +401,7 @@ fn build_token_string<'a>(
 ) -> Result<String, Box<dyn Error>> {
     let mut result = String::new();
     let mut token_iter = pair.into_inner();
+    let mut new_extracted: HashSet<String> = HashSet::new();
     while let Some(token) = token_iter.next() {
         match token.as_rule() {
             Rule::WHITESPACE => {
@@ -418,7 +419,7 @@ fn build_token_string<'a>(
                             extracting_macro.contains(token.as_str()),
                         ) {
                             *modified = true;
-                            extracting_macro.insert(token.as_str().to_owned());
+                            new_extracted.insert(token.as_str().to_owned());
                             match macro_ {
                                 Macro::Object(body) => {
                                     if let Some(body) = body {
@@ -453,6 +454,7 @@ fn build_token_string<'a>(
             _ => unreachable!(),
         }
     }
+    extracting_macro.extend(new_extracted.to_owned());
     Ok(result)
 }
 
