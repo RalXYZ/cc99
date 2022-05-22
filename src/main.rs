@@ -2,7 +2,7 @@ extern crate pest;
 #[macro_use]
 extern crate pest_derive;
 use clap::{ArgGroup, Parser};
-use inkwell::context::Context;
+use inkwell::{context::Context, OptimizationLevel};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -52,6 +52,10 @@ struct Args {
     #[clap(short = 'c', long)]
     assemble: bool,
 
+    /// Optimization level
+    #[clap(short = 'O', long, default_value = "0")]
+    opt_level: u32,
+
     /// Add the directory <dir>,<dir>,<dir>(from left to right) to the list of directories to be searched for header files during preprocessing
     #[clap(short, long)]
     include: Option<String>,
@@ -81,6 +85,13 @@ fn main() {
                 basename.to_string()
             }
         }
+    };
+    let opt_level = match args.opt_level {
+        0 => OptimizationLevel::None,
+        1 => OptimizationLevel::Less,
+        2 => OptimizationLevel::Default,
+        3 => OptimizationLevel::Aggressive,
+        _ => panic!("Invalid optimization level"),
     };
 
     // preprocess
@@ -113,7 +124,7 @@ fn main() {
                 }
             } else if args.compile {
                 // generate assembly code
-                if let Err(e) = code_gen.out_asm_or_obj(false, Some(output_file)) {
+                if let Err(e) = code_gen.out_asm_or_obj(false, Some(output_file), opt_level) {
                     panic!("{}", e);
                 }
             } else {
@@ -124,6 +135,7 @@ fn main() {
                         true => output_file.clone(),
                         false => basename.to_string() + ".o",
                     }),
+                    opt_level,
                 ) {
                     panic!("{}", e);
                 }

@@ -21,18 +21,17 @@ impl<'ctx> Generator<'ctx> {
 
     /// * `is_obj` - true if the output file is an object file, false if it is a asm file
     /// * `output_file` - None if use default filename
-    pub fn out_asm_or_obj(&mut self, is_obj: bool, output_file: Option<String>) -> Result<()> {
+    pub fn out_asm_or_obj(&mut self, is_obj: bool, output_file: Option<String>, opt: OptimizationLevel) -> Result<()> {
         Target::initialize_native(&InitializationConfig::default()).unwrap();
 
         let triple = TargetMachine::get_default_triple();
-
         let machine = Target::from_triple(&triple)
             .unwrap()
             .create_target_machine(
                 &triple,
                 &TargetMachine::get_host_cpu_name().to_string(),
                 &TargetMachine::get_host_cpu_features().to_string(),
-                OptimizationLevel::None,
+                opt,
                 RelocMode::Default,
                 CodeModel::Default,
             )
