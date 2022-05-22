@@ -221,6 +221,7 @@ impl<'ctx> Generator<'ctx> {
                     l_cast_v.into_int_value(),
                     r_cast_v.into_int_value(),
                 )?;
+                // If value is bool
                 if int_or_bool_value
                     .into_int_value()
                     .get_type()
@@ -238,6 +239,7 @@ impl<'ctx> Generator<'ctx> {
                     l_cast_v.into_float_value(),
                     r_cast_v.into_float_value(),
                 )?;
+                // If value is bool(always float or int1)
                 if float_or_bool_value.is_int_value() {
                     return Ok((BaseType::Bool, float_or_bool_value));
                 }

@@ -39,7 +39,7 @@ jobs:
       uses: actions-rs/clippy-check@v1
       with:
         token: ${{ secrets.GITHUB_TOKEN }}
-        args: --all-features
+        args: --features "local"
 
     - name: rustfmt check
       uses: mbrobbel/rustfmt-check@master
