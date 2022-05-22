@@ -227,9 +227,7 @@ impl<'ctx> Generator<'ctx> {
                     .get_bit_width()
                     == 1
                 {
-                    let bool_to_int =
-                        self.cast_value(&BaseType::Bool, &int_or_bool_value, &cast_t)?;
-                    Ok((cast_t, bool_to_int))
+                    Ok((BaseType::Bool, int_or_bool_value))
                 } else {
                     Ok((cast_t, int_or_bool_value))
                 }
@@ -241,9 +239,7 @@ impl<'ctx> Generator<'ctx> {
                     r_cast_v.into_float_value(),
                 )?;
                 if float_or_bool_value.is_int_value() {
-                    let bool_to_float =
-                        self.cast_value(&BaseType::Bool, &float_or_bool_value, &cast_t)?;
-                    return Ok((cast_t, bool_to_float));
+                    return Ok((BaseType::Bool, float_or_bool_value));
                 }
                 Ok((cast_t, float_or_bool_value))
             }
