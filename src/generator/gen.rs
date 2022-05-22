@@ -74,7 +74,6 @@ impl<'ctx> Generator<'ctx> {
                 }
                 Ok(())
             })?;
-
         declarations
             .iter()
             .try_for_each(|declaration| -> Result<()> {
@@ -97,6 +96,23 @@ impl<'ctx> Generator<'ctx> {
                             *is_variadic,
                         )?;
                     }
+                }
+                Ok(())
+            })?;
+
+        declarations
+            .iter()
+            .try_for_each(|declaration| -> Result<()> {
+                if let Declaration::FunctionDefinition(
+                    _,
+                    _,
+                    ref return_type,
+                    ref identifier,
+                    ref params_type,
+                    _,
+                    ref statements,
+                ) = declaration
+                {
                     self.gen_func_def(&return_type, identifier, params_type, statements)?;
                 }
                 Ok(())
