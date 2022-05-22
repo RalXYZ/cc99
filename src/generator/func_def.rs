@@ -5,7 +5,7 @@ use crate::ast::{
 use crate::generator::Generator;
 use crate::utils::CompileErr as CE;
 use anyhow::Result;
-use inkwell::values::{AnyValue, BasicValue, PointerValue};
+use inkwell::values::{BasicValue, PointerValue};
 use std::collections::HashMap;
 
 impl<'ctx> Generator<'ctx> {

@@ -24,9 +24,6 @@ pub enum CompileErr {
     #[error("invalid binary operator")]
     InvalidBinary,
 
-    #[error("invalid lvalue")]
-    InvalidLvalue,
-
     #[error("there are duplicate functions: {}", .0.as_str())]
     DuplicateFunction(String),
 

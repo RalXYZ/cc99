@@ -88,20 +88,29 @@ impl<'ctx> Generator<'ctx> {
             Expression::ArraySubscript(ref id_expr, ref idx_vec) => {
                 if let Expression::Identifier(id) = id_expr.deref() {
                     let (l_t, l_pv) = self.get_variable(id)?;
-                    let (res_t, idx_int_val_vec) = self.process_arr_subscript(l_t, idx_vec.clone())?;
-                    Ok((
-                        res_t.base_type,
-                        self.builder.build_load(
-                            unsafe {
-                                self.builder.build_gep(
-                                    l_pv,
-                                    idx_int_val_vec.as_ref(),
-                                    "arr_subscript",
-                                )
-                            },
-                            "load_arr_subscript",
-                        ),
-                    ))
+                    let (res_t, idx_int_val_vec) =
+                        self.process_arr_subscript(l_t, idx_vec.clone())?;
+                    if let BaseType::Array(_, _) = res_t.base_type {
+                        Ok((BaseType::Pointer(Box::new(res_t)), unsafe {
+                            self.builder
+                                .build_gep(l_pv, idx_int_val_vec.as_ref(), "arr_subscript")
+                                .as_basic_value_enum()
+                        }))
+                    } else {
+                        Ok((
+                            res_t.base_type,
+                            self.builder.build_load(
+                                unsafe {
+                                    self.builder.build_gep(
+                                        l_pv,
+                                        idx_int_val_vec.as_ref(),
+                                        "arr_subscript",
+                                    )
+                                },
+                                "load_arr_subscript",
+                            ),
+                        ))
+                    }
                 } else {
                     unreachable!()
                 }
@@ -110,34 +119,37 @@ impl<'ctx> Generator<'ctx> {
         }
     }
 
-    fn process_arr_subscript(&self, l_t: BasicType, idx_vec: Vec<Expression>) -> Result<(BasicType, Vec<IntValue<'ctx>>)> {
+    fn process_arr_subscript(
+        &self,
+        l_t: BasicType,
+        idx_vec: Vec<Expression>,
+    ) -> Result<(BasicType, Vec<IntValue<'ctx>>)> {
         if let BaseType::Array(ref arr_t, arr_len_vec) = l_t.base_type {
             let res_t: BaseType;
             if idx_vec.len() > arr_len_vec.len() {
-                return Err(CompileErr::ArrayDimensionNotMatch(arr_len_vec.len(), idx_vec.len()).into());
+                return Err(
+                    CompileErr::ArrayDimensionNotMatch(arr_len_vec.len(), idx_vec.len()).into(),
+                );
             } else if idx_vec.len() == arr_len_vec.len() {
                 res_t = arr_t.base_type.clone();
             } else {
                 res_t = BaseType::Array(
                     arr_t.clone(),
-                    (idx_vec.len()..arr_len_vec.len()).fold(
-                        vec![],
-                        |mut acc, i| {
-                            acc.push(idx_vec[i].clone());
-                            acc
-                        },
-                    ),
+                    (idx_vec.len()..arr_len_vec.len()).fold(vec![], |mut acc, i| {
+                        acc.push(idx_vec[i].clone());
+                        acc
+                    }),
                 );
             }
 
             let mut idx_int_val_vec = vec![self.context.i32_type().const_zero()];
             idx_int_val_vec.extend(
-                idx_vec.iter().map(|expr| {
-                    self.gen_expression(expr).unwrap().1.into_int_value()
-                }),
+                idx_vec
+                    .iter()
+                    .map(|expr| self.gen_expression(expr).unwrap().1.into_int_value()),
             );
             Ok((
-                BasicType{
+                BasicType {
                     qualifier: l_t.qualifier,
                     base_type: res_t,
                 },
@@ -212,13 +224,10 @@ impl<'ctx> Generator<'ctx> {
                 }
                 _ => return Err(CompileErr::InvalidUnary.into()),
             },
-            UnaryOperation::Reference => match expr.deref().deref() {
-                Expression::Identifier(ref id) => {
-                    let (t, ptr) = self.get_variable(id)?;
-                    Ok((BaseType::Pointer(Box::new(t)), ptr.as_basic_value_enum()))
-                }
-                _ => return Err(CompileErr::InvalidUnary.into()),
-            },
+            UnaryOperation::Reference => {
+                let (t, ptr) = self.get_lvalue(expr)?;
+                Ok((BaseType::Pointer(Box::new(t)), ptr.as_basic_value_enum()))
+            }
             UnaryOperation::Dereference => match expr_type {
                 BaseType::Pointer(ref t) => Ok((
                     t.base_type.clone(),
@@ -549,13 +558,11 @@ impl<'ctx> Generator<'ctx> {
             Expression::ArraySubscript(ref id_expr, ref idx_vec) => {
                 if let Expression::Identifier(id) = id_expr.deref() {
                     let (t, pv) = self.get_variable(id)?;
-                    let (res_t, idx_int_val_vec) = self.process_arr_subscript(t, idx_vec.clone())?;
+                    let (res_t, idx_int_val_vec) =
+                        self.process_arr_subscript(t, idx_vec.clone())?;
                     Ok((res_t, unsafe {
-                        self.builder.build_gep(
-                            pv,
-                            idx_int_val_vec.as_ref(),
-                            "arr_subscript",
-                        )
+                        self.builder
+                            .build_gep(pv, idx_int_val_vec.as_ref(), "arr_subscript")
                     }))
                 } else {
                     unreachable!()
