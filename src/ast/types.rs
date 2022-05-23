@@ -104,6 +104,15 @@ impl Default for BaseType {
     }
 }
 
+impl<'ctx> BasicType {
+    pub fn is_const(&self) -> bool {
+        self.qualifier.iter().any(|x| match x {
+            TypeQualifier::Const => true,
+            _ => false,
+        })
+    }
+}
+
 #[cfg(not(feature = "web"))]
 impl<'ctx> BaseType {
     fn cast_rank(&self) -> i32 {

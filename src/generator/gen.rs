@@ -250,6 +250,10 @@ impl<'ctx> Generator<'ctx> {
         let global_value = self.module.add_global(llvm_type, None, var_name.as_str());
         global_value.set_linkage(Linkage::Common);
 
+        if var_type.basic_type.is_const() {
+            global_value.set_constant(true);
+        }
+
         match ptr_to_init {
             Some(ptr_to_init) => {
                 let init_val_pair = self.gen_expression(&**ptr_to_init)?;
