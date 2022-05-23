@@ -133,6 +133,7 @@ fn main() {
                         .arg(basename.to_string() + ".o")
                         .arg("-o")
                         .arg(output_file.as_str())
+                        .arg("-no-pie")
                         .output()
                         .expect("Unable to generate binary");
                     if !clang_result.status.success() {
