@@ -30,12 +30,21 @@ impl<'ctx> Generator<'ctx> {
         Target::initialize_native(&InitializationConfig::default()).unwrap();
 
         let triple = TargetMachine::get_default_triple();
+        let cpu = match opt {
+            OptimizationLevel::None => std::env::consts::ARCH.to_string().replace("_", "-"),
+            _ => TargetMachine::get_host_cpu_name().to_string(),
+        };
+        let features = match opt {
+            OptimizationLevel::None => "".to_string(),
+            _ => TargetMachine::get_host_cpu_features().to_string(),
+        };
+
         let machine = Target::from_triple(&triple)
             .unwrap()
             .create_target_machine(
                 &triple,
-                &TargetMachine::get_host_cpu_name().to_string(),
-                &TargetMachine::get_host_cpu_features().to_string(),
+                &cpu,
+                &features,
                 opt,
                 RelocMode::Default,
                 CodeModel::Default,
