@@ -45,7 +45,7 @@ impl<'ctx> Generator<'ctx> {
     }
 
     // first-time scanning
-    pub fn gen(&mut self, ast: &Box<AST>) -> () {
+    pub fn gen(&mut self, ast: &Box<AST>) {
         let AST::GlobalDeclaration(ref declarations) = ast.deref();
 
         let mut err: Vec<Error> = vec![];

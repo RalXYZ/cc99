@@ -687,18 +687,16 @@ impl<'ctx> Generator<'ctx> {
                                 .into(),
                         )
                     }
+                } else if l_v.is_pointer_value() {
+                    Ok((
+                        BasicType {
+                            qualifier: vec![],
+                            base_type: t,
+                        },
+                        l_v.into_pointer_value(),
+                    ))
                 } else {
-                    if l_v.is_pointer_value() {
-                        Ok((
-                            BasicType {
-                                qualifier: vec![],
-                                base_type: t,
-                            },
-                            l_v.into_pointer_value(),
-                        ))
-                    } else {
-                        Err(CompileErr::InvalidLeftValue(l_v.print_to_string().to_string()).into())
-                    }
+                    Err(CompileErr::InvalidLeftValue(l_v.print_to_string().to_string()).into())
                 }
             }
             Expression::ArraySubscript(ref id_expr, ref idx_vec) => {
@@ -735,15 +733,15 @@ impl<'ctx> Generator<'ctx> {
             let (ret_t, args_t, is_variadic) = self.function_map.get(id).unwrap().to_owned();
             let fv = self.module.get_function(id).unwrap();
 
-            if args.len() != fv.get_type().count_param_types() as usize {
-                if !(is_variadic && args.len() > fv.get_type().count_param_types() as usize) {
-                    return Err(CompileErr::ParameterCountMismatch(
-                        id.to_string(),
-                        fv.get_type().count_param_types() as usize,
-                        args.len(),
-                    )
-                    .into());
-                }
+            if args.len() != fv.get_type().count_param_types() as usize
+                && !(is_variadic && args.len() > fv.get_type().count_param_types() as usize)
+            {
+                return Err(CompileErr::ParameterCountMismatch(
+                    id.to_string(),
+                    fv.get_type().count_param_types() as usize,
+                    args.len(),
+                )
+                .into());
             }
 
             let mut casted_args = Vec::with_capacity(args.len());
