@@ -1,6 +1,8 @@
 extern crate pest;
 #[macro_use]
 extern crate pest_derive;
+extern crate core;
+
 use clap::{ArgGroup, Parser};
 use inkwell::context::Context;
 use std::fs;
@@ -101,10 +103,7 @@ fn main() {
             // code_gen
             let context = Context::create();
             let mut code_gen = Generator::new(&context, &args.file);
-            let gen_result = code_gen.gen(&ast);
-            if let Err(e) = gen_result {
-                panic!("{}", e);
-            }
+            code_gen.gen(&ast);
 
             if args.bitcode {
                 // generate LLVM bitcode

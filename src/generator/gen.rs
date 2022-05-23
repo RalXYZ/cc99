@@ -4,7 +4,7 @@ use crate::ast::{
 };
 use crate::generator::Generator;
 use crate::utils::CompileErr;
-use anyhow::Result;
+use anyhow::{Error, Result};
 use inkwell::context::Context;
 use inkwell::module::Linkage;
 use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType};
@@ -45,64 +45,87 @@ impl<'ctx> Generator<'ctx> {
     }
 
     // first-time scanning
-    pub fn gen(&mut self, ast: &Box<AST>) -> Result<()> {
+    pub fn gen(&mut self, ast: &Box<AST>) -> () {
         let AST::GlobalDeclaration(ref declarations) = ast.deref();
-        declarations
-            .iter()
-            .filter_map(|declaration| {
-                if let Declaration::Declaration(ref type_info, ref identifier, ref initializer) =
-                    declaration
-                {
-                    Some((type_info, identifier, initializer))
-                } else {
-                    None
-                }
-            })
-            .try_for_each(|(type_info, identifier, initializer)| -> Result<()> {
-                if let BaseType::Function(ref return_type, ref params_type, is_variadic) =
-                    type_info.basic_type.base_type
-                {
-                    self.gen_function_proto(
-                        &type_info.storage_class_specifier,
-                        return_type,
-                        identifier.as_ref().unwrap(),
-                        params_type,
-                        is_variadic,
-                    )?;
-                } else {
-                    self.gen_global_variable(type_info, identifier.as_ref().unwrap(), initializer)?;
-                }
-                Ok(())
-            })?;
 
-        declarations
-            .iter()
-            .try_for_each(|declaration| -> Result<()> {
-                if let Declaration::FunctionDefinition(
-                    _,
-                    ref storage_class,
-                    ref return_type,
-                    ref identifier,
-                    ref params_type,
-                    is_variadic,
-                    ref statements,
-                ) = declaration
-                {
-                    if !self.function_map.contains_key(identifier) {
+        let mut err: Vec<Error> = vec![];
+
+        err.extend(
+            declarations
+                .iter()
+                .filter_map(|declaration| {
+                    if let Declaration::Declaration(
+                        ref type_info,
+                        ref identifier,
+                        ref initializer,
+                    ) = declaration
+                    {
+                        Some((type_info, identifier, initializer))
+                    } else {
+                        None
+                    }
+                })
+                .map(|(type_info, identifier, initializer)| -> Result<()> {
+                    if let BaseType::Function(ref return_type, ref params_type, is_variadic) =
+                        type_info.basic_type.base_type
+                    {
                         self.gen_function_proto(
-                            storage_class,
+                            &type_info.storage_class_specifier,
                             return_type,
-                            identifier,
-                            &params_type.iter().map(|param| param.0.clone()).collect(),
-                            *is_variadic,
+                            identifier.as_ref().unwrap(),
+                            params_type,
+                            is_variadic,
+                        )?;
+                    } else {
+                        self.gen_global_variable(
+                            type_info,
+                            identifier.as_ref().unwrap(),
+                            initializer,
                         )?;
                     }
-                    self.gen_func_def(&return_type, identifier, params_type, statements)?;
-                }
-                Ok(())
-            })?;
+                    Ok(())
+                })
+                .filter_map(|result| if result.is_err() { result.err() } else { None }),
+        );
 
-        Ok(())
+        err.extend(
+            declarations
+                .iter()
+                .map(|declaration| -> Result<()> {
+                    if let Declaration::FunctionDefinition(
+                        _,
+                        ref storage_class,
+                        ref return_type,
+                        ref identifier,
+                        ref params_type,
+                        is_variadic,
+                        ref statements,
+                    ) = declaration
+                    {
+                        if !self.function_map.contains_key(identifier) {
+                            self.gen_function_proto(
+                                storage_class,
+                                return_type,
+                                identifier,
+                                &params_type.iter().map(|param| param.0.clone()).collect(),
+                                *is_variadic,
+                            )?;
+                        }
+                        self.gen_func_def(&return_type, identifier, params_type, statements)?;
+                    }
+                    Ok(())
+                })
+                .filter_map(|result| if result.is_err() { result.err() } else { None }),
+        );
+
+        if err.len() > 0 {
+            err.iter().for_each(
+                |err| {
+                    eprintln!("{}", err);
+                }
+            );
+            panic!("errors found while code gen")
+        }
     }
 
     fn gen_function_proto(
