@@ -18,6 +18,13 @@ impl<'ctx> Generator<'ctx> {
         expr: &Expression,
     ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
         match expr {
+            Expression::Empty => Ok((
+                BaseType::Void,
+                self.context
+                    .i8_type()
+                    .const_int(0 as u64, false)
+                    .as_basic_value_enum(),
+            )),
             Expression::Assignment(ref op, ref lhs, ref rhs) => self.gen_assignment(op, lhs, rhs),
             Expression::Unary(op, expr) => self.gen_unary_expr(op, expr),
             Expression::Binary(op, lhs, rhs) => self.gen_binary_expr(op, lhs, rhs),
