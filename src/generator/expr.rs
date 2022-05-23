@@ -5,7 +5,8 @@ use crate::generator::Generator;
 use crate::utils::CompileErr;
 use anyhow::Result;
 use inkwell::values::{
-    BasicMetadataValueEnum, BasicValue, BasicValueEnum, FloatValue, IntValue, PointerValue,
+    AnyValue, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FloatValue, IntValue,
+    PointerValue,
 };
 use inkwell::{FloatPredicate, IntPredicate};
 use std::fmt::Error;
@@ -176,6 +177,7 @@ impl<'ctx> Generator<'ctx> {
                     CompileErr::Error("unsupported multidimensional pointer".to_string()).into(),
                 );
             }
+            //pointer doesn't need extra 0
             let mut idx_int_val_vec = vec![];
             idx_int_val_vec.extend(
                 idx_vec
@@ -589,6 +591,40 @@ impl<'ctx> Generator<'ctx> {
     fn get_lvalue(&self, lhs: &Box<Expression>) -> Result<(BasicType, PointerValue<'ctx>)> {
         match lhs.deref().deref() {
             Expression::Identifier(ref id) => Ok(self.get_variable(id)?),
+            Expression::Unary(ref op, ref unary_operation) => {
+                // we need lhs expression's type!!! But now we don't have a function only get the type
+                //TODO FIXME! It's really dirty
+                let (t, _) = self.gen_expression(lhs)?;
+                let (l_t, l_v) = self.gen_expression(unary_operation)?;
+                if let UnaryOperation::Dereference = op {
+                    if let BaseType::Pointer(_) = l_t {
+                        Ok((
+                            BasicType {
+                                qualifier: vec![],
+                                base_type: t,
+                            },
+                            l_v.into_pointer_value(),
+                        ))
+                    } else {
+                        Err(
+                            CompileErr::InvalidDereference(l_v.print_to_string().to_string())
+                                .into(),
+                        )
+                    }
+                } else {
+                    if l_v.is_pointer_value() {
+                        Ok((
+                            BasicType {
+                                qualifier: vec![],
+                                base_type: t,
+                            },
+                            l_v.into_pointer_value(),
+                        ))
+                    } else {
+                        Err(CompileErr::InvalidLeftValue(l_v.print_to_string().to_string()).into())
+                    }
+                }
+            }
             Expression::ArraySubscript(ref id_expr, ref idx_vec) => {
                 if let Expression::Identifier(id) = id_expr.deref() {
                     let (t, mut pv) = self.get_variable(id)?;

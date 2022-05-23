@@ -45,6 +45,12 @@ pub enum CompileErr {
     #[error("point dimension not match, expect {}, found {}", .0.to_string(), .1.to_string())]
     PointDimensionNotMatch(usize, usize),
 
+    #[error("Invalid left value for a not addressable variable: {}", .0.as_str())]
+    InvalidLeftValue(String),
+
+    #[error("Invalid dereference for a no pointer variable: {}", .0.as_str())]
+    InvalidDereference(String),
+
     #[error("error: {}", .0.as_str())]
     Error(String),
 
