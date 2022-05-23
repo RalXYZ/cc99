@@ -332,8 +332,8 @@ impl<'ctx> Generator<'ctx> {
         lhs: &Box<Expression>,
         rhs: &Box<Expression>,
     ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
-        let (l_t, l_v) = self.gen_expression(lhs)?;
-        let (r_t, r_v) = self.gen_expression(rhs)?;
+        let (ref l_t, l_v) = self.gen_expression(lhs)?;
+        let (ref r_t, r_v) = self.gen_expression(rhs)?;
 
         //TODO FIXME!! so dirty!
         let mut visit = 0;
@@ -342,6 +342,14 @@ impl<'ctx> Generator<'ctx> {
                 if let BaseType::Pointer(_) = r_t {
                     visit = 1;
                     self.build_point_binary_op(op, r_v.into_pointer_value(), l_v.into_int_value())
+                } else if let BaseType::Array(array_type,array_vec)= r_t {
+                    visit = 1;
+                    if array_vec.len()!=1 {
+                        Err(CompileErr::ArrayDimensionNotMatch(1,array_vec.len()).into())
+                    } else {
+                        let point_v=self.cast_value(r_t,&r_v,&BaseType::Pointer(array_type.clone()))?;
+                        self.build_point_binary_op(op,point_v.into_pointer_value(),l_v.into_int_value())
+                    }
                 } else {
                     Err(CompileErr::Error("".to_string()).into())
                 }
@@ -357,15 +365,24 @@ impl<'ctx> Generator<'ctx> {
                 }
                 _ => Err(CompileErr::Error("".to_string()).into()),
             },
+            BaseType::Array(array_type,array_vec)=> {
+                visit=2;
+                if array_vec.len()!=1 {
+                    Err(CompileErr::ArrayDimensionNotMatch(1,array_vec.len()).into())
+                } else {
+                    let point_v=self.cast_value(l_t,&l_v,&BaseType::Pointer(array_type.clone()))?;
+                    self.build_point_binary_op(op,point_v.into_pointer_value(),r_v.into_int_value())
+                }
+            }
             _ => Err(CompileErr::Error("".to_string()).into()),
         };
         if visit > 0 {
             return match tmp {
                 Ok(t) => {
                     if visit == 1 {
-                        Ok((r_t, t))
+                        Ok((r_t.clone(), t))
                     } else {
-                        Ok((l_t, t))
+                        Ok((l_t.clone(), t))
                     }
                 }
                 Err(e) => Err(e),
