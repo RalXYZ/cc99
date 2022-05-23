@@ -1,5 +1,6 @@
 use crate::generator::Generator;
 use anyhow::Result;
+use inkwell::passes::{PassManager, PassManagerBuilder};
 use inkwell::targets::{
     CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine,
 };
@@ -38,6 +39,24 @@ impl<'ctx> Generator<'ctx> {
             OptimizationLevel::None => "".to_string(),
             _ => TargetMachine::get_host_cpu_features().to_string(),
         };
+        let pass_manager = match opt {
+            OptimizationLevel::None => {
+                let fpm = PassManager::create(());
+                let pb = PassManagerBuilder::create();
+                pb.set_optimization_level(opt);
+                pb.set_disable_unroll_loops(true);
+                pb.populate_module_pass_manager(&fpm);
+                fpm
+            }
+            _ => {
+                let fpm = PassManager::create(());
+                let pb = PassManagerBuilder::create();
+                pb.set_optimization_level(opt);
+                pb.set_disable_unroll_loops(false);
+                pb.populate_module_pass_manager(&fpm);
+                fpm
+            }
+        };
 
         let machine = Target::from_triple(&triple)
             .unwrap()
@@ -50,6 +69,7 @@ impl<'ctx> Generator<'ctx> {
                 CodeModel::Default,
             )
             .unwrap();
+        machine.add_analysis_passes(&pass_manager);
 
         let mut target_path;
         if let Some(output_file) = output_file {
