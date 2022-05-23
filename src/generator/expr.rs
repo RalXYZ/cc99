@@ -278,7 +278,8 @@ impl<'ctx> Generator<'ctx> {
                     BaseType::SignedInteger(_)
                     | BaseType::UnsignedInteger(_)
                     | BaseType::Double
-                    | BaseType::Float => {
+                    | BaseType::Float
+                    | BaseType::Pointer(_) => {
                         let _ = self.gen_assignment(
                             if *op == UnaryOperation::PostfixIncrement {
                                 &AssignOperation::Addition
@@ -297,7 +298,8 @@ impl<'ctx> Generator<'ctx> {
                 BaseType::SignedInteger(_)
                 | BaseType::UnsignedInteger(_)
                 | BaseType::Double
-                | BaseType::Float => self.gen_assignment(
+                | BaseType::Float
+                | BaseType::Pointer(_) => self.gen_assignment(
                     if *op == UnaryOperation::PrefixIncrement {
                         &AssignOperation::Addition
                     } else {
@@ -320,6 +322,43 @@ impl<'ctx> Generator<'ctx> {
     ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
         let (l_t, l_v) = self.gen_expression(lhs)?;
         let (r_t, r_v) = self.gen_expression(rhs)?;
+
+        //TODO FIXME!! so dirty!
+        let mut visit = 0;
+        let tmp = match l_t {
+            BaseType::SignedInteger(_) | BaseType::UnsignedInteger(_) => {
+                if let BaseType::Pointer(_) = r_t {
+                    visit = 1;
+                    self.build_point_binary_op(op, r_v.into_pointer_value(), l_v.into_int_value())
+                } else {
+                    Err(CompileErr::Error("".to_string()).into())
+                }
+            }
+            BaseType::Pointer(_) => match r_t {
+                BaseType::SignedInteger(_) => {
+                    visit = 2;
+                    self.build_point_binary_op(op, l_v.into_pointer_value(), r_v.into_int_value())
+                }
+                BaseType::UnsignedInteger(_) => {
+                    visit = 2;
+                    self.build_point_binary_op(op, l_v.into_pointer_value(), r_v.into_int_value())
+                }
+                _ => Err(CompileErr::Error("".to_string()).into()),
+            },
+            _ => Err(CompileErr::Error("".to_string()).into()),
+        };
+        if visit > 0 {
+            return match tmp {
+                Ok(t) => {
+                    if visit == 1 {
+                        Ok((r_t, t))
+                    } else {
+                        Ok((l_t, t))
+                    }
+                }
+                Err(e) => Err(e),
+            };
+        }
 
         let cast_t = BaseType::upcast(&l_t, &r_t)?;
         let l_cast_v = self.cast_value(&l_t, &l_v, &cast_t)?;
@@ -363,6 +402,31 @@ impl<'ctx> Generator<'ctx> {
         }
     }
 
+    // left is PointerValue, right is IntValue
+    fn build_point_binary_op(
+        &self,
+        op: &BinaryOperation,
+        lhs: PointerValue<'ctx>,
+        rhs: IntValue<'ctx>,
+    ) -> Result<BasicValueEnum<'ctx>> {
+        let result_v = match op {
+            BinaryOperation::Addition => unsafe {
+                let idx_int_val_vec = vec![rhs];
+                self.builder
+                    .build_gep(lhs, idx_int_val_vec.as_ref(), "pointer add")
+            },
+            BinaryOperation::Subtraction => unsafe {
+                let idx_int_val_vec = vec![rhs.const_neg()];
+                self.builder
+                    .build_gep(lhs, idx_int_val_vec.as_ref(), "pointer add")
+            },
+
+            // logical
+            //TODO 先不管logical操作了QAQ
+            _ => return Err(CompileErr::InvalidBinary.into()),
+        };
+        Ok(result_v.as_basic_value_enum())
+    }
     fn build_int_binary_op(
         &self,
         op: &BinaryOperation,
