@@ -119,11 +119,9 @@ impl<'ctx> Generator<'ctx> {
         );
 
         if err.len() > 0 {
-            err.iter().for_each(
-                |err| {
-                    eprintln!("{}", err);
-                }
-            );
+            err.iter().for_each(|err| {
+                eprintln!("{}", err);
+            });
             panic!("errors found while code gen")
         }
     }

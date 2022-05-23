@@ -73,8 +73,13 @@ impl<'ctx> Generator<'ctx> {
                     .as_basic_value_enum(),
             )),
             Expression::Identifier(ref string_literal) => {
+                //if BaseType is Array, we just return Array type but don't load value!!
                 let deref = self.get_variable(string_literal)?;
-                let val = self.builder.build_load(deref.1, "load_val");
+                let val = if let BaseType::Array(_, _) = deref.0.base_type {
+                    deref.1.as_basic_value_enum()
+                } else {
+                    self.builder.build_load(deref.1, "load_val")
+                };
                 Ok((deref.0.base_type, val))
             }
             Expression::StringLiteral(ref string) => Ok((

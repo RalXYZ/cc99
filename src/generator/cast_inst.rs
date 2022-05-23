@@ -147,9 +147,13 @@ impl<'ctx> Generator<'ctx> {
 
             Ty::Pointer(_) => match dest {
                 Ty::SignedInteger(_) | Ty::UnsignedInteger(_) => Op::PtrToInt,
+                Ty::Pointer(_) => Op::BitCast,
                 _ => return Err(InvalidCast(curr.clone(), dest.clone()).into()),
             },
-
+            Ty::Array(_, _) => match dest {
+                Ty::Pointer(_) => Op::BitCast,
+                _ => return Err(InvalidCast(curr.clone(), dest.clone()).into()),
+            },
             _ => return Err(InvalidCast(curr.clone(), dest.clone()).into()),
         };
         Ok(instruction)
