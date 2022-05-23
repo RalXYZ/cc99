@@ -148,7 +148,7 @@ impl<'ctx> Generator<'ctx> {
                 res_t = BaseType::Array(
                     arr_t.clone(),
                     (idx_vec.len()..arr_len_vec.len()).fold(vec![], |mut acc, i| {
-                        acc.push(idx_vec[i].clone());
+                        acc.push(arr_len_vec[i].clone());
                         acc
                     }),
                 );
