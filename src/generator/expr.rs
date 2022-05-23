@@ -87,7 +87,18 @@ impl<'ctx> Generator<'ctx> {
             )),
             Expression::ArraySubscript(ref id_expr, ref idx_vec) => {
                 if let Expression::Identifier(id) = id_expr.deref() {
-                    let (l_t, l_pv) = self.get_variable(id)?;
+                    let (l_t, mut l_pv) = self.get_variable(id)?;
+
+                    //if type is pointer, get_variable will get the address of pointer, not the pointer point to!
+                    //So if we want get the point to address, we need extra load action!
+                    if let BaseType::Pointer(_) = l_t.base_type {
+                        // println!("{}", l_pv.get_type().print_to_string().to_string());
+                        l_pv = self
+                            .builder
+                            .build_load(l_pv, "dereference")
+                            .into_pointer_value();
+                    }
+                    // println!("{}", l_pv.get_type().print_to_string().to_string());
                     let (res_t, idx_int_val_vec) =
                         self.process_arr_subscript(l_t, idx_vec.clone())?;
                     if let BaseType::Array(_, _) = res_t.base_type {
@@ -152,6 +163,29 @@ impl<'ctx> Generator<'ctx> {
                 BasicType {
                     qualifier: l_t.qualifier,
                     base_type: res_t,
+                },
+                idx_int_val_vec,
+            ))
+        } else if let BaseType::Pointer(ref point_t) = l_t.base_type {
+            if idx_vec.len() != 1 {
+                return Err(CompileErr::PointDimensionNotMatch(1, idx_vec.len()).into());
+            }
+            // we don't support more than 1 dimension pointer
+            if let BaseType::Pointer(_) = point_t.base_type {
+                return Err(
+                    CompileErr::Error("unsupported multidimensional pointer".to_string()).into(),
+                );
+            }
+            let mut idx_int_val_vec = vec![];
+            idx_int_val_vec.extend(
+                idx_vec
+                    .iter()
+                    .map(|expr| self.gen_expression(expr).unwrap().1.into_int_value()),
+            );
+            Ok((
+                BasicType {
+                    qualifier: l_t.qualifier,
+                    base_type: point_t.base_type.clone(),
                 },
                 idx_int_val_vec,
             ))
@@ -557,7 +591,15 @@ impl<'ctx> Generator<'ctx> {
             Expression::Identifier(ref id) => Ok(self.get_variable(id)?),
             Expression::ArraySubscript(ref id_expr, ref idx_vec) => {
                 if let Expression::Identifier(id) = id_expr.deref() {
-                    let (t, pv) = self.get_variable(id)?;
+                    let (t, mut pv) = self.get_variable(id)?;
+                    //if type is pointer, get_variable will get the address of pointer, not the pointer point to!
+                    //So if we want get the point to address, we need extra load action!
+                    if let BaseType::Pointer(_) = t.base_type {
+                        pv = self
+                            .builder
+                            .build_load(pv, "dereference")
+                            .into_pointer_value()
+                    }
                     let (res_t, idx_int_val_vec) =
                         self.process_arr_subscript(t, idx_vec.clone())?;
                     Ok((res_t, unsafe {
