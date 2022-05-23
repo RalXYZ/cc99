@@ -109,7 +109,7 @@ int read_data()
         int index2 = find_char_in_range(&buf[0], '|', index1 + 1, strlen_my(&buf[0]));
         int index3 = find_char_in_range(&buf[0], '|', index2 + 1, strlen_my(&buf[0]));
 
-        printf("%d %d %d\n", index1, index2, index3);
+        // printf("%d %d %d\n", index1, index2, index3);
         strcpy_my(&courses_name[courses_num][0], &buf[0], index1);
         courses_credit[courses_num] = buf[index1 + 1] - '0';
 
