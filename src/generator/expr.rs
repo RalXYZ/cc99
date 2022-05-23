@@ -5,7 +5,8 @@ use crate::generator::Generator;
 use crate::utils::CompileErr;
 use anyhow::Result;
 use inkwell::values::{
-    BasicMetadataValueEnum, BasicValue, BasicValueEnum, FloatValue, IntValue, PointerValue,
+    AnyValue, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FloatValue, IntValue,
+    PointerValue,
 };
 use inkwell::{FloatPredicate, IntPredicate};
 use std::fmt::Error;
@@ -17,6 +18,13 @@ impl<'ctx> Generator<'ctx> {
         expr: &Expression,
     ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
         match expr {
+            Expression::Empty => Ok((
+                BaseType::Void,
+                self.context
+                    .i8_type()
+                    .const_int(0 as u64, false)
+                    .as_basic_value_enum(),
+            )),
             Expression::Assignment(ref op, ref lhs, ref rhs) => self.gen_assignment(op, lhs, rhs),
             Expression::Unary(op, expr) => self.gen_unary_expr(op, expr),
             Expression::Binary(op, lhs, rhs) => self.gen_binary_expr(op, lhs, rhs),
@@ -72,8 +80,13 @@ impl<'ctx> Generator<'ctx> {
                     .as_basic_value_enum(),
             )),
             Expression::Identifier(ref string_literal) => {
+                //if BaseType is Array, we just return Array type but don't load value!!
                 let deref = self.get_variable(string_literal)?;
-                let val = self.builder.build_load(deref.1, "load_val");
+                let val = if let BaseType::Array(_, _) = deref.0.base_type {
+                    deref.1.as_basic_value_enum()
+                } else {
+                    self.builder.build_load(deref.1, "load_val")
+                };
                 Ok((deref.0.base_type, val))
             }
             Expression::StringLiteral(ref string) => Ok((
@@ -85,32 +98,113 @@ impl<'ctx> Generator<'ctx> {
                     .build_global_string_ptr(string.as_str(), "str")
                     .as_basic_value_enum(),
             )),
-            Expression::ArraySubscript(ref id_expr, ref idx) => {
+            Expression::ArraySubscript(ref id_expr, ref idx_vec) => {
                 if let Expression::Identifier(id) = id_expr.deref() {
-                    let (l_t, l_pv) = self.get_variable(id)?;
-                    if let BaseType::Array(arr_t, arr_l) = l_t.base_type {
-                        let idx = self.gen_expression(idx).unwrap().1.into_int_value();
+                    let (l_t, mut l_pv) = self.get_variable(id)?;
+
+                    //if type is pointer, get_variable will get the address of pointer, not the pointer point to!
+                    //So if we want get the point to address, we need extra load action!
+                    if let BaseType::Pointer(_) = l_t.base_type {
+                        // println!("{}", l_pv.get_type().print_to_string().to_string());
+                        l_pv = self
+                            .builder
+                            .build_load(l_pv, "dereference")
+                            .into_pointer_value();
+                    }
+                    // println!("{}", l_pv.get_type().print_to_string().to_string());
+                    let (res_t, idx_int_val_vec) =
+                        self.process_arr_subscript(l_t, idx_vec.clone())?;
+                    if let BaseType::Array(_, _) = res_t.base_type {
+                        Ok((res_t.base_type, unsafe {
+                            self.builder
+                                .build_gep(l_pv, idx_int_val_vec.as_ref(), "arr_subscript")
+                                .as_basic_value_enum()
+                        }))
+                    } else {
                         Ok((
-                            arr_t.base_type,
+                            res_t.base_type,
                             self.builder.build_load(
                                 unsafe {
                                     self.builder.build_gep(
                                         l_pv,
-                                        vec![self.context.i32_type().const_zero(), idx].as_ref(),
+                                        idx_int_val_vec.as_ref(),
                                         "arr_subscript",
                                     )
                                 },
                                 "load_arr_subscript",
                             ),
                         ))
-                    } else {
-                        unreachable!()
                     }
                 } else {
                     unreachable!()
                 }
             }
             _ => return Err(CompileErr::UnknownExpression(expr.to_string()).into()),
+        }
+    }
+
+    fn process_arr_subscript(
+        &self,
+        l_t: BasicType,
+        idx_vec: Vec<Expression>,
+    ) -> Result<(BasicType, Vec<IntValue<'ctx>>)> {
+        if let BaseType::Array(ref arr_t, arr_len_vec) = l_t.base_type {
+            let res_t: BaseType;
+            if idx_vec.len() > arr_len_vec.len() {
+                return Err(
+                    CompileErr::ArrayDimensionNotMatch(arr_len_vec.len(), idx_vec.len()).into(),
+                );
+            } else if idx_vec.len() == arr_len_vec.len() {
+                res_t = arr_t.base_type.clone();
+            } else {
+                res_t = BaseType::Array(
+                    arr_t.clone(),
+                    (idx_vec.len()..arr_len_vec.len()).fold(vec![], |mut acc, i| {
+                        acc.push(arr_len_vec[i].clone());
+                        acc
+                    }),
+                );
+            }
+
+            let mut idx_int_val_vec = vec![self.context.i32_type().const_zero()];
+            idx_int_val_vec.extend(
+                idx_vec
+                    .iter()
+                    .map(|expr| self.gen_expression(expr).unwrap().1.into_int_value()),
+            );
+            Ok((
+                BasicType {
+                    qualifier: l_t.qualifier,
+                    base_type: res_t,
+                },
+                idx_int_val_vec,
+            ))
+        } else if let BaseType::Pointer(ref point_t) = l_t.base_type {
+            if idx_vec.len() != 1 {
+                return Err(CompileErr::PointDimensionNotMatch(1, idx_vec.len()).into());
+            }
+            // we don't support more than 1 dimension pointer
+            if let BaseType::Pointer(_) = point_t.base_type {
+                return Err(
+                    CompileErr::Error("unsupported multidimensional pointer".to_string()).into(),
+                );
+            }
+            //pointer doesn't need extra 0
+            let mut idx_int_val_vec = vec![];
+            idx_int_val_vec.extend(
+                idx_vec
+                    .iter()
+                    .map(|expr| self.gen_expression(expr).unwrap().1.into_int_value()),
+            );
+            Ok((
+                BasicType {
+                    qualifier: l_t.qualifier,
+                    base_type: point_t.base_type.clone(),
+                },
+                idx_int_val_vec,
+            ))
+        } else {
+            unreachable!()
         }
     }
 
@@ -178,13 +272,10 @@ impl<'ctx> Generator<'ctx> {
                 }
                 _ => return Err(CompileErr::InvalidUnary.into()),
             },
-            UnaryOperation::Reference => match expr.deref().deref() {
-                Expression::Identifier(ref id) => {
-                    let (t, ptr) = self.get_variable(id)?;
-                    Ok((BaseType::Pointer(Box::new(t)), ptr.as_basic_value_enum()))
-                }
-                _ => return Err(CompileErr::InvalidUnary.into()),
-            },
+            UnaryOperation::Reference => {
+                let (t, ptr) = self.get_lvalue(expr)?;
+                Ok((BaseType::Pointer(Box::new(t)), ptr.as_basic_value_enum()))
+            }
             UnaryOperation::Dereference => match expr_type {
                 BaseType::Pointer(ref t) => Ok((
                     t.base_type.clone(),
@@ -192,6 +283,43 @@ impl<'ctx> Generator<'ctx> {
                         .build_load(expr_value.into_pointer_value(), "dereference")
                         .as_basic_value_enum(),
                 )),
+                _ => return Err(CompileErr::InvalidUnary.into()),
+            },
+            UnaryOperation::PostfixDecrement | UnaryOperation::PostfixIncrement => {
+                match expr_type {
+                    BaseType::SignedInteger(_)
+                    | BaseType::UnsignedInteger(_)
+                    | BaseType::Double
+                    | BaseType::Float
+                    | BaseType::Pointer(_) => {
+                        let _ = self.gen_assignment(
+                            if *op == UnaryOperation::PostfixIncrement {
+                                &AssignOperation::Addition
+                            } else {
+                                &AssignOperation::Subtraction
+                            },
+                            expr,
+                            &Box::new(Expression::IntegerConstant(1)),
+                        )?;
+                        Ok((expr_type, expr_value))
+                    }
+                    _ => return Err(CompileErr::InvalidUnary.into()),
+                }
+            }
+            UnaryOperation::PrefixIncrement | UnaryOperation::PrefixDecrement => match expr_type {
+                BaseType::SignedInteger(_)
+                | BaseType::UnsignedInteger(_)
+                | BaseType::Double
+                | BaseType::Float
+                | BaseType::Pointer(_) => self.gen_assignment(
+                    if *op == UnaryOperation::PrefixIncrement {
+                        &AssignOperation::Addition
+                    } else {
+                        &AssignOperation::Subtraction
+                    },
+                    expr,
+                    &Box::new(Expression::IntegerConstant(1)),
+                ),
                 _ => return Err(CompileErr::InvalidUnary.into()),
             },
             _ => return Err(CompileErr::InvalidUnary.into()),
@@ -204,8 +332,72 @@ impl<'ctx> Generator<'ctx> {
         lhs: &Box<Expression>,
         rhs: &Box<Expression>,
     ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
-        let (l_t, l_v) = self.gen_expression(lhs)?;
-        let (r_t, r_v) = self.gen_expression(rhs)?;
+        let (ref l_t, l_v) = self.gen_expression(lhs)?;
+        let (ref r_t, r_v) = self.gen_expression(rhs)?;
+
+        //TODO FIXME!! so dirty!
+        let mut visit = 0;
+        let tmp = match l_t {
+            BaseType::SignedInteger(_) | BaseType::UnsignedInteger(_) => {
+                if let BaseType::Pointer(_) = r_t {
+                    visit = 1;
+                    self.build_point_binary_op(op, r_v.into_pointer_value(), l_v.into_int_value())
+                } else if let BaseType::Array(array_type, array_vec) = r_t {
+                    visit = 1;
+                    if array_vec.len() != 1 {
+                        Err(CompileErr::ArrayDimensionNotMatch(1, array_vec.len()).into())
+                    } else {
+                        let point_v =
+                            self.cast_value(r_t, &r_v, &BaseType::Pointer(array_type.clone()))?;
+                        self.build_point_binary_op(
+                            op,
+                            point_v.into_pointer_value(),
+                            l_v.into_int_value(),
+                        )
+                    }
+                } else {
+                    Err(CompileErr::Error("".to_string()).into())
+                }
+            }
+            BaseType::Pointer(_) => match r_t {
+                BaseType::SignedInteger(_) => {
+                    visit = 2;
+                    self.build_point_binary_op(op, l_v.into_pointer_value(), r_v.into_int_value())
+                }
+                BaseType::UnsignedInteger(_) => {
+                    visit = 2;
+                    self.build_point_binary_op(op, l_v.into_pointer_value(), r_v.into_int_value())
+                }
+                _ => Err(CompileErr::Error("".to_string()).into()),
+            },
+            BaseType::Array(array_type, array_vec) => {
+                visit = 2;
+                if array_vec.len() != 1 {
+                    Err(CompileErr::ArrayDimensionNotMatch(1, array_vec.len()).into())
+                } else {
+                    let point_v =
+                        self.cast_value(l_t, &l_v, &BaseType::Pointer(array_type.clone()))?;
+                    self.build_point_binary_op(
+                        op,
+                        point_v.into_pointer_value(),
+                        r_v.into_int_value(),
+                    )
+                }
+            }
+            _ => Err(CompileErr::Error("".to_string()).into()),
+        };
+        if visit > 0 {
+            return match tmp {
+                Ok(t) => {
+                    if visit == 1 {
+                        Ok((r_t.clone(), t))
+                    } else {
+                        Ok((l_t.clone(), t))
+                    }
+                }
+                Err(e) => Err(e),
+            };
+        }
 
         let cast_t = BaseType::upcast(&l_t, &r_t)?;
         let l_cast_v = self.cast_value(&l_t, &l_v, &cast_t)?;
@@ -249,6 +441,31 @@ impl<'ctx> Generator<'ctx> {
         }
     }
 
+    // left is PointerValue, right is IntValue
+    fn build_point_binary_op(
+        &self,
+        op: &BinaryOperation,
+        lhs: PointerValue<'ctx>,
+        rhs: IntValue<'ctx>,
+    ) -> Result<BasicValueEnum<'ctx>> {
+        let result_v = match op {
+            BinaryOperation::Addition => unsafe {
+                let idx_int_val_vec = vec![rhs];
+                self.builder
+                    .build_gep(lhs, idx_int_val_vec.as_ref(), "pointer add")
+            },
+            BinaryOperation::Subtraction => unsafe {
+                let idx_int_val_vec = vec![rhs.const_neg()];
+                self.builder
+                    .build_gep(lhs, idx_int_val_vec.as_ref(), "pointer add")
+            },
+
+            // logical
+            //TODO 先不管logical操作了QAQ
+            _ => return Err(CompileErr::InvalidBinary.into()),
+        };
+        Ok(result_v.as_basic_value_enum())
+    }
     fn build_int_binary_op(
         &self,
         op: &BinaryOperation,
@@ -477,22 +694,55 @@ impl<'ctx> Generator<'ctx> {
     fn get_lvalue(&self, lhs: &Box<Expression>) -> Result<(BasicType, PointerValue<'ctx>)> {
         match lhs.deref().deref() {
             Expression::Identifier(ref id) => Ok(self.get_variable(id)?),
-            Expression::ArraySubscript(ref id_expr, ref idx) => {
-                if let Expression::Identifier(id) = id_expr.deref() {
-                    let (t, pv) = self.get_variable(id)?;
-
-                    if let BaseType::Array(arr_t, _) = t.base_type {
-                        let idx = self.gen_expression(idx).unwrap().1.into_int_value();
-                        Ok((*arr_t, unsafe {
-                            self.builder.build_gep(
-                                pv,
-                                vec![self.context.i32_type().const_zero(), idx].as_ref(),
-                                "arr_subscript",
-                            )
-                        }))
+            Expression::Unary(ref op, ref unary_operation) => {
+                // we need lhs expression's type!!! But now we don't have a function only get the type
+                //TODO FIXME! It's really dirty
+                let (t, _) = self.gen_expression(lhs)?;
+                let (l_t, l_v) = self.gen_expression(unary_operation)?;
+                if let UnaryOperation::Dereference = op {
+                    if let BaseType::Pointer(_) = l_t {
+                        Ok((
+                            BasicType {
+                                qualifier: vec![],
+                                base_type: t,
+                            },
+                            l_v.into_pointer_value(),
+                        ))
                     } else {
-                        unreachable!()
+                        Err(
+                            CompileErr::InvalidDereference(l_v.print_to_string().to_string())
+                                .into(),
+                        )
                     }
+                } else if l_v.is_pointer_value() {
+                    Ok((
+                        BasicType {
+                            qualifier: vec![],
+                            base_type: t,
+                        },
+                        l_v.into_pointer_value(),
+                    ))
+                } else {
+                    Err(CompileErr::InvalidLeftValue(l_v.print_to_string().to_string()).into())
+                }
+            }
+            Expression::ArraySubscript(ref id_expr, ref idx_vec) => {
+                if let Expression::Identifier(id) = id_expr.deref() {
+                    let (t, mut pv) = self.get_variable(id)?;
+                    //if type is pointer, get_variable will get the address of pointer, not the pointer point to!
+                    //So if we want get the point to address, we need extra load action!
+                    if let BaseType::Pointer(_) = t.base_type {
+                        pv = self
+                            .builder
+                            .build_load(pv, "dereference")
+                            .into_pointer_value()
+                    }
+                    let (res_t, idx_int_val_vec) =
+                        self.process_arr_subscript(t, idx_vec.clone())?;
+                    Ok((res_t, unsafe {
+                        self.builder
+                            .build_gep(pv, idx_int_val_vec.as_ref(), "arr_subscript")
+                    }))
                 } else {
                     unreachable!()
                 }
@@ -510,15 +760,15 @@ impl<'ctx> Generator<'ctx> {
             let (ret_t, args_t, is_variadic) = self.function_map.get(id).unwrap().to_owned();
             let fv = self.module.get_function(id).unwrap();
 
-            if args.len() != fv.get_type().count_param_types() as usize {
-                if !(is_variadic && args.len() > fv.get_type().count_param_types() as usize) {
-                    return Err(CompileErr::ParameterCountMismatch(
-                        id.to_string(),
-                        fv.get_type().count_param_types() as usize,
-                        args.len(),
-                    )
-                    .into());
-                }
+            if args.len() != fv.get_type().count_param_types() as usize
+                && !(is_variadic && args.len() > fv.get_type().count_param_types() as usize)
+            {
+                return Err(CompileErr::ParameterCountMismatch(
+                    id.to_string(),
+                    fv.get_type().count_param_types() as usize,
+                    args.len(),
+                )
+                .into());
             }
 
             let mut casted_args = Vec::with_capacity(args.len());

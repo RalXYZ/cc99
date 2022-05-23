@@ -104,6 +104,14 @@ impl Default for BaseType {
     }
 }
 
+impl<'ctx> BasicType {
+    pub fn is_const(&self) -> bool {
+        self.qualifier
+            .iter()
+            .any(|x| matches!(x, TypeQualifier::Const))
+    }
+}
+
 #[cfg(not(feature = "web"))]
 impl<'ctx> BaseType {
     fn cast_rank(&self) -> i32 {
@@ -166,6 +174,17 @@ impl<'ctx> BaseType {
             };
             return Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into());
         }
+
+        if let (BaseType::Array(lhs_type, lhs_expr), BaseType::Pointer(rhs_ptr)) = (self, dest) {
+            if lhs_expr.len() != 1 {
+                return Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into());
+            }
+            //make sure they are both basic type(not pointer or array)
+            lhs_type.base_type.cast_rank();
+            rhs_ptr.base_type.cast_rank();
+            return Ok(());
+        }
+
         if let BaseType::Pointer(_) = self {
             return Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into());
         }

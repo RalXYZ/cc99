@@ -24,9 +24,6 @@ pub enum CompileErr {
     #[error("invalid binary operator")]
     InvalidBinary,
 
-    #[error("invalid lvalue")]
-    InvalidLvalue,
-
     #[error("there are duplicate functions: {}", .0.as_str())]
     DuplicateFunction(String),
 
@@ -41,6 +38,18 @@ pub enum CompileErr {
 
     #[error("keyword {} is not in a loop", .0.as_str())]
     KeywordNotInLoop(String),
+
+    #[error("array dimension not match, expect {}, found {}", .0.to_string(), .1.to_string())]
+    ArrayDimensionNotMatch(usize, usize),
+
+    #[error("point dimension not match, expect {}, found {}", .0.to_string(), .1.to_string())]
+    PointDimensionNotMatch(usize, usize),
+
+    #[error("Invalid left value for a not addressable variable: {}", .0.as_str())]
+    InvalidLeftValue(String),
+
+    #[error("Invalid dereference for a no pointer variable: {}", .0.as_str())]
+    InvalidDereference(String),
 
     #[error("error: {}", .0.as_str())]
     Error(String),
