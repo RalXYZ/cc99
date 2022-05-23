@@ -91,7 +91,7 @@ impl<'ctx> Generator<'ctx> {
                     let (res_t, idx_int_val_vec) =
                         self.process_arr_subscript(l_t, idx_vec.clone())?;
                     if let BaseType::Array(_, _) = res_t.base_type {
-                        Ok((BaseType::Pointer(Box::new(res_t)), unsafe {
+                        Ok((res_t.base_type, unsafe {
                             self.builder
                                 .build_gep(l_pv, idx_int_val_vec.as_ref(), "arr_subscript")
                                 .as_basic_value_enum()
