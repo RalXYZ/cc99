@@ -29,8 +29,8 @@ function node2tree(astNode) {
     if (node.hasOwnProperty("Declaration")) {
       treeNode.label = "Declaration";
       const [type, name, expression] = node.Declaration;
-      treeNode.attrs.name = name;
-      treeNode.type = parseType(type);
+      treeNode.attrs = { name: name, ...parseType(type) };
+
       treeNode.children = node2tree([expression]);
     } else if (node.hasOwnProperty("FunctionDefinition")) {
       treeNode.label = "Function";
@@ -152,7 +152,7 @@ function node2tree(astNode) {
     } else if (node.hasOwnProperty("ArraySubscript")) {
       treeNode.label = "ArraySubscript";
       const [array, subscript] = node.ArraySubscript;
-      treeNode.children = node2tree([array, subscript]);
+      treeNode.children = node2tree([array, ...subscript]);
     } else if (node.hasOwnProperty("Identifier")) {
       treeNode.label = "Identifier";
       const name = node.Identifier;
@@ -252,7 +252,8 @@ function parseBasicType(node) {
     attrs.basic_type = parseBasicType(bt);
   } else if (basic_type.hasOwnProperty("Array")) {
     attrs.type = "array";
-    const [bt] = basic_type.Array;
+    const [bt, dimension_expr] = basic_type.Array;
+    attrs.dimension = dimension_expr.length;
     attrs.basic_type = parseBasicType(bt);
   } else if (basic_type.hasOwnProperty("Function")) {
     attrs.type = "function";
