@@ -8,10 +8,10 @@ use std::fmt;
 use serde::Serialize;
 
 #[derive(Serialize, Debug, PartialEq, Clone, Default)]
-pub struct Type<'a> {
+pub struct Type {
     pub function_specifier: Vec<FunctionSpecifier>,
     pub storage_class_specifier: StorageClassSpecifier,
-    pub basic_type: BasicType<'a>,
+    pub basic_type: BasicType,
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
@@ -39,31 +39,31 @@ pub enum FunctionSpecifier {
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone, Default)]
-pub struct BasicType<'a> {
+pub struct BasicType {
     pub qualifier: Vec<TypeQualifier>,
-    pub base_type: BaseType<'a>,
+    pub base_type: BaseType,
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum BaseType<'a> {
+pub enum BaseType {
     Void,
     SignedInteger(IntegerType),
     UnsignedInteger(IntegerType),
     Bool,
     Float,
     Double,
-    Pointer(Box<BasicType<'a>>),
+    Pointer(Box<BasicType>),
     Array(
         /// element type
-        Box<BasicType<'a>>,
+        Box<BasicType>,
         /// array length, from high-dimension to low-dimension
-        Vec<Expression<'a>>,
+        Vec<Expression>,
     ),
     Function(
         /// return type
-        Box<BasicType<'a>>,
+        Box<BasicType>,
         /// parameters' types
-        Vec<BasicType<'a>>,
+        Vec<BasicType>,
         /// is variadic or not
         bool,
     ),
@@ -71,13 +71,13 @@ pub enum BaseType<'a> {
         /// struct name
         Option<String>,
         /// struct members
-        Option<Vec<StructMember<'a>>>,
+        Option<Vec<StructMember>>,
     ),
     Union(
         /// union name
         Option<String>,
         /// union members
-        Option<Vec<StructMember<'a>>>,
+        Option<Vec<StructMember>>,
     ),
     /// a name introduced by typedef/struct...
     Identifier(String),
@@ -93,18 +93,18 @@ pub enum IntegerType {
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub struct StructMember<'a> {
+pub struct StructMember {
     pub member_name: String,
-    pub member_type: BasicType<'a>,
+    pub member_type: BasicType,
 }
 
-impl Default for BaseType<'_> {
+impl Default for BaseType {
     fn default() -> Self {
         BaseType::SignedInteger(IntegerType::Int)
     }
 }
 
-impl<'ctx> BasicType<'_> {
+impl<'ctx> BasicType {
     pub fn is_const(&self) -> bool {
         self.qualifier
             .iter()
@@ -113,7 +113,7 @@ impl<'ctx> BasicType<'_> {
 }
 
 #[cfg(not(feature = "web"))]
-impl<'ctx> BaseType<'ctx> {
+impl<'ctx> BaseType {
     fn cast_rank(&self) -> i32 {
         match self {
             &BaseType::Void => 0,
@@ -134,7 +134,7 @@ impl<'ctx> BaseType<'ctx> {
         }
     }
 
-    pub(crate) fn upcast(lhs: &BaseType<'ctx>, rhs: &BaseType<'ctx>) -> Result<BaseType<'ctx>> {
+    pub(crate) fn upcast(lhs: &BaseType, rhs: &BaseType) -> Result<BaseType> {
         if lhs.cast_rank() >= rhs.cast_rank() {
             Ok(lhs.clone())
         } else {
@@ -158,7 +158,7 @@ impl<'ctx> BaseType<'ctx> {
         false
     }
 
-    pub(crate) fn test_cast(&self, dest: &BaseType<'ctx>) -> Result<()> {
+    pub(crate) fn test_cast(&self, dest: &BaseType) -> Result<()> {
         // same type, directly cast
         if self == dest {
             return Ok(());
@@ -205,7 +205,7 @@ impl<'ctx> BaseType<'ctx> {
     }
 }
 
-impl fmt::Display for BaseType<'_> {
+impl fmt::Display for BaseType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }

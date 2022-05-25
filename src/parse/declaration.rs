@@ -3,17 +3,17 @@ use pest::iterators::Pair;
 
 use super::*;
 
-impl<'ctx> Parse<'ctx> {
+impl Parse {
     pub fn build_function_definition(
         &mut self,
-        ast: &mut Vec<Declaration<'ctx>>,
-        pair: Pair<'ctx, Rule>,
+        ast: &mut Vec<Declaration>,
+        pair: Pair<'_, Rule>,
     ) -> Result<(), Box<dyn Error>> {
         let span = pair.as_span();
         let mut derived_type: Type = Default::default();
         let mut identifier: String = Default::default();
         let mut parameter_names: Vec<Option<String>> = Default::default();
-        let mut function_body = Statement::default(self.code);
+        let mut function_body = Default::default();
         for token in pair.into_inner() {
             match token.as_rule() {
                 Rule::declaration_specifiers => {
@@ -77,7 +77,7 @@ impl<'ctx> Parse<'ctx> {
                     is_variadic,
                     function_body,
                 ),
-                span,
+                span: Span::from(span),
             });
             Ok(())
         } else {
@@ -87,8 +87,8 @@ impl<'ctx> Parse<'ctx> {
 
     pub fn build_declaration(
         &mut self,
-        ast: &mut Vec<Declaration<'ctx>>,
-        pair: Pair<'ctx, Rule>,
+        ast: &mut Vec<Declaration>,
+        pair: Pair<'_, Rule>,
     ) -> Result<(), Box<dyn Error>> {
         let mut basic_type: Type = Default::default();
         for token in pair.into_inner() {
@@ -118,9 +118,9 @@ impl<'ctx> Parse<'ctx> {
 
     pub fn build_declaration_specifiers(
         &mut self,
-        ast: &mut Vec<Declaration<'ctx>>,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Type<'ctx>, Box<dyn Error>> {
+        ast: &mut Vec<Declaration>,
+        pair: Pair<'_, Rule>,
+    ) -> Result<Type, Box<dyn Error>> {
         let span = pair.as_span();
         let mut qualifier: Vec<TypeQualifier> = Default::default();
         let mut storage_class_specifier: Vec<StorageClassSpecifier> = Default::default();
@@ -205,9 +205,9 @@ impl<'ctx> Parse<'ctx> {
 
     fn build_type_specifier(
         &mut self,
-        ast: &mut Vec<Declaration<'ctx>>,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<BaseType<'ctx>, Box<dyn Error>> {
+        ast: &mut Vec<Declaration>,
+        pair: Pair<'_, Rule>,
+    ) -> Result<BaseType, Box<dyn Error>> {
         let mut is_signed = true;
         let mut integer_type = IntegerType::Int;
         let token = pair.into_inner().next().unwrap();
@@ -241,9 +241,9 @@ impl<'ctx> Parse<'ctx> {
 
     pub fn build_declarator_and_initializer(
         &mut self,
-        ast: &mut Vec<Declaration<'ctx>>,
-        pair: Pair<'ctx, Rule>,
-        basic_type: &Type<'ctx>,
+        ast: &mut Vec<Declaration>,
+        pair: Pair<'_, Rule>,
+        basic_type: &Type,
     ) -> Result<(), Box<dyn Error>> {
         let span = pair.as_span();
         let mut derived_type = (*basic_type).clone();
@@ -308,7 +308,7 @@ impl<'ctx> Parse<'ctx> {
 
         ast.push(Declaration {
             node: DeclarationEnum::Declaration(derived_type, Some(identifier), initializer),
-            span,
+            span: Span::from(span),
         });
         Ok(())
     }
@@ -339,10 +339,10 @@ impl<'ctx> Parse<'ctx> {
 
     fn build_raw_declarator(
         &mut self,
-        ast: &mut Vec<Declaration<'ctx>>,
-        derived_type: &mut Type<'ctx>,
+        ast: &mut Vec<Declaration>,
+        derived_type: &mut Type,
         identifier: &mut String,
-        pair: Pair<'ctx, Rule>,
+        pair: Pair<'_, Rule>,
     ) -> Result<(), Box<dyn Error>> {
         let mut dimensions: Vec<Expression> = Default::default();
         for token in pair.into_inner() {
@@ -369,9 +369,9 @@ impl<'ctx> Parse<'ctx> {
 
     pub fn build_function_parameter_list(
         &mut self,
-        ast: &mut Vec<Declaration<'ctx>>,
-        derived_type: &mut Type<'ctx>,
-        pair: Pair<'ctx, Rule>,
+        ast: &mut Vec<Declaration>,
+        derived_type: &mut Type,
+        pair: Pair<'_, Rule>,
     ) -> Result<Vec<Option<String>>, Box<dyn Error>> {
         let mut is_variadic = false;
         let mut parameter_list: Vec<BasicType> = Default::default();
@@ -400,9 +400,9 @@ impl<'ctx> Parse<'ctx> {
 
     fn build_function_parameter(
         &mut self,
-        ast: &mut Vec<Declaration<'ctx>>,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<(BasicType<'ctx>, Option<String>), Box<dyn Error>> {
+        ast: &mut Vec<Declaration>,
+        pair: Pair<'_, Rule>,
+    ) -> Result<(BasicType, Option<String>), Box<dyn Error>> {
         let mut basic_type: BasicType = Default::default();
         let mut identifier: Option<String> = None;
         for token in pair.into_inner() {
@@ -426,10 +426,10 @@ impl<'ctx> Parse<'ctx> {
 
     fn build_function_parameter_declarator(
         &mut self,
-        ast: &mut Vec<Declaration<'ctx>>,
-        basic_type: &mut BasicType<'ctx>,
+        ast: &mut Vec<Declaration>,
+        basic_type: &mut BasicType,
         identifier: &mut Option<String>,
-        pair: Pair<'ctx, Rule>,
+        pair: Pair<'_, Rule>,
     ) -> Result<(), Box<dyn Error>> {
         let mut derived_type = Type {
             function_specifier: Default::default(),
@@ -457,9 +457,9 @@ impl<'ctx> Parse<'ctx> {
 
     fn build_struct_specifier(
         &mut self,
-        ast: &mut Vec<Declaration<'ctx>>,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<BaseType<'ctx>, Box<dyn Error>> {
+        ast: &mut Vec<Declaration>,
+        pair: Pair<'_, Rule>,
+    ) -> Result<BaseType, Box<dyn Error>> {
         let span = pair.as_span();
         let mut is_struct = true;
         let mut identifier: Option<String> = None;
@@ -609,7 +609,7 @@ impl<'ctx> Parse<'ctx> {
                     None,
                     None,
                 ),
-                span,
+                span: Span::from(span),
             });
         }
 

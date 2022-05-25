@@ -1,10 +1,10 @@
-use pest::Span;
+use super::span::*;
 use serde::{Serialize, Serializer};
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct AssignOperation<'a> {
+pub struct AssignOperation {
     pub node: AssignOperationEnum,
-    pub span: Span<'a>,
+    pub span: Span,
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
@@ -23,9 +23,9 @@ pub enum AssignOperationEnum {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct UnaryOperation<'a> {
+pub struct UnaryOperation {
     pub node: UnaryOperationEnum,
-    pub span: Span<'a>,
+    pub span: Span,
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
@@ -49,9 +49,9 @@ pub enum UnaryOperationEnum {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct BinaryOperation<'a> {
+pub struct BinaryOperation {
     pub node: BinaryOperationEnum,
-    pub span: Span<'a>,
+    pub span: Span,
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
@@ -81,34 +81,34 @@ pub enum BinaryOperationEnum {
     Comma,
 }
 
-impl<'a> AssignOperation<'a> {
-    pub fn default(code: &'a str) -> Self {
+impl Default for AssignOperation {
+    fn default() -> Self {
         AssignOperation {
             node: AssignOperationEnum::Naive,
-            span: Span::new(code, 0, 0).unwrap(),
+            span: Default::default(),
         }
     }
 }
 
-impl<'a> UnaryOperation<'a> {
-    pub fn default(code: &'a str) -> Self {
+impl Default for UnaryOperation {
+    fn default() -> Self {
         UnaryOperation {
             node: UnaryOperationEnum::PrefixIncrement,
-            span: Span::new(code, 0, 0).unwrap(),
+            span: Default::default(),
         }
     }
 }
 
-impl<'a> BinaryOperation<'a> {
-    pub fn default(code: &'a str) -> Self {
+impl Default for BinaryOperation {
+    fn default() -> Self {
         BinaryOperation {
             node: BinaryOperationEnum::Comma,
-            span: Span::new(code, 0, 0).unwrap(),
+            span: Default::default(),
         }
     }
 }
 
-impl Serialize for AssignOperation<'_> {
+impl Serialize for AssignOperation {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -117,7 +117,7 @@ impl Serialize for AssignOperation<'_> {
     }
 }
 
-impl Serialize for UnaryOperation<'_> {
+impl Serialize for UnaryOperation {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -126,7 +126,7 @@ impl Serialize for UnaryOperation<'_> {
     }
 }
 
-impl Serialize for BinaryOperation<'_> {
+impl Serialize for BinaryOperation {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

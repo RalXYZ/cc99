@@ -2,11 +2,8 @@ use pest::iterators::Pair;
 
 use super::*;
 
-impl<'ctx> Parse<'ctx> {
-    fn build_statement(
-        &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Statement<'ctx>, Box<dyn Error>> {
+impl Parse {
+    fn build_statement(&mut self, pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
         let token = pair.into_inner().next().unwrap();
         match token.as_rule() {
             Rule::labeled_statement => self.build_labeled_statement(token),
@@ -22,11 +19,11 @@ impl<'ctx> Parse<'ctx> {
 
     fn build_labeled_statement(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Statement<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<Statement, Box<dyn Error>> {
         let span = pair.as_span();
         let mut label: String = Default::default();
-        let mut statement = Statement::default(self.code);
+        let mut statement = Default::default();
         for token in pair.into_inner() {
             match token.as_rule() {
                 Rule::identifier => {
@@ -40,17 +37,14 @@ impl<'ctx> Parse<'ctx> {
         }
         Ok(Statement {
             node: StatementEnum::Labeled(label, Box::new(statement)),
-            span,
+            span: Span::from(span),
         })
     }
 
-    fn build_case_statement(
-        &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Statement<'ctx>, Box<dyn Error>> {
+    fn build_case_statement(&mut self, pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
         let span = pair.as_span();
         let mut expression: Option<Box<Expression>> = None;
-        let mut statement = Statement::default(self.code);
+        let mut statement = Default::default();
         for token in pair.into_inner() {
             match token.as_rule() {
                 Rule::case_ => {}
@@ -66,14 +60,14 @@ impl<'ctx> Parse<'ctx> {
         }
         Ok(Statement {
             node: StatementEnum::Case(expression, Box::new(statement)),
-            span,
+            span: Span::from(span),
         })
     }
 
     fn build_expression_statement(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Statement<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<Statement, Box<dyn Error>> {
         let span = pair.as_span();
         let mut expression: Option<Box<Expression>> = None;
         for token in pair.into_inner() {
@@ -89,17 +83,17 @@ impl<'ctx> Parse<'ctx> {
                 Some(expr) => StatementEnum::Expression(expr),
                 None => StatementEnum::Expression(Box::new(Expression {
                     node: ExpressionEnum::Empty,
-                    span: span.clone(),
+                    span: Span::from(span.clone()),
                 })),
             },
-            span,
+            span: Span::from(span),
         })
     }
 
     pub fn build_compound_statement(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Statement<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<Statement, Box<dyn Error>> {
         let span = pair.as_span();
         let mut statements: Vec<StatementOrDeclaration> = Default::default();
         for token in pair.into_inner() {
@@ -108,7 +102,7 @@ impl<'ctx> Parse<'ctx> {
                 Rule::statement => {
                     statements.push(StatementOrDeclaration {
                         node: StatementOrDeclarationEnum::Statement(self.build_statement(token)?),
-                        span: token_span,
+                        span: Span::from(token_span),
                     });
                 }
                 Rule::declaration => {
@@ -129,10 +123,10 @@ impl<'ctx> Parse<'ctx> {
                                                 identifier,
                                                 initializer,
                                             ),
-                                            span: token_span.clone(),
+                                            span: Span::from(token_span.clone()),
                                         },
                                     ),
-                                    span: token_span.clone(),
+                                    span: Span::from(token_span.clone()),
                                 });
                             }
                             DeclarationEnum::FunctionDefinition(_, _, _, _, _, _, _) => {
@@ -146,14 +140,14 @@ impl<'ctx> Parse<'ctx> {
         }
         Ok(Statement {
             node: StatementEnum::Compound(statements),
-            span,
+            span: Span::from(span),
         })
     }
 
     fn build_selection_statement(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Statement<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<Statement, Box<dyn Error>> {
         let token = pair.into_inner().next().unwrap();
         match token.as_rule() {
             Rule::if_statement => self.build_if_statement(token),
@@ -164,8 +158,8 @@ impl<'ctx> Parse<'ctx> {
 
     fn build_iteration_statement(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Statement<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<Statement, Box<dyn Error>> {
         let token = pair.into_inner().next().unwrap();
         match token.as_rule() {
             Rule::for_statement => self.build_for_statement(token),
@@ -175,19 +169,16 @@ impl<'ctx> Parse<'ctx> {
         }
     }
 
-    fn build_jump_statement(
-        &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Statement<'ctx>, Box<dyn Error>> {
+    fn build_jump_statement(&mut self, pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
         let token = pair.into_inner().next().unwrap();
         Ok(match token.as_rule() {
             Rule::break_statement => Statement {
                 node: StatementEnum::Break,
-                span: token.as_span(),
+                span: Span::from(token.as_span()),
             },
             Rule::continue_statement => Statement {
                 node: StatementEnum::Continue,
-                span: token.as_span(),
+                span: Span::from(token.as_span()),
             },
             Rule::return_statement => self.build_return_statement(token)?,
             Rule::goto_statement => self.build_goto_statement(token)?,
@@ -195,12 +186,9 @@ impl<'ctx> Parse<'ctx> {
         })
     }
 
-    fn build_if_statement(
-        &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Statement<'ctx>, Box<dyn Error>> {
+    fn build_if_statement(&mut self, pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
         let span = pair.as_span();
-        let mut expression = Expression::default(self.code);
+        let mut expression = Default::default();
         let mut statements: Vec<Statement> = Default::default();
         for token in pair.into_inner() {
             match token.as_rule() {
@@ -225,17 +213,17 @@ impl<'ctx> Parse<'ctx> {
                     _ => unreachable!(),
                 },
             ),
-            span,
+            span: Span::from(span),
         })
     }
 
     fn build_switch_statement(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Statement<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<Statement, Box<dyn Error>> {
         let span = pair.as_span();
-        let mut expression = Expression::default(self.code);
-        let mut statement = Statement::default(self.code);
+        let mut expression = Default::default();
+        let mut statement = Default::default();
         for token in pair.into_inner() {
             match token.as_rule() {
                 Rule::switch_ => {}
@@ -250,19 +238,16 @@ impl<'ctx> Parse<'ctx> {
         }
         Ok(Statement {
             node: StatementEnum::Switch(Box::new(expression), Box::new(statement)),
-            span,
+            span: Span::from(span),
         })
     }
 
-    fn build_for_statement(
-        &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Statement<'ctx>, Box<dyn Error>> {
+    fn build_for_statement(&mut self, pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
         let span = pair.as_span();
         let mut init_clause: Option<Box<ForInitClause>> = None;
         let mut condition_expression: Option<Box<Expression>> = None;
         let mut iteration_expression: Option<Box<Expression>> = None;
-        let mut statement = Statement::default(self.code);
+        let mut statement = Default::default();
 
         for token in pair.into_inner() {
             match token.as_rule() {
@@ -293,17 +278,14 @@ impl<'ctx> Parse<'ctx> {
                 iteration_expression,
                 Box::new(statement),
             ),
-            span,
+            span: Span::from(span),
         })
     }
 
-    fn build_while_statement(
-        &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Statement<'ctx>, Box<dyn Error>> {
+    fn build_while_statement(&mut self, pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
         let span = pair.as_span();
-        let mut expression = Expression::default(self.code);
-        let mut statement = Statement::default(self.code);
+        let mut expression = Default::default();
+        let mut statement = Default::default();
         for token in pair.into_inner() {
             match token.as_rule() {
                 Rule::while_ => {}
@@ -318,17 +300,17 @@ impl<'ctx> Parse<'ctx> {
         }
         Ok(Statement {
             node: StatementEnum::While(Box::new(expression), Box::new(statement)),
-            span,
+            span: Span::from(span),
         })
     }
 
     fn build_do_while_statement(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Statement<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<Statement, Box<dyn Error>> {
         let span = pair.as_span();
-        let mut expression = Expression::default(self.code);
-        let mut statement = Statement::default(self.code);
+        let mut expression = Default::default();
+        let mut statement = Default::default();
         for token in pair.into_inner() {
             match token.as_rule() {
                 Rule::do_ => {}
@@ -344,14 +326,14 @@ impl<'ctx> Parse<'ctx> {
         }
         Ok(Statement {
             node: StatementEnum::DoWhile(Box::new(statement), Box::new(expression)),
-            span,
+            span: Span::from(span),
         })
     }
 
     fn build_return_statement(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Statement<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<Statement, Box<dyn Error>> {
         let span = pair.as_span();
         let mut expression: Option<Box<Expression>> = None;
         for token in pair.into_inner() {
@@ -365,14 +347,11 @@ impl<'ctx> Parse<'ctx> {
         }
         Ok(Statement {
             node: StatementEnum::Return(expression),
-            span,
+            span: Span::from(span),
         })
     }
 
-    fn build_goto_statement(
-        &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Statement<'ctx>, Box<dyn Error>> {
+    fn build_goto_statement(&mut self, pair: Pair<'_, Rule>) -> Result<Statement, Box<dyn Error>> {
         let span = pair.as_span();
         let mut label: String = Default::default();
         for token in pair.into_inner() {
@@ -386,14 +365,14 @@ impl<'ctx> Parse<'ctx> {
         }
         Ok(Statement {
             node: StatementEnum::Goto(label),
-            span,
+            span: Span::from(span),
         })
     }
 
     fn build_for_init_clause(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<ForInitClause<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<ForInitClause, Box<dyn Error>> {
         let span = pair.as_span();
         let mut expression: Option<Expression> = None;
         let mut basic_type: Type = Default::default();
@@ -429,7 +408,7 @@ impl<'ctx> Parse<'ctx> {
                 Some(expression) => ForInitClauseEnum::Expression(expression),
                 None => ForInitClauseEnum::ForDeclaration(sub_ast),
             },
-            span,
+            span: Span::from(span),
         })
     }
 }

@@ -3,7 +3,7 @@ mod expression;
 mod literal;
 mod statement;
 
-use pest::{Parser, Span};
+use pest::Parser;
 use serde::Serialize;
 use std::error::Error;
 
@@ -13,17 +13,16 @@ use super::ast::*;
 #[grammar = "./parse/parse.pest"]
 struct CC99Parser;
 
-pub struct Parse<'ctx> {
-    code: &'ctx str,
-}
+#[derive(Default)]
+pub struct Parse {}
 
-impl<'ctx> Parse<'ctx> {
-    pub fn new(code: &'ctx str) -> Parse<'ctx> {
-        Parse { code }
+impl Parse {
+    pub fn new() -> Parse {
+        Default::default()
     }
 
-    pub fn parse(&mut self) -> Result<Box<AST<'ctx>>, Box<dyn Error>> {
-        let tokens = match CC99Parser::parse(Rule::cc99, self.code)?.next() {
+    pub fn parse(&mut self, code: &str) -> Result<Box<AST>, Box<dyn Error>> {
+        let tokens = match CC99Parser::parse(Rule::cc99, code)?.next() {
             Some(p) => p.into_inner(),
             None => unreachable!(),
         };
@@ -52,7 +51,7 @@ mod tests {
     fn variable_declaration() {
         let code = r#"static int const *const x, y;"#;
         assert_eq!(
-            Parse::new(code).parse().unwrap(),
+            Parse::new().parse(code).unwrap(),
             Box::new(AST::GlobalDeclaration(vec![
                 Declaration {
                     node: DeclarationEnum::Declaration(
@@ -70,7 +69,7 @@ mod tests {
                         Some("x".to_string()),
                         None,
                     ),
-                    span: Span::new(code, 17, 25).unwrap()
+                    span: Span::new(17, 25)
                 },
                 Declaration {
                     node: DeclarationEnum::Declaration(
@@ -85,7 +84,7 @@ mod tests {
                         Some("y".to_string()),
                         None,
                     ),
-                    span: Span::new(code, 27, 28).unwrap()
+                    span: Span::new(27, 28)
                 },
             ]))
         );
@@ -95,7 +94,7 @@ mod tests {
     fn function_declaration() {
         let code = r#"inline static const int foo(const int x, float *, ...);"#;
         assert_eq!(
-            Parse::new(code).parse().unwrap(),
+            Parse::new().parse(code).unwrap(),
             Box::new(AST::GlobalDeclaration(vec![Declaration {
                 node: DeclarationEnum::Declaration(
                     Type {
@@ -128,7 +127,7 @@ mod tests {
                     Some("foo".to_string()),
                     None
                 ),
-                span: Span::new(code, 24, 54).unwrap()
+                span: Span::new(24, 54)
             },]))
         );
     }
@@ -137,7 +136,7 @@ mod tests {
     fn typedef_struct_declaration() {
         let code = r#"typedef struct Xxx{const int y; float z;} x;"#;
         assert_eq!(
-            Parse::new(code).parse().unwrap(),
+            Parse::new().parse(code).unwrap(),
             Box::new(AST::GlobalDeclaration(vec![
                 Declaration {
                     node: DeclarationEnum::Declaration(
@@ -170,7 +169,7 @@ mod tests {
                         None,
                         None
                     ),
-                    span: Span::new(code, 8, 41).unwrap()
+                    span: Span::new(8, 41)
                 },
                 Declaration {
                     node: DeclarationEnum::Declaration(
@@ -185,7 +184,7 @@ mod tests {
                         Some("x".to_string()),
                         None
                     ),
-                    span: Span::new(code, 42, 43).unwrap()
+                    span: Span::new(42, 43)
                 }
             ]))
         );
@@ -195,7 +194,7 @@ mod tests {
     fn function_definition() {
         let code = r#"inline int *const bar(int x, float) {}"#;
         assert_eq!(
-            Parse::new(code).parse().unwrap(),
+            Parse::new().parse(code).unwrap(),
             Box::new(AST::GlobalDeclaration(vec![Declaration {
                 node: DeclarationEnum::FunctionDefinition(
                     vec![FunctionSpecifier::Inline],
@@ -227,10 +226,10 @@ mod tests {
                     false,
                     Statement {
                         node: StatementEnum::Compound(vec![]),
-                        span: Span::new(code, 36, 38).unwrap()
+                        span: Span::new(36, 38)
                     },
                 ),
-                span: Span::new(code, 0, 38).unwrap()
+                span: Span::new(0, 38)
             },]))
         );
     }
@@ -239,7 +238,7 @@ mod tests {
     fn array() {
         let code = r#"const int x[10][9][8];"#;
         assert_eq!(
-            Parse::new(code).parse().unwrap(),
+            Parse::new().parse(code).unwrap(),
             Box::new(AST::GlobalDeclaration(vec![Declaration {
                 node: DeclarationEnum::Declaration(
                     Type {
@@ -255,15 +254,15 @@ mod tests {
                                 vec![
                                     Expression {
                                         node: ExpressionEnum::IntegerConstant(10),
-                                        span: Span::new(code, 12, 14).unwrap()
+                                        span: Span::new(12, 14)
                                     },
                                     Expression {
                                         node: ExpressionEnum::IntegerConstant(9),
-                                        span: Span::new(code, 16, 17).unwrap()
+                                        span: Span::new(16, 17)
                                     },
                                     Expression {
                                         node: ExpressionEnum::IntegerConstant(8),
-                                        span: Span::new(code, 19, 20).unwrap()
+                                        span: Span::new(19, 20)
                                     },
                                 ],
                             ),
@@ -272,7 +271,7 @@ mod tests {
                     Some("x".to_string()),
                     None
                 ),
-                span: Span::new(code, 10, 21).unwrap()
+                span: Span::new(10, 21)
             },]))
         );
     }

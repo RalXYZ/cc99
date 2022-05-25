@@ -3,11 +3,11 @@ use pest::iterators::Pair;
 
 use super::*;
 
-impl<'ctx> Parse<'ctx> {
+impl Parse {
     pub fn build_string_literal(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Expression<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<Expression, Box<dyn Error>> {
         let span = pair.as_span();
         let mut string_literal: String = Default::default();
         for token in pair.into_inner() {
@@ -23,7 +23,7 @@ impl<'ctx> Parse<'ctx> {
         }
         Ok(Expression {
             node: ExpressionEnum::StringLiteral(string_literal),
-            span,
+            span: Span::from(span),
         })
     }
 
@@ -50,10 +50,7 @@ impl<'ctx> Parse<'ctx> {
         })
     }
 
-    pub fn build_constant(
-        &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Expression<'ctx>, Box<dyn Error>> {
+    pub fn build_constant(&mut self, pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
         let token = pair.into_inner().next().unwrap();
         match token.as_rule() {
             Rule::integer_constant => self.build_integer_constant(token),
@@ -65,8 +62,8 @@ impl<'ctx> Parse<'ctx> {
 
     fn build_integer_constant(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Expression<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<Expression, Box<dyn Error>> {
         let span = pair.as_span();
         let mut is_decimal_base = false;
         let mut number: i128 = Default::default();
@@ -137,7 +134,7 @@ impl<'ctx> Parse<'ctx> {
                         Ok(number) => {
                             return Ok(Expression {
                                 node: ExpressionEnum::UnsignedLongLongConstant(number),
-                                span,
+                                span: Span::from(span),
                             });
                         }
                         Err(_) => {
@@ -153,14 +150,14 @@ impl<'ctx> Parse<'ctx> {
                         if let Ok(number) = number.try_into() {
                             return Ok(Expression {
                                 node: ExpressionEnum::LongLongConstant(number),
-                                span,
+                                span: Span::from(span),
                             });
                         }
                         if !is_decimal_base {
                             if let Ok(number) = number.try_into() {
                                 return Ok(Expression {
                                     node: ExpressionEnum::UnsignedLongLongConstant(number),
-                                    span,
+                                    span: Span::from(span),
                                 });
                             }
                         }
@@ -175,7 +172,7 @@ impl<'ctx> Parse<'ctx> {
                         if let Ok(number) = number.try_into() {
                             return Ok(Expression {
                                 node: ExpressionEnum::UnsignedLongConstant(number),
-                                span,
+                                span: Span::from(span),
                             });
                         }
                         return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
@@ -189,14 +186,14 @@ impl<'ctx> Parse<'ctx> {
                         if let Ok(number) = number.try_into() {
                             return Ok(Expression {
                                 node: ExpressionEnum::LongConstant(number),
-                                span,
+                                span: Span::from(span),
                             });
                         }
                         if !is_decimal_base {
                             if let Ok(number) = number.try_into() {
                                 return Ok(Expression {
                                     node: ExpressionEnum::UnsignedLongConstant(number),
-                                    span,
+                                    span: Span::from(span),
                                 });
                             }
                         }
@@ -211,13 +208,13 @@ impl<'ctx> Parse<'ctx> {
                         if let Ok(number) = number.try_into() {
                             return Ok(Expression {
                                 node: ExpressionEnum::UnsignedIntegerConstant(number),
-                                span,
+                                span: Span::from(span),
                             });
                         }
                         if let Ok(number) = number.try_into() {
                             return Ok(Expression {
                                 node: ExpressionEnum::UnsignedLongConstant(number),
-                                span,
+                                span: Span::from(span),
                             });
                         }
                         return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
@@ -235,28 +232,28 @@ impl<'ctx> Parse<'ctx> {
         if let Ok(number) = number.try_into() {
             return Ok(Expression {
                 node: ExpressionEnum::IntegerConstant(number),
-                span,
+                span: Span::from(span),
             });
         }
         if !is_decimal_base {
             if let Ok(number) = number.try_into() {
                 return Ok(Expression {
                     node: ExpressionEnum::UnsignedIntegerConstant(number),
-                    span,
+                    span: Span::from(span),
                 });
             }
         }
         if let Ok(number) = number.try_into() {
             return Ok(Expression {
                 node: ExpressionEnum::LongConstant(number),
-                span,
+                span: Span::from(span),
             });
         }
         if !is_decimal_base {
             if let Ok(number) = number.try_into() {
                 return Ok(Expression {
                     node: ExpressionEnum::UnsignedLongLongConstant(number),
-                    span,
+                    span: Span::from(span),
                 });
             }
         }
@@ -270,8 +267,8 @@ impl<'ctx> Parse<'ctx> {
 
     fn build_character_constant(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Expression<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<Expression, Box<dyn Error>> {
         let span = pair.as_span();
         let token = pair.into_inner().next().unwrap();
         Ok(Expression {
@@ -284,14 +281,14 @@ impl<'ctx> Parse<'ctx> {
                 }
                 _ => unreachable!(),
             },
-            span,
+            span: Span::from(span),
         })
     }
 
     fn build_floating_constant(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Expression<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<Expression, Box<dyn Error>> {
         let token = pair.into_inner().next().unwrap();
         match token.as_rule() {
             Rule::decimal_floating_constant => self.build_decimal_floating_constant(token),
@@ -302,8 +299,8 @@ impl<'ctx> Parse<'ctx> {
 
     fn build_decimal_floating_constant(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Expression<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<Expression, Box<dyn Error>> {
         let span = pair.as_span();
         let mut number: f64 = Default::default();
         let mut is_double = true;
@@ -328,14 +325,14 @@ impl<'ctx> Parse<'ctx> {
                 false => ExpressionEnum::FloatConstant(number as f32),
                 true => ExpressionEnum::DoubleConstant(number),
             },
-            span,
+            span: Span::from(span),
         })
     }
 
     fn build_hex_floating_constant(
         &mut self,
-        _pair: Pair<'ctx, Rule>,
-    ) -> Result<Expression<'ctx>, Box<dyn Error>> {
+        _pair: Pair<'_, Rule>,
+    ) -> Result<Expression, Box<dyn Error>> {
         // TODO(TO/GA)
         unimplemented!();
     }

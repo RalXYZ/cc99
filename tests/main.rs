@@ -28,7 +28,7 @@ mod tests {
             println!(">>> {} {} <<<", "Start compiling", source_path);
 
             let res = preprocess_file(&source_path, &include_dirs).unwrap();
-            let ast = Parse::new(&res).parse().unwrap();
+            let ast = Parse::new().parse(&res).unwrap();
             println!("{}", serde_json::to_string(&ast).unwrap());
             println!(">>> {} <<<", "Finish Parsing");
         }

@@ -3,34 +3,30 @@ use pest::iterators::Pair;
 
 use super::*;
 
-impl<'ctx> Parse<'ctx> {
-    pub fn build_expression(
-        &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Expression<'ctx>, Box<dyn Error>> {
-        let mut op_span = Span::new(self.code, 0, 0).unwrap();
+impl Parse {
+    pub fn build_expression(&mut self, pair: Pair<'_, Rule>) -> Result<Expression, Box<dyn Error>> {
+        let mut op_span = Default::default();
         let mut expression: Option<Expression> = None;
         for token in pair.into_inner() {
             let token_span = token.as_span();
             match token.as_rule() {
                 Rule::comma => {
-                    op_span = token_span;
+                    op_span = Span::from(token_span);
                 }
                 Rule::assignment_expression => {
                     expression = Some(match expression {
                         Some(e) => {
-                            let e_span = e.span.clone();
+                            let e_span = e.span;
                             Expression {
                                 node: ExpressionEnum::Binary(
                                     BinaryOperation {
                                         node: BinaryOperationEnum::Comma,
-                                        span: op_span.clone(),
+                                        span: op_span,
                                     },
                                     Box::new(e),
                                     Box::new(self.build_assignment_expression(token)?),
                                 ),
-                                span: Span::new(self.code, e_span.start(), token_span.end())
-                                    .unwrap(),
+                                span: Span::new(e_span.start, token_span.end()),
                             }
                         }
                         None => self.build_assignment_expression(token)?,
@@ -44,12 +40,12 @@ impl<'ctx> Parse<'ctx> {
 
     pub fn build_assignment_expression(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Expression<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<Expression, Box<dyn Error>> {
         let span = pair.as_span();
-        let mut lhs = Expression::default(self.code);
-        let mut rhs = Expression::default(self.code);
-        let mut assignment_operator = AssignOperation::default(self.code);
+        let mut lhs = Default::default();
+        let mut rhs = Default::default();
+        let mut assignment_operator = Default::default();
         for token in pair.into_inner() {
             let token_span = token.as_span();
             match token.as_rule() {
@@ -75,7 +71,7 @@ impl<'ctx> Parse<'ctx> {
                             Rule::assign_right_shift_op => AssignOperationEnum::RightShift,
                             _ => unreachable!(),
                         },
-                        span: token_span,
+                        span: Span::from(token_span),
                     };
                 }
                 Rule::assignment_expression => {
@@ -86,14 +82,14 @@ impl<'ctx> Parse<'ctx> {
         }
         Ok(Expression {
             node: ExpressionEnum::Assignment(assignment_operator, Box::new(lhs), Box::new(rhs)),
-            span,
+            span: Span::from(span),
         })
     }
 
     fn build_conditional_expression(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Expression<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<Expression, Box<dyn Error>> {
         let span = pair.as_span();
         let mut expressions: Vec<Expression> = Default::default();
         for token in pair.into_inner() {
@@ -118,7 +114,7 @@ impl<'ctx> Parse<'ctx> {
                     Box::new(expressions[1].to_owned()),
                     Box::new(expressions[2].to_owned()),
                 ),
-                span,
+                span: Span::from(span),
             },
             _ => unreachable!(),
         })
@@ -126,8 +122,8 @@ impl<'ctx> Parse<'ctx> {
 
     fn build_binary_expression(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Expression<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<Expression, Box<dyn Error>> {
         // recursive termination condition
         if pair.as_rule() == Rule::unary_expression {
             return self.build_unary_expression(pair);
@@ -135,115 +131,115 @@ impl<'ctx> Parse<'ctx> {
 
         let span = pair.as_span();
         let mut expression: Option<Expression> = None;
-        let mut operation = BinaryOperation::default(self.code);
+        let mut operation = Default::default();
         for token in pair.into_inner() {
             match token.as_rule() {
                 Rule::logical_or_op => {
                     operation = BinaryOperation {
                         node: BinaryOperationEnum::LogicalOr,
-                        span: token.as_span(),
+                        span: Span::from(token.as_span()),
                     };
                 }
                 Rule::logical_and_op => {
                     operation = BinaryOperation {
                         node: BinaryOperationEnum::LogicalAnd,
-                        span: token.as_span(),
+                        span: Span::from(token.as_span()),
                     };
                 }
                 Rule::bitwise_or_op => {
                     operation = BinaryOperation {
                         node: BinaryOperationEnum::BitwiseOr,
-                        span: token.as_span(),
+                        span: Span::from(token.as_span()),
                     };
                 }
                 Rule::bitwise_xor_op => {
                     operation = BinaryOperation {
                         node: BinaryOperationEnum::BitwiseXor,
-                        span: token.as_span(),
+                        span: Span::from(token.as_span()),
                     };
                 }
                 Rule::bitwise_and_op => {
                     operation = BinaryOperation {
                         node: BinaryOperationEnum::BitwiseAnd,
-                        span: token.as_span(),
+                        span: Span::from(token.as_span()),
                     };
                 }
                 Rule::equal_op => {
                     operation = BinaryOperation {
                         node: BinaryOperationEnum::Equal,
-                        span: token.as_span(),
+                        span: Span::from(token.as_span()),
                     };
                 }
                 Rule::not_equal_op => {
                     operation = BinaryOperation {
                         node: BinaryOperationEnum::NotEqual,
-                        span: token.as_span(),
+                        span: Span::from(token.as_span()),
                     };
                 }
                 Rule::less_than_op => {
                     operation = BinaryOperation {
                         node: BinaryOperationEnum::LessThan,
-                        span: token.as_span(),
+                        span: Span::from(token.as_span()),
                     };
                 }
                 Rule::greater_than_op => {
                     operation = BinaryOperation {
                         node: BinaryOperationEnum::GreaterThan,
-                        span: token.as_span(),
+                        span: Span::from(token.as_span()),
                     };
                 }
                 Rule::less_than_or_equal_op => {
                     operation = BinaryOperation {
                         node: BinaryOperationEnum::LessThanOrEqual,
-                        span: token.as_span(),
+                        span: Span::from(token.as_span()),
                     };
                 }
                 Rule::greater_than_or_equal_op => {
                     operation = BinaryOperation {
                         node: BinaryOperationEnum::GreaterThanOrEqual,
-                        span: token.as_span(),
+                        span: Span::from(token.as_span()),
                     };
                 }
                 Rule::left_shift_op => {
                     operation = BinaryOperation {
                         node: BinaryOperationEnum::LeftShift,
-                        span: token.as_span(),
+                        span: Span::from(token.as_span()),
                     };
                 }
                 Rule::right_shift_op => {
                     operation = BinaryOperation {
                         node: BinaryOperationEnum::RightShift,
-                        span: token.as_span(),
+                        span: Span::from(token.as_span()),
                     };
                 }
                 Rule::add_op => {
                     operation = BinaryOperation {
                         node: BinaryOperationEnum::Addition,
-                        span: token.as_span(),
+                        span: Span::from(token.as_span()),
                     };
                 }
                 Rule::sub_op => {
                     operation = BinaryOperation {
                         node: BinaryOperationEnum::Subtraction,
-                        span: token.as_span(),
+                        span: Span::from(token.as_span()),
                     };
                 }
                 Rule::mul_op => {
                     operation = BinaryOperation {
                         node: BinaryOperationEnum::Multiplication,
-                        span: token.as_span(),
+                        span: Span::from(token.as_span()),
                     };
                 }
                 Rule::div_op => {
                     operation = BinaryOperation {
                         node: BinaryOperationEnum::Division,
-                        span: token.as_span(),
+                        span: Span::from(token.as_span()),
                     };
                 }
                 Rule::mod_op => {
                     operation = BinaryOperation {
                         node: BinaryOperationEnum::Modulo,
-                        span: token.as_span(),
+                        span: Span::from(token.as_span()),
                     };
                 }
                 Rule::logical_or_expression
@@ -264,7 +260,7 @@ impl<'ctx> Parse<'ctx> {
                                 Box::new(e),
                                 Box::new(self.build_binary_expression(token)?),
                             ),
-                            span: span.clone(),
+                            span: Span::from(span.clone()),
                         },
                         None => self.build_binary_expression(token)?,
                     });
@@ -277,10 +273,10 @@ impl<'ctx> Parse<'ctx> {
 
     fn build_unary_expression(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Expression<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<Expression, Box<dyn Error>> {
         let span = pair.as_span();
-        let mut unary_operation = UnaryOperation::default(self.code);
+        let mut unary_operation = Default::default();
         for token in pair.into_inner() {
             let token_span = token.as_span();
             match token.as_rule() {
@@ -288,7 +284,7 @@ impl<'ctx> Parse<'ctx> {
                 Rule::type_name => {
                     return Ok(Expression {
                         node: ExpressionEnum::SizeofType(self.build_type_name(token)?),
-                        span,
+                        span: Span::from(span),
                     });
                 }
                 Rule::prefix_unary_operator => {
@@ -306,7 +302,7 @@ impl<'ctx> Parse<'ctx> {
                             Rule::sizeof_ => UnaryOperationEnum::SizeofExpr,
                             _ => unreachable!(),
                         },
-                        span: token_span,
+                        span: Span::from(token_span),
                     };
                 }
                 Rule::unary_expression => {
@@ -315,7 +311,7 @@ impl<'ctx> Parse<'ctx> {
                             unary_operation,
                             Box::new(self.build_unary_expression(token)?),
                         ),
-                        span,
+                        span: Span::from(span),
                     });
                 }
                 Rule::postfix_unary_expression => {
@@ -326,15 +322,15 @@ impl<'ctx> Parse<'ctx> {
         }
         Ok(Expression {
             node: ExpressionEnum::Empty,
-            span,
+            span: Span::from(span),
         })
     }
 
     fn build_postfix_unary_expression(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Expression<'ctx>, Box<dyn Error>> {
-        let mut expression = Expression::default(self.code);
+        pair: Pair<'_, Rule>,
+    ) -> Result<Expression, Box<dyn Error>> {
+        let mut expression = Default::default();
         let mut object_or_pointer = true; // true if object, false otherwise
         for token in pair.into_inner() {
             let token_span = token.as_span();
@@ -343,79 +339,59 @@ impl<'ctx> Parse<'ctx> {
                     expression = self.build_primary_expression(token)?;
                 }
                 Rule::postfix_inc_op => {
-                    expression = {
-                        let expr_span = expression.span.clone();
-                        Expression {
-                            node: ExpressionEnum::Unary(
-                                UnaryOperation {
-                                    node: UnaryOperationEnum::PostfixIncrement,
-                                    span: token.as_span(),
-                                },
-                                Box::new(expression),
-                            ),
-                            span: Span::new(self.code, expr_span.start(), token.as_span().end())
-                                .unwrap(),
-                        }
+                    let expr_span = expression.span;
+                    expression = Expression {
+                        node: ExpressionEnum::Unary(
+                            UnaryOperation {
+                                node: UnaryOperationEnum::PostfixIncrement,
+                                span: Span::from(token.as_span()),
+                            },
+                            Box::new(expression),
+                        ),
+                        span: Span::new(expr_span.start, token.as_span().end()),
                     };
                 }
                 Rule::postfix_dec_op => {
-                    expression = {
-                        let expr_span = expression.span.clone();
-                        Expression {
-                            node: ExpressionEnum::Unary(
-                                UnaryOperation {
-                                    node: UnaryOperationEnum::PostfixDecrement,
-                                    span: token.as_span(),
-                                },
-                                Box::new(expression),
-                            ),
-                            span: Span::new(self.code, expr_span.start(), token.as_span().end())
-                                .unwrap(),
-                        }
+                    let expr_span = expression.span;
+                    expression = Expression {
+                        node: ExpressionEnum::Unary(
+                            UnaryOperation {
+                                node: UnaryOperationEnum::PostfixDecrement,
+                                span: Span::from(token.as_span()),
+                            },
+                            Box::new(expression),
+                        ),
+                        span: Span::new(expr_span.start, token.as_span().end()),
                     };
                 }
                 Rule::function_call => {
+                    let expr_span = expression.span;
                     let mut arguments: Vec<Expression> = Default::default();
                     for argument_list in token.into_inner() {
                         for argument in argument_list.into_inner() {
                             arguments.push(self.build_assignment_expression(argument)?);
                         }
                     }
-                    expression = {
-                        let expr_span = expression.span.clone();
-                        Expression {
-                            node: ExpressionEnum::FunctionCall(Box::new(expression), arguments),
-                            span: Span::new(self.code, expr_span.start(), token_span.end())
-                                .unwrap(),
-                        }
+                    expression = Expression {
+                        node: ExpressionEnum::FunctionCall(Box::new(expression), arguments),
+                        span: Span::new(expr_span.start, token_span.end()),
                     };
                 }
                 Rule::expression => {
+                    let expr_span = expression.span;
                     let expr = self.build_expression(token)?;
                     expression = match expression.node {
                         ExpressionEnum::ArraySubscript(base, ref mut index) => {
                             index.push(expr);
                             Expression {
                                 node: ExpressionEnum::ArraySubscript(base, index.to_owned()),
-                                span: Span::new(
-                                    self.code,
-                                    expression.span.start(),
-                                    token_span.end(),
-                                )
-                                .unwrap(),
+                                span: Span::new(expression.span.start, token_span.end()),
                             }
                         }
-                        _ => {
-                            let expr_span = expression.span.clone();
-                            Expression {
-                                node: ExpressionEnum::ArraySubscript(
-                                    Box::new(expression),
-                                    vec![expr],
-                                ),
-                                span: Span::new(self.code, expr_span.start(), token_span.end())
-                                    .unwrap(),
-                            }
-                        }
+                        _ => Expression {
+                            node: ExpressionEnum::ArraySubscript(Box::new(expression), vec![expr]),
+                            span: Span::new(expr_span.start, token_span.end()),
+                        },
                     }
                 }
                 Rule::member_of_object_op => {
@@ -426,7 +402,7 @@ impl<'ctx> Parse<'ctx> {
                 }
                 Rule::identifier => {
                     expression = {
-                        let expr_span = expression.span.clone();
+                        let expr_span = expression.span;
                         Expression {
                             node: match object_or_pointer {
                                 true => ExpressionEnum::MemberOfObject(
@@ -438,21 +414,19 @@ impl<'ctx> Parse<'ctx> {
                                     token.as_str().to_owned(),
                                 ),
                             },
-                            span: Span::new(self.code, expr_span.start(), token.as_span().end())
-                                .unwrap(),
+                            span: Span::new(expr_span.start, token.as_span().end()),
                         }
                     };
                 }
                 Rule::type_name => {
                     expression = {
-                        let expr_span = expression.span.clone();
+                        let expr_span = expression.span;
                         Expression {
                             node: ExpressionEnum::TypeCast(
                                 self.build_type_name(token)?,
                                 Box::new(expression),
                             ),
-                            span: Span::new(self.code, expr_span.start(), token_span.end())
-                                .unwrap(),
+                            span: Span::new(expr_span.start, token_span.end()),
                         }
                     };
                 }
@@ -465,14 +439,14 @@ impl<'ctx> Parse<'ctx> {
 
     fn build_primary_expression(
         &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<Expression<'ctx>, Box<dyn Error>> {
+        pair: Pair<'_, Rule>,
+    ) -> Result<Expression, Box<dyn Error>> {
         let span = pair.as_span();
         let token = pair.into_inner().next().unwrap();
         match token.as_rule() {
             Rule::identifier => Ok(Expression {
                 node: ExpressionEnum::Identifier(token.as_str().to_owned()),
-                span,
+                span: Span::from(span),
             }),
             Rule::constant => self.build_constant(token),
             Rule::string_literal => self.build_string_literal(token),
@@ -481,10 +455,7 @@ impl<'ctx> Parse<'ctx> {
         }
     }
 
-    fn build_type_name(
-        &mut self,
-        pair: Pair<'ctx, Rule>,
-    ) -> Result<BasicType<'ctx>, Box<dyn Error>> {
+    fn build_type_name(&mut self, pair: Pair<'_, Rule>) -> Result<BasicType, Box<dyn Error>> {
         let span = pair.as_span();
         let mut fake_ast: Vec<Declaration> = Default::default();
         let mut derived_type: Type = Default::default();

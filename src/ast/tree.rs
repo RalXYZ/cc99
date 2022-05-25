@@ -1,150 +1,150 @@
-use pest::Span;
 use serde::{Serialize, Serializer};
 use std::fmt;
 
 use super::operations::*;
+use super::span::*;
 use super::types::*;
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum AST<'a> {
-    GlobalDeclaration(Vec<Declaration<'a>>),
+pub enum AST {
+    GlobalDeclaration(Vec<Declaration>),
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Declaration<'a> {
-    pub node: DeclarationEnum<'a>,
-    pub span: Span<'a>,
+pub struct Declaration {
+    pub node: DeclarationEnum,
+    pub span: Span,
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum DeclarationEnum<'a> {
+pub enum DeclarationEnum {
     Declaration(
-        Type<'a>,
+        Type,
         /// identifier (if it's a struct/union declaration, it might be None)
         Option<String>,
         /// initializer
-        Option<Box<Expression<'a>>>,
+        Option<Box<Expression>>,
     ),
     FunctionDefinition(
         Vec<FunctionSpecifier>,
         StorageClassSpecifier,
         /// return type
-        Box<BasicType<'a>>,
+        Box<BasicType>,
         /// identifier
         String,
         /// parameters and their names
-        Vec<(BasicType<'a>, Option<String>)>,
+        Vec<(BasicType, Option<String>)>,
         /// is variadic
         bool,
         /// body
-        Statement<'a>,
+        Statement,
     ),
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Statement<'a> {
-    pub node: StatementEnum<'a>,
-    pub span: Span<'a>,
+pub struct Statement {
+    pub node: StatementEnum,
+    pub span: Span,
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum StatementEnum<'a> {
+pub enum StatementEnum {
     // labeled statement
-    Labeled(String, Box<Statement<'a>>),
+    Labeled(String, Box<Statement>),
     Case(
         /// None represents default case
-        Option<Box<Expression<'a>>>,
-        Box<Statement<'a>>,
+        Option<Box<Expression>>,
+        Box<Statement>,
     ),
     // compound statement
-    Compound(Vec<StatementOrDeclaration<'a>>),
+    Compound(Vec<StatementOrDeclaration>),
     // expression statement
-    Expression(Box<Expression<'a>>),
+    Expression(Box<Expression>),
     // selection statement
     If(
-        Box<Expression<'a>>,
+        Box<Expression>,
         /// true statement
-        Box<Statement<'a>>,
+        Box<Statement>,
         /// false statement
-        Option<Box<Statement<'a>>>,
+        Option<Box<Statement>>,
     ),
-    Switch(Box<Expression<'a>>, Box<Statement<'a>>),
+    Switch(Box<Expression>, Box<Statement>),
     // iteration statement
-    While(Box<Expression<'a>>, Box<Statement<'a>>),
-    DoWhile(Box<Statement<'a>>, Box<Expression<'a>>),
+    While(Box<Expression>, Box<Statement>),
+    DoWhile(Box<Statement>, Box<Expression>),
     For(
         /// initialize clause
-        Option<Box<ForInitClause<'a>>>,
+        Option<Box<ForInitClause>>,
         /// condition expression
-        Option<Box<Expression<'a>>>,
+        Option<Box<Expression>>,
         /// iteration expression
-        Option<Box<Expression<'a>>>,
+        Option<Box<Expression>>,
         /// loop statement
-        Box<Statement<'a>>,
+        Box<Statement>,
     ),
     // jump statement
     Break,
     Continue,
-    Return(Option<Box<Expression<'a>>>),
+    Return(Option<Box<Expression>>),
     Goto(String),
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct Expression<'a> {
-    pub node: ExpressionEnum<'a>,
-    pub span: Span<'a>,
+pub struct Expression {
+    pub node: ExpressionEnum,
+    pub span: Span,
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum ExpressionEnum<'a> {
+pub enum ExpressionEnum {
     Assignment(
-        AssignOperation<'a>,
+        AssignOperation,
         /// left hand side
-        Box<Expression<'a>>,
+        Box<Expression>,
         /// right hand side
-        Box<Expression<'a>>,
+        Box<Expression>,
     ),
-    Unary(UnaryOperation<'a>, Box<Expression<'a>>),
+    Unary(UnaryOperation, Box<Expression>),
     Binary(
-        BinaryOperation<'a>,
+        BinaryOperation,
         /// left hand side
-        Box<Expression<'a>>,
+        Box<Expression>,
         /// right hand side
-        Box<Expression<'a>>,
+        Box<Expression>,
     ),
     FunctionCall(
         /// function
-        Box<Expression<'a>>,
+        Box<Expression>,
         /// arguments
-        Vec<Expression<'a>>,
+        Vec<Expression>,
     ),
-    TypeCast(BasicType<'a>, Box<Expression<'a>>),
+    TypeCast(BasicType, Box<Expression>),
     Conditional(
         /// condition
-        Box<Expression<'a>>,
+        Box<Expression>,
         /// true expression
-        Box<Expression<'a>>,
+        Box<Expression>,
         /// false expression
-        Box<Expression<'a>>,
+        Box<Expression>,
     ),
-    SizeofType(BasicType<'a>),
+    SizeofType(BasicType),
     MemberOfObject(
         /// object
-        Box<Expression<'a>>,
+        Box<Expression>,
         /// member name
         String,
     ),
     MemberOfPointer(
         /// pointer
-        Box<Expression<'a>>,
+        Box<Expression>,
         /// member name
         String,
     ),
     ArraySubscript(
         /// array
-        Box<Expression<'a>>,
+        Box<Expression>,
         /// index
-        Vec<Expression<'a>>,
+        Vec<Expression>,
     ),
 
     Identifier(String),
@@ -162,54 +162,54 @@ pub enum ExpressionEnum<'a> {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct ForInitClause<'a> {
-    pub node: ForInitClauseEnum<'a>,
-    pub span: Span<'a>,
+pub struct ForInitClause {
+    pub node: ForInitClauseEnum,
+    pub span: Span,
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum ForInitClauseEnum<'a> {
-    Expression(Expression<'a>),
-    ForDeclaration(Vec<Declaration<'a>>),
+pub enum ForInitClauseEnum {
+    Expression(Expression),
+    ForDeclaration(Vec<Declaration>),
 }
 
 #[derive(Debug, PartialEq, Clone)]
-pub struct StatementOrDeclaration<'a> {
-    pub node: StatementOrDeclarationEnum<'a>,
-    pub span: Span<'a>,
+pub struct StatementOrDeclaration {
+    pub node: StatementOrDeclarationEnum,
+    pub span: Span,
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum StatementOrDeclarationEnum<'a> {
-    Statement(Statement<'a>),
-    LocalDeclaration(Declaration<'a>),
+pub enum StatementOrDeclarationEnum {
+    Statement(Statement),
+    LocalDeclaration(Declaration),
 }
 
-impl<'a> Statement<'a> {
-    pub fn default(code: &'a str) -> Self {
+impl Default for Statement {
+    fn default() -> Self {
         Statement {
-            node: StatementEnum::Expression(Box::new(Expression::default(code))),
-            span: Span::new(code, 0, 0).unwrap(),
+            node: StatementEnum::Expression(Box::new(Default::default())),
+            span: Default::default(),
         }
     }
 }
 
-impl<'a> Expression<'a> {
-    pub fn default(code: &'a str) -> Self {
+impl Default for Expression {
+    fn default() -> Self {
         Expression {
             node: ExpressionEnum::Empty,
-            span: Span::new(code, 0, 0).unwrap(),
+            span: Default::default(),
         }
     }
 }
 
-impl fmt::Display for Expression<'_> {
+impl fmt::Display for Expression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
 }
 
-impl Serialize for Declaration<'_> {
+impl Serialize for Declaration {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -218,7 +218,7 @@ impl Serialize for Declaration<'_> {
     }
 }
 
-impl Serialize for Statement<'_> {
+impl Serialize for Statement {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -227,7 +227,7 @@ impl Serialize for Statement<'_> {
     }
 }
 
-impl Serialize for Expression<'_> {
+impl Serialize for Expression {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -236,7 +236,7 @@ impl Serialize for Expression<'_> {
     }
 }
 
-impl Serialize for ForInitClause<'_> {
+impl Serialize for ForInitClause {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -245,7 +245,7 @@ impl Serialize for ForInitClause<'_> {
     }
 }
 
-impl Serialize for StatementOrDeclaration<'_> {
+impl Serialize for StatementOrDeclaration {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,

@@ -105,8 +105,8 @@ fn main() {
             .unwrap_or_else(|_| panic!("Unable to write file {}", output_file));
     } else {
         // parse
-        let ast = Parse::new(&code)
-            .parse()
+        let ast = Parse::new()
+            .parse(&code)
             .unwrap_or_else(|e| panic!("Parse failed:\n{}", e));
 
         if args.parse {
