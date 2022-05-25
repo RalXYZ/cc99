@@ -5,7 +5,7 @@ extern crate core;
 
 pub mod ast;
 #[cfg(not(feature = "web"))]
-pub mod generator;
+// pub mod generator;
 pub mod parse;
 pub mod preprocess;
 #[cfg(feature = "web")]

@@ -8,10 +8,10 @@ use std::fmt;
 use serde::Serialize;
 
 #[derive(Serialize, Debug, PartialEq, Clone, Default)]
-pub struct Type {
+pub struct Type<'a> {
     pub function_specifier: Vec<FunctionSpecifier>,
     pub storage_class_specifier: StorageClassSpecifier,
-    pub basic_type: BasicType,
+    pub basic_type: BasicType<'a>,
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
@@ -39,31 +39,31 @@ pub enum FunctionSpecifier {
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone, Default)]
-pub struct BasicType {
+pub struct BasicType<'a> {
     pub qualifier: Vec<TypeQualifier>,
-    pub base_type: BaseType,
+    pub base_type: BaseType<'a>,
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum BaseType {
+pub enum BaseType<'a> {
     Void,
     SignedInteger(IntegerType),
     UnsignedInteger(IntegerType),
     Bool,
     Float,
     Double,
-    Pointer(Box<BasicType>),
+    Pointer(Box<BasicType<'a>>),
     Array(
         /// element type
-        Box<BasicType>,
+        Box<BasicType<'a>>,
         /// array length, from high-dimension to low-dimension
-        Vec<Expression>,
+        Vec<Expression<'a>>,
     ),
     Function(
         /// return type
-        Box<BasicType>,
+        Box<BasicType<'a>>,
         /// parameters' types
-        Vec<BasicType>,
+        Vec<BasicType<'a>>,
         /// is variadic or not
         bool,
     ),
@@ -71,13 +71,13 @@ pub enum BaseType {
         /// struct name
         Option<String>,
         /// struct members
-        Option<Vec<StructMember>>,
+        Option<Vec<StructMember<'a>>>,
     ),
     Union(
         /// union name
         Option<String>,
         /// union members
-        Option<Vec<StructMember>>,
+        Option<Vec<StructMember<'a>>>,
     ),
     /// a name introduced by typedef/struct...
     Identifier(String),
@@ -93,18 +93,18 @@ pub enum IntegerType {
 }
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub struct StructMember {
+pub struct StructMember<'a> {
     pub member_name: String,
-    pub member_type: BasicType,
+    pub member_type: BasicType<'a>,
 }
 
-impl Default for BaseType {
+impl Default for BaseType<'_> {
     fn default() -> Self {
         BaseType::SignedInteger(IntegerType::Int)
     }
 }
 
-impl<'ctx> BasicType {
+impl<'ctx> BasicType<'_> {
     pub fn is_const(&self) -> bool {
         self.qualifier
             .iter()
@@ -113,7 +113,7 @@ impl<'ctx> BasicType {
 }
 
 #[cfg(not(feature = "web"))]
-impl<'ctx> BaseType {
+impl<'ctx> BaseType<'ctx> {
     fn cast_rank(&self) -> i32 {
         match self {
             &BaseType::Void => 0,
@@ -134,7 +134,7 @@ impl<'ctx> BaseType {
         }
     }
 
-    pub(crate) fn upcast(lhs: &BaseType, rhs: &BaseType) -> Result<BaseType> {
+    pub(crate) fn upcast(lhs: &BaseType<'ctx>, rhs: &BaseType<'ctx>) -> Result<BaseType<'ctx>> {
         if lhs.cast_rank() >= rhs.cast_rank() {
             Ok(lhs.clone())
         } else {
@@ -158,7 +158,7 @@ impl<'ctx> BaseType {
         false
     }
 
-    pub(crate) fn test_cast(&self, dest: &BaseType) -> Result<()> {
+    pub(crate) fn test_cast(&self, dest: &BaseType<'ctx>) -> Result<()> {
         // same type, directly cast
         if self == dest {
             return Ok(());
@@ -172,12 +172,14 @@ impl<'ctx> BaseType {
             {
                 return Ok(());
             };
-            return Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into());
+            // return Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into());
+            unimplemented!()
         }
 
         if let (BaseType::Array(lhs_type, lhs_expr), BaseType::Pointer(rhs_ptr)) = (self, dest) {
             if lhs_expr.len() != 1 {
-                return Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into());
+                // return Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into());
+                unimplemented!()
             }
             //make sure they are both basic type(not pointer or array)
             lhs_type.base_type.cast_rank();
@@ -186,21 +188,24 @@ impl<'ctx> BaseType {
         }
 
         if let BaseType::Pointer(_) = self {
-            return Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into());
+            // return Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into());
+            unimplemented!()
         }
         if let BaseType::Pointer(_) = dest {
-            return Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into());
+            // return Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into());
+            unimplemented!()
         }
 
         if self.cast_rank() < dest.cast_rank() {
             return Ok(());
         }
 
-        Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into())
+        // Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into())
+        unimplemented!()
     }
 }
 
-impl fmt::Display for BaseType {
+impl fmt::Display for BaseType<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }

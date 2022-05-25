@@ -1,7 +1,14 @@
-use serde::Serialize;
+use pest::Span;
+use serde::{Serialize, Serializer};
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct AssignOperation<'a> {
+    pub node: AssignOperationEnum,
+    pub span: Span<'a>,
+}
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum AssignOperation {
+pub enum AssignOperationEnum {
     Naive,
     Addition,
     Subtraction,
@@ -15,8 +22,14 @@ pub enum AssignOperation {
     RightShift,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct UnaryOperation<'a> {
+    pub node: UnaryOperationEnum,
+    pub span: Span<'a>,
+}
+
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum UnaryOperation {
+pub enum UnaryOperationEnum {
     // increment, decrement
     PrefixIncrement,
     PrefixDecrement,
@@ -35,8 +48,14 @@ pub enum UnaryOperation {
     SizeofExpr,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct BinaryOperation<'a> {
+    pub node: BinaryOperationEnum,
+    pub span: Span<'a>,
+}
+
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum BinaryOperation {
+pub enum BinaryOperationEnum {
     // arithmetic
     Addition,
     Subtraction,
@@ -62,20 +81,56 @@ pub enum BinaryOperation {
     Comma,
 }
 
-impl Default for AssignOperation {
-    fn default() -> Self {
-        AssignOperation::Naive
+impl<'a> AssignOperation<'a> {
+    pub fn default(code: &'a str) -> Self {
+        AssignOperation {
+            node: AssignOperationEnum::Naive,
+            span: Span::new(code, 0, 0).unwrap(),
+        }
     }
 }
 
-impl Default for UnaryOperation {
-    fn default() -> Self {
-        UnaryOperation::PrefixIncrement
+impl<'a> UnaryOperation<'a> {
+    pub fn default(code: &'a str) -> Self {
+        UnaryOperation {
+            node: UnaryOperationEnum::PrefixIncrement,
+            span: Span::new(code, 0, 0).unwrap(),
+        }
     }
 }
 
-impl Default for BinaryOperation {
-    fn default() -> Self {
-        BinaryOperation::Comma
+impl<'a> BinaryOperation<'a> {
+    pub fn default(code: &'a str) -> Self {
+        BinaryOperation {
+            node: BinaryOperationEnum::Comma,
+            span: Span::new(code, 0, 0).unwrap(),
+        }
+    }
+}
+
+impl Serialize for AssignOperation<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.node.serialize(serializer)
+    }
+}
+
+impl Serialize for UnaryOperation<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.node.serialize(serializer)
+    }
+}
+
+impl Serialize for BinaryOperation<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.node.serialize(serializer)
     }
 }

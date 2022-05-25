@@ -2,7 +2,7 @@ use crate::ast::BaseType;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum CompileErr {
+pub enum CompileErr<'a> {
     #[error("there are duplicated global variables: {}", .0)]
     DuplicatedGlobalVariable(String),
 
@@ -13,10 +13,10 @@ pub enum CompileErr {
     UnknownExpression(String),
 
     #[error("invalid default cast between {} and {}", .0.to_string(), .1.to_string())]
-    InvalidDefaultCast(BaseType, BaseType),
+    InvalidDefaultCast(BaseType<'a>, BaseType<'a>),
 
     #[error("invalid cast from {} to {}", .0.to_string(), .1.to_string())]
-    InvalidCast(BaseType, BaseType),
+    InvalidCast(BaseType<'a>, BaseType<'a>),
 
     #[error("invalid unary operator")]
     InvalidUnary,

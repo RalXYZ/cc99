@@ -58,7 +58,8 @@ for_iteration_expression = {expression}
 //>>>>>>>>>>>>>>>>>>>>>>>
 //      EXPRESSION
 //<<<<<<<<<<<<<<<<<<<<<<<
-expression = {assignment_expression ~ ("," ~ assignment_expression)*}
+expression = {assignment_expression ~ (comma ~ assignment_expression)*}
+comma = {","}
 
 // https://en.cppreference.com/w/c/language/operator_precedence#cite_ref-4
 assignment_expression = {(unary_expression ~ assignment_operator ~ assignment_expression) | conditional_expression}
