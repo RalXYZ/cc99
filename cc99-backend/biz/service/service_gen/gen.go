@@ -36,8 +36,10 @@ func GenCode(c *gin.Context, data model_gen.GenReq) response.Response {
 		return response.JSONStWithMsg(define.StIOErr, err.Error())
 	}
 	err = cmd.Wait()
+
 	if err != nil {
-		return response.JSONData(model_gen.GenResp{Status: "error", File: outputFile, Stdout: stdout.String(), Stderr: stderr.String()})
+		retCode := err.(*exec.ExitError).ExitCode()
+		return response.JSONData(model_gen.GenResp{ExitCode: retCode, File: outputFile, Stdout: stdout.String(), Stderr: stderr.String()})
 	}
-	return response.JSONData(model_gen.GenResp{Status: "success", File: outputFile, Stdout: stdout.String(), Stderr: stderr.String()})
+	return response.JSONData(model_gen.GenResp{ExitCode: 0, File: outputFile, Stdout: stdout.String(), Stderr: stderr.String()})
 }

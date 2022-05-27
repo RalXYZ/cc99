@@ -14,7 +14,7 @@ import (
 )
 
 func Run(c *gin.Context, data model_run.RunReq) response.Response {
-	fileInfo, err := os.Stat(fmt.Sprintf("runtime/%s", data.File))
+	_, err := os.Stat(fmt.Sprintf("runtime/%s", data.File))
 	if err != nil {
 		return response.JSONStWithMsg(define.StIOErr, "don't have a file named "+data.File)
 	}
@@ -30,6 +30,8 @@ func Run(c *gin.Context, data model_run.RunReq) response.Response {
 	}
 	err = cmd.Wait()
 	if err != nil {
-		return response.JSONData(model_gen.GenResp{Status: "error", File: outputFile, Stdout: stdout.String(), Stderr: stderr.String()})
+		retCode := err.(*exec.ExitError).ExitCode()
+		return response.JSONData(model_gen.GenResp{ExitCode: retCode, Stdout: stdout.String(), Stderr: stderr.String()})
 	}
+	return response.JSONData(model_gen.GenResp{ExitCode: 0, Stdout: stdout.String(), Stderr: stderr.String()})
 }
