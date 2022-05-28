@@ -35,7 +35,7 @@ stringizing = {("#" ~ !macro_keyword) ~ (keyword | identifier)}
 punctuator = {"{" | "}" | "[" | "]" | "(" | ")" | ";" | ":" | "..." | "?" | "." | "->" | "~" | "=" | "+=" | "*=" | "/=" | "%=" | "^=" | "&=" | "|=" | "==" | "!=" | "<=" | ">=" | "<<=" | ">>=" | "++" | "--"| "!" | "+" | "-" | "*" | "/" | "%" | "^" | "&" | "|" | "<" | ">" | "&&" | "||" | "<<" | ">>"  | ","}
 macro_keyword = {define__ | include__ | line__ | undef__ | error__ | pragma__ | if__ | ifdef__ | ifndef__ | elif__ | else__ | endif__ | NEWLINE}
 define__ = ${"define" ~ &(WHITESPACE | NEWLINE)}
-include__ = ${"include" ~ &(WHITESPACE | NEWLINE)}
+include__ = ${"include" ~ &(WHITESPACE | NEWLINE | "<" | "\"")}
 line__ = ${"line" ~ &(WHITESPACE | NEWLINE)}
 undef__ = ${"undef" ~ &(WHITESPACE | NEWLINE)}
 error__ = ${"error" ~ &(WHITESPACE | NEWLINE)}
