@@ -200,7 +200,10 @@ fn build_control_line<'a>(
 
         // search standard
         if !search_current_first {
-            // TODO: no standard include file now
+            let tmp_path = format!("include/{}", path);
+            if Path::new(&tmp_path).exists() {
+                complete_path = Some(tmp_path);
+            }
         }
 
         if let Some(path) = complete_path {
