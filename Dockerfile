@@ -35,6 +35,6 @@ COPY --from=0 /srv/cc99 /srv/cc99
 COPY --from=0 /app/target/release/cc99 .
 COPY --from=0 /app/include ./include
 
-ENV PATH="/app:$PATH"
+ENV PATH "$PATH:/app"
 ENV TZ=Asia/Shanghai
 ENTRYPOINT ["/backend/cc99-backend"]
