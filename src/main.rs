@@ -115,7 +115,7 @@ fn main() {
         } else {
                 // code_gen
                 let context = Context::create();
-                let mut code_gen = Generator::new(&context, &args.file);
+                let mut code_gen = Generator::new(&context, &args.file, &code);
                 code_gen.gen(&ast);
 
                 if args.bitcode {

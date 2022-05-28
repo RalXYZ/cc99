@@ -1,9 +1,9 @@
 use crate::ast::{
-    BaseType, BasicType as BT, DeclarationEnum, Expression, IntegerType, StorageClassSpecifier,
-    Type, AST,
+    BaseType, BasicType as BT, DeclarationEnum, Expression, IntegerType, Span,
+    StorageClassSpecifier, Type, AST,
 };
 use crate::generator::Generator;
-use crate::utils::CompileErr;
+use crate::utils::CompileErr as CE;
 use anyhow::{Error, Result};
 use inkwell::context::Context;
 use inkwell::module::Linkage;
@@ -16,7 +16,7 @@ use std::path::Path;
 
 impl<'ctx> Generator<'ctx> {
     // new LLVM context
-    pub fn new(context: &'ctx Context, source_path: &'ctx str) -> Generator<'ctx> {
+    pub fn new(context: &'ctx Context, source_path: &'ctx str, code: &'ctx str) -> Generator<'ctx> {
         let module_name = Path::new(source_path)
             .file_stem()
             .unwrap()
@@ -31,6 +31,7 @@ impl<'ctx> Generator<'ctx> {
         val_map_block_stack.push(global_map); // push global variable hashmap
 
         Generator {
+            code,
             module_name,
             context,
             module,
@@ -60,12 +61,12 @@ impl<'ctx> Generator<'ctx> {
                         ref initializer,
                     ) = declaration.node
                     {
-                        Some((type_info, identifier, initializer))
+                        Some((type_info, identifier, initializer, declaration.span))
                     } else {
                         None
                     }
                 })
-                .map(|(type_info, identifier, initializer)| -> Result<()> {
+                .map(|(type_info, identifier, initializer, span)| -> Result<()> {
                     if let BaseType::Function(ref return_type, ref params_type, is_variadic) =
                         type_info.basic_type.base_type
                     {
@@ -75,12 +76,14 @@ impl<'ctx> Generator<'ctx> {
                             identifier.as_ref().unwrap(),
                             params_type,
                             is_variadic,
+                            span,
                         )?;
                     } else {
                         self.gen_global_variable(
                             type_info,
                             identifier.as_ref().unwrap(),
                             initializer,
+                            span,
                         )?;
                     }
                     Ok(())
@@ -108,6 +111,7 @@ impl<'ctx> Generator<'ctx> {
                                 identifier,
                                 &params_type.iter().map(|param| param.0.clone()).collect(),
                                 *is_variadic,
+                                declaration.span,
                             )?;
                         }
                     }
@@ -130,7 +134,13 @@ impl<'ctx> Generator<'ctx> {
                         ref statements,
                     ) = declaration.node
                     {
-                        self.gen_func_def(&return_type, identifier, params_type, statements)?;
+                        self.gen_func_def(
+                            &return_type,
+                            identifier,
+                            params_type,
+                            statements,
+                            declaration.span,
+                        )?;
                     }
                     Ok(())
                 })
@@ -152,12 +162,13 @@ impl<'ctx> Generator<'ctx> {
         func_name: &String,
         func_param: &Vec<BT>,
         is_variadic: bool,
+        span: Span,
     ) -> Result<()> {
         if self.function_map.contains_key(func_name) {
-            return Err(CompileErr::DuplicateFunction(func_name.to_string()).into());
+            return Err(CE::duplicated_function(func_name.to_string(), span).into());
         }
         if self.global_variable_map.contains_key(func_name) {
-            return Err(CompileErr::Redefinition(func_name.to_string()).into());
+            return Err(CE::redefinition_symbol(func_name.to_string(), span).into());
         }
 
         // function parameter should be added in this llvm_func_type
@@ -218,6 +229,7 @@ impl<'ctx> Generator<'ctx> {
         curr_type: &BaseType,
         curr_val: &BasicValueEnum<'ctx>,
         dest_type: &BaseType,
+        span: Span,
     ) -> Result<BasicValueEnum<'ctx>> {
         if curr_type.equal_discarding_qualifiers(dest_type) {
             return Ok(curr_val.to_owned());
@@ -226,14 +238,18 @@ impl<'ctx> Generator<'ctx> {
         let llvm_type = self.convert_llvm_type(dest_type);
 
         Ok(self.builder.build_cast(
-            self.gen_cast_llvm_instruction(curr_type, dest_type)?,
+            self.gen_cast_llvm_instruction(curr_type, dest_type, span)?,
             *curr_val,
             llvm_type,
             "cast",
         ))
     }
 
-    pub(crate) fn get_variable(&self, identifier: &String) -> Result<(BT, PointerValue<'ctx>)> {
+    pub(crate) fn get_variable(
+        &self,
+        identifier: &String,
+        span: Span,
+    ) -> Result<(BT, PointerValue<'ctx>)> {
         let mut result = None;
 
         self.val_map_block_stack.iter().rev().for_each(|addr_map| {
@@ -247,7 +263,7 @@ impl<'ctx> Generator<'ctx> {
         }
 
         if result.is_none() {
-            return Err(CompileErr::MissingVariable(identifier.to_string()).into());
+            return Err(CE::missing_variable(identifier.to_string(), span).into());
         }
 
         Ok(result.unwrap())
@@ -258,11 +274,12 @@ impl<'ctx> Generator<'ctx> {
         var_type: &Type,
         var_name: &String,
         ptr_to_init: &Option<Box<Expression>>,
+        span: Span,
     ) -> Result<()> {
         if self.global_variable_map.contains_key(var_name) {
-            return Err(CompileErr::DuplicatedGlobalVariable(var_name.to_string()).into());
+            return Err(CE::duplicated_global_variable(var_name.to_string(), span).into());
         } else if self.function_map.contains_key(var_name) {
-            return Err(CompileErr::DuplicatedSymbol(var_name.to_string()).into());
+            return Err(CE::duplicated_symbol(var_name.to_string(), span).into());
         }
 
         let llvm_type = self.convert_llvm_type(&var_type.basic_type.base_type);
@@ -281,6 +298,7 @@ impl<'ctx> Generator<'ctx> {
                     &init_val_pair.0,
                     &init_val_pair.1,
                     &var_type.basic_type.base_type,
+                    ptr_to_init.span,
                 )?;
 
                 global_value.set_initializer(&value_after_cast);

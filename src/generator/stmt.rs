@@ -22,8 +22,8 @@ impl<'ctx> Generator<'ctx> {
             StatementEnum::For(ref init, ref cond, ref iter, ref body) => {
                 self.gen_for_statement(init, cond, iter, body)?
             }
-            StatementEnum::Break => self.gen_break_statement()?,
-            StatementEnum::Continue => self.gen_continue_statement()?,
+            StatementEnum::Break => self.gen_break_statement(statement.span)?,
+            StatementEnum::Continue => self.gen_continue_statement(statement.span)?,
             StatementEnum::If(ref cond, ref then_stmt, ref else_stmt) => {
                 self.gen_if_statement(cond, then_stmt, else_stmt)?
             }
@@ -163,7 +163,7 @@ impl<'ctx> Generator<'ctx> {
             Some(cond) => cond.to_owned(),
             None => Box::new(Expression {
                 node: ExpressionEnum::Empty,
-                span: Span::new(0, 0),
+                span: Span::default(),
             }),
         };
         new_block.push(StatementOrDeclaration {
@@ -183,18 +183,18 @@ impl<'ctx> Generator<'ctx> {
         Ok(())
     }
 
-    fn gen_break_statement(&mut self) -> Result<()> {
+    fn gen_break_statement(&mut self, span: Span) -> Result<()> {
         if self.break_labels.is_empty() {
-            return Err(CE::KeywordNotInLoop("break".to_string()).into());
+            return Err(CE::keyword_not_in_a_loop("break".to_string(), span).into());
         }
         let break_block = self.break_labels.back().unwrap();
         self.builder.build_unconditional_branch(*break_block);
         Ok(())
     }
 
-    fn gen_continue_statement(&mut self) -> Result<()> {
+    fn gen_continue_statement(&mut self, span: Span) -> Result<()> {
         if self.continue_labels.is_empty() {
-            return Err(CE::KeywordNotInLoop("continue".to_string()).into());
+            return Err(CE::keyword_not_in_a_loop("continue".to_string(), span).into());
         }
         let continue_block = self.continue_labels.back().unwrap();
         self.builder.build_unconditional_branch(*continue_block);
@@ -249,11 +249,12 @@ impl<'ctx> Generator<'ctx> {
             .to_owned()
             .1
             .base_type;
-        let expr = self.gen_expression(&expr.to_owned().unwrap())?;
+        let (e_t, e_v) = self.gen_expression(&expr.to_owned().unwrap())?;
 
-        expr.0.test_cast(&func_return_type)?;
+        e_t.test_cast(&func_return_type)?;
 
-        let return_val = self.cast_value(&expr.0, &expr.1, &func_return_type)?;
+        let return_val =
+            self.cast_value(&e_t, &e_v, &func_return_type, expr.to_owned().unwrap().span)?;
         self.builder.build_return(Some(&return_val));
 
         let func_block = self

@@ -1,6 +1,6 @@
 use crate::ast::{
     AssignOperation, AssignOperationEnum, BaseType, BasicType, Declaration, DeclarationEnum,
-    Expression, ExpressionEnum, Statement, StatementEnum, StatementOrDeclarationEnum,
+    Expression, ExpressionEnum, Span, Statement, StatementEnum, StatementOrDeclarationEnum,
 };
 use crate::generator::Generator;
 use crate::utils::CompileErr as CE;
@@ -15,6 +15,7 @@ impl<'ctx> Generator<'ctx> {
         func_name: &String,
         func_param: &Vec<(BasicType, Option<String>)>,
         func_body: &Statement,
+        span: Span,
     ) -> Result<()> {
         let func = self.module.get_function(func_name.as_str()).unwrap();
         self.val_map_block_stack.push(HashMap::new());
@@ -59,6 +60,7 @@ impl<'ctx> Generator<'ctx> {
                     &func_param[i].0,
                     &func_param[i].1.as_ref().unwrap(),
                     alloca,
+                    span,
                 )?;
             }
         }
@@ -119,11 +121,12 @@ impl<'ctx> Generator<'ctx> {
         var_type: &BasicType,
         identifier: &String,
         ptr: PointerValue<'ctx>,
+        span: Span,
     ) -> Result<()> {
         let local_map = self.val_map_block_stack.last_mut().unwrap();
 
         if local_map.contains_key(identifier) {
-            return Err(CE::DuplicatedVariable(identifier.to_string()).into());
+            return Err(CE::duplicated_variable(identifier.to_string(), span).into());
         }
 
         local_map.insert(identifier.to_string(), (var_type.clone(), ptr));
@@ -136,7 +139,12 @@ impl<'ctx> Generator<'ctx> {
             let p_val = self
                 .builder
                 .build_alloca(llvm_type, &identifier.to_owned().unwrap());
-            self.insert_to_val_map(&var_type.basic_type, &identifier.to_owned().unwrap(), p_val)?;
+            self.insert_to_val_map(
+                &var_type.basic_type,
+                &identifier.to_owned().unwrap(),
+                p_val,
+                decl.span,
+            )?;
             if let Some(ref expr) = expr {
                 self.gen_assignment(
                     &AssignOperation {
@@ -148,11 +156,16 @@ impl<'ctx> Generator<'ctx> {
                         span: expr.span.clone(),
                     }),
                     expr,
+                    decl.span,
                 )?;
             }
             Ok(())
         } else {
-            Err(CE::Error("FunctionDefinition cannot exist in function".to_string()).into())
+            Err(CE::plain_error(
+                "FunctionDefinition cannot exist in function".to_string(),
+                decl.span,
+            )
+            .into())
         }
     }
 }

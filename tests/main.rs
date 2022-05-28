@@ -36,13 +36,13 @@ mod tests {
 
     #[test]
     fn test_gen() {
-        let res = preprocess_file("./tests/global/decl2.c", vec![].as_slice()).unwrap();
+        let code = preprocess_file("./tests/global/decl2.c", vec![].as_slice()).unwrap();
         let ast = Parse::new()
-            .parse(&res)
+            .parse(&code)
             .unwrap_or_else(|e| panic!("Parse failed:\n{}", e));
 
         let context = Context::create();
-        let mut code_gen = Generator::new(&context, "./tests/global/decl2.c");
+        let mut code_gen = Generator::new(&context, "./tests/global/decl2.c", &code);
         code_gen.gen(&ast);
         code_gen.out_asm_or_obj(false, None, inkwell::OptimizationLevel::None);
         code_gen.out_bc(None);

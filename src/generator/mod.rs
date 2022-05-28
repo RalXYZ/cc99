@@ -15,6 +15,7 @@ mod stmt;
 mod utils;
 
 pub struct Generator<'ctx> {
+    code: &'ctx str,
     module_name: &'ctx str,
     context: &'ctx Context,
     module: Module<'ctx>,
