@@ -198,7 +198,11 @@ impl<'ctx> BaseType {
             return Ok(());
         }
 
-        Err(CE::invalid_default_cast(self.to_string(), dest.to_string(), span))
+        Err(CE::invalid_default_cast(
+            self.to_string(),
+            dest.to_string(),
+            span,
+        ))
     }
 }
 
