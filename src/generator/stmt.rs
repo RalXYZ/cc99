@@ -4,11 +4,10 @@ use crate::ast::{
 };
 use crate::generator::Generator;
 use crate::utils::CompileErr as CE;
-use anyhow::Result;
 use std::collections::HashMap;
 
 impl<'ctx> Generator<'ctx> {
-    pub(crate) fn gen_statement(&mut self, statement: &Statement) -> Result<()> {
+    pub(crate) fn gen_statement(&mut self, statement: &Statement) -> Result<(), CE> {
         match statement.node {
             StatementEnum::Compound(ref state_or_decl) => {
                 self.gen_compound_statement(state_or_decl)?
@@ -39,7 +38,10 @@ impl<'ctx> Generator<'ctx> {
         Ok(())
     }
 
-    fn gen_compound_statement(&mut self, statements: &Vec<StatementOrDeclaration>) -> Result<()> {
+    fn gen_compound_statement(
+        &mut self,
+        statements: &Vec<StatementOrDeclaration>,
+    ) -> Result<(), CE> {
         self.val_map_block_stack.push(HashMap::new());
 
         // generate IR for each statement or declaration in function body
@@ -63,7 +65,7 @@ impl<'ctx> Generator<'ctx> {
         cond: &Expression,
         body: &Statement,
         is_do_while: bool,
-    ) -> Result<()> {
+    ) -> Result<(), CE> {
         let func_val = self.current_function.as_ref().unwrap().0;
 
         let before_while_block = self.context.append_basic_block(func_val, "before_while");
@@ -120,7 +122,7 @@ impl<'ctx> Generator<'ctx> {
         cond: &Option<Box<Expression>>,
         iter: &Option<Box<Expression>>,
         body: &Statement,
-    ) -> Result<()> {
+    ) -> Result<(), CE> {
         let mut new_block: Vec<StatementOrDeclaration> = vec![];
         if let Some(ref init) = init {
             match &init.node {
@@ -183,7 +185,7 @@ impl<'ctx> Generator<'ctx> {
         Ok(())
     }
 
-    fn gen_break_statement(&mut self, span: Span) -> Result<()> {
+    fn gen_break_statement(&mut self, span: Span) -> Result<(), CE> {
         if self.break_labels.is_empty() {
             return Err(CE::keyword_not_in_a_loop("break".to_string(), span).into());
         }
@@ -192,7 +194,7 @@ impl<'ctx> Generator<'ctx> {
         Ok(())
     }
 
-    fn gen_continue_statement(&mut self, span: Span) -> Result<()> {
+    fn gen_continue_statement(&mut self, span: Span) -> Result<(), CE> {
         if self.continue_labels.is_empty() {
             return Err(CE::keyword_not_in_a_loop("continue".to_string(), span).into());
         }
@@ -206,7 +208,7 @@ impl<'ctx> Generator<'ctx> {
         cond: &Box<Expression>,
         then_stmt: &Box<Statement>,
         else_stmt: &Option<Box<Statement>>,
-    ) -> Result<()> {
+    ) -> Result<(), CE> {
         let func_val = self.current_function.as_ref().unwrap().0;
 
         let if_block = self.context.append_basic_block(func_val, "if_block");
@@ -236,7 +238,7 @@ impl<'ctx> Generator<'ctx> {
         Ok(())
     }
 
-    fn gen_return_statement(&mut self, expr: &Option<Box<Expression>>) -> Result<()> {
+    fn gen_return_statement(&mut self, expr: &Option<Box<Expression>>) -> Result<(), CE> {
         if expr.is_none() {
             self.builder.build_return(None);
             return Ok(());

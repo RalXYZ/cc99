@@ -5,7 +5,6 @@ use crate::ast::{
 };
 use crate::generator::Generator;
 use crate::utils::CompileErr as CE;
-use anyhow::Result;
 use inkwell::values::{
     AnyValue, BasicMetadataValueEnum, BasicValue, BasicValueEnum, FloatValue, IntValue,
     PointerValue,
@@ -17,7 +16,7 @@ impl<'ctx> Generator<'ctx> {
     pub(crate) fn gen_expression(
         &self,
         expr: &Expression,
-    ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
+    ) -> Result<(BaseType, BasicValueEnum<'ctx>), CE> {
         match expr.node {
             ExpressionEnum::Empty => Ok((
                 BaseType::Void,
@@ -156,7 +155,7 @@ impl<'ctx> Generator<'ctx> {
         l_t: BasicType,
         idx_vec: Vec<Expression>,
         span: Span,
-    ) -> Result<(BasicType, Vec<IntValue<'ctx>>)> {
+    ) -> Result<(BasicType, Vec<IntValue<'ctx>>), CE> {
         if let BaseType::Array(ref arr_t, arr_len_vec) = l_t.base_type {
             let res_t: BaseType;
             if idx_vec.len() > arr_len_vec.len() {
@@ -224,7 +223,7 @@ impl<'ctx> Generator<'ctx> {
         op: &UnaryOperation,
         expr: &Box<Expression>,
         span: Span,
-    ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
+    ) -> Result<(BaseType, BasicValueEnum<'ctx>), CE> {
         let (expr_type, expr_value) = self.gen_expression(expr)?;
 
         match op.node {
@@ -370,7 +369,7 @@ impl<'ctx> Generator<'ctx> {
         lhs: &Box<Expression>,
         rhs: &Box<Expression>,
         span: Span,
-    ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
+    ) -> Result<(BaseType, BasicValueEnum<'ctx>), CE> {
         let (ref l_t, l_v) = self.gen_expression(lhs)?;
         let (ref r_t, r_v) = self.gen_expression(rhs)?;
 
@@ -497,7 +496,7 @@ impl<'ctx> Generator<'ctx> {
         op: &BinaryOperation,
         lhs: PointerValue<'ctx>,
         rhs: IntValue<'ctx>,
-    ) -> Result<BasicValueEnum<'ctx>> {
+    ) -> Result<BasicValueEnum<'ctx>, CE> {
         let result_v = match op.node {
             BinaryOperationEnum::Addition => unsafe {
                 let idx_int_val_vec = vec![rhs];
@@ -522,7 +521,7 @@ impl<'ctx> Generator<'ctx> {
         lhs: IntValue<'ctx>,
         rhs: IntValue<'ctx>,
         span: Span,
-    ) -> Result<BasicValueEnum<'ctx>> {
+    ) -> Result<BasicValueEnum<'ctx>, CE> {
         let result_v = match op.node {
             // arithmetic
             BinaryOperationEnum::Addition => self.builder.build_int_add(lhs, rhs, "int_add"),
@@ -589,7 +588,7 @@ impl<'ctx> Generator<'ctx> {
         op: &BinaryOperation,
         lhs: FloatValue<'ctx>,
         rhs: FloatValue<'ctx>,
-    ) -> Result<BasicValueEnum<'ctx>> {
+    ) -> Result<BasicValueEnum<'ctx>, CE> {
         let result_f = match op.node {
             // arithmetic
             BinaryOperationEnum::Addition => {
@@ -719,7 +718,7 @@ impl<'ctx> Generator<'ctx> {
         lhs: &Box<Expression>,
         rhs: &Box<Expression>,
         span: Span,
-    ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
+    ) -> Result<(BaseType, BasicValueEnum<'ctx>), CE> {
         let (l_t, l_pv) = self.get_lvalue(lhs)?;
 
         let (r_t, r_v) = if let AssignOperationEnum::Naive = op.node {
@@ -757,7 +756,7 @@ impl<'ctx> Generator<'ctx> {
         Ok((l_t.base_type, cast_v))
     }
 
-    fn get_lvalue(&self, lhs: &Box<Expression>) -> Result<(BasicType, PointerValue<'ctx>)> {
+    fn get_lvalue(&self, lhs: &Box<Expression>) -> Result<(BasicType, PointerValue<'ctx>), CE> {
         match lhs.node {
             ExpressionEnum::Identifier(ref id) => Ok(self.get_variable(id, lhs.span)?),
             ExpressionEnum::Unary(ref op, ref unary_operation) => {
@@ -822,7 +821,7 @@ impl<'ctx> Generator<'ctx> {
         name: &Box<Expression>,
         args: &Vec<Expression>,
         span: Span,
-    ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
+    ) -> Result<(BaseType, BasicValueEnum<'ctx>), CE> {
         if let ExpressionEnum::Identifier(ref id) = name.node {
             let (ret_t, args_t, is_variadic) = self.function_map.get(id).unwrap().to_owned();
             let fv = self.module.get_function(id).unwrap();

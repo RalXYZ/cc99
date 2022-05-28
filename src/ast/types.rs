@@ -1,8 +1,6 @@
 #[cfg(not(feature = "web"))]
-use super::super::utils::CompileErr;
+use super::super::utils::CompileErr as CE;
 use super::*;
-#[cfg(not(feature = "web"))]
-use anyhow::Result;
 use std::fmt;
 
 use serde::Serialize;
@@ -134,7 +132,7 @@ impl<'ctx> BaseType {
         }
     }
 
-    pub(crate) fn upcast(lhs: &BaseType, rhs: &BaseType) -> Result<BaseType> {
+    pub(crate) fn upcast(lhs: &BaseType, rhs: &BaseType) -> Result<BaseType, CE> {
         if lhs.cast_rank() >= rhs.cast_rank() {
             Ok(lhs.clone())
         } else {
@@ -158,7 +156,7 @@ impl<'ctx> BaseType {
         false
     }
 
-    pub(crate) fn test_cast(&self, dest: &BaseType) -> Result<()> {
+    pub(crate) fn test_cast(&self, dest: &BaseType) -> Result<(), CE> {
         // same type, directly cast
         if self == dest {
             return Ok(());

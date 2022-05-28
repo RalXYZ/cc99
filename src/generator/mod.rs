@@ -1,4 +1,5 @@
 use crate::ast::BasicType as BT;
+use codespan_reporting::files::SimpleFiles;
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
 use inkwell::context::Context;
@@ -15,7 +16,7 @@ mod stmt;
 mod utils;
 
 pub struct Generator<'ctx> {
-    code: &'ctx str,
+    files: SimpleFiles<&'ctx str, &'ctx str>,
     module_name: &'ctx str,
     context: &'ctx Context,
     module: Module<'ctx>,

@@ -4,7 +4,6 @@ use crate::ast::{
 };
 use crate::generator::Generator;
 use crate::utils::CompileErr as CE;
-use anyhow::{Error, Result};
 use inkwell::context::Context;
 use inkwell::module::Linkage;
 use inkwell::types::{BasicMetadataTypeEnum, BasicType, BasicTypeEnum, FunctionType};
@@ -17,6 +16,8 @@ use std::path::Path;
 impl<'ctx> Generator<'ctx> {
     // new LLVM context
     pub fn new(context: &'ctx Context, source_path: &'ctx str, code: &'ctx str) -> Generator<'ctx> {
+        use codespan_reporting::files::SimpleFiles;
+
         let module_name = Path::new(source_path)
             .file_stem()
             .unwrap()
@@ -30,8 +31,11 @@ impl<'ctx> Generator<'ctx> {
         let global_map: HashMap<String, (BT, PointerValue<'ctx>)> = HashMap::new();
         val_map_block_stack.push(global_map); // push global variable hashmap
 
+        let mut files = SimpleFiles::new();
+        files.add(source_path, code);
+
         Generator {
-            code,
+            files,
             module_name,
             context,
             module,
@@ -49,7 +53,7 @@ impl<'ctx> Generator<'ctx> {
     pub fn gen(&mut self, ast: &Box<AST>) {
         let AST::GlobalDeclaration(ref declarations) = ast.deref();
 
-        let mut err: Vec<Error> = vec![];
+        let mut err: Vec<CE> = vec![];
 
         err.extend(
             declarations
@@ -66,34 +70,36 @@ impl<'ctx> Generator<'ctx> {
                         None
                     }
                 })
-                .map(|(type_info, identifier, initializer, span)| -> Result<()> {
-                    if let BaseType::Function(ref return_type, ref params_type, is_variadic) =
-                        type_info.basic_type.base_type
-                    {
-                        self.gen_function_proto(
-                            &type_info.storage_class_specifier,
-                            return_type,
-                            identifier.as_ref().unwrap(),
-                            params_type,
-                            is_variadic,
-                            span,
-                        )?;
-                    } else {
-                        self.gen_global_variable(
-                            type_info,
-                            identifier.as_ref().unwrap(),
-                            initializer,
-                            span,
-                        )?;
-                    }
-                    Ok(())
-                })
+                .map(
+                    |(type_info, identifier, initializer, span)| -> Result<(), CE> {
+                        if let BaseType::Function(ref return_type, ref params_type, is_variadic) =
+                            type_info.basic_type.base_type
+                        {
+                            self.gen_function_proto(
+                                &type_info.storage_class_specifier,
+                                return_type,
+                                identifier.as_ref().unwrap(),
+                                params_type,
+                                is_variadic,
+                                span,
+                            )?;
+                        } else {
+                            self.gen_global_variable(
+                                type_info,
+                                identifier.as_ref().unwrap(),
+                                initializer,
+                                span,
+                            )?;
+                        }
+                        Ok(())
+                    },
+                )
                 .filter_map(|result| if result.is_err() { result.err() } else { None }),
         );
         err.extend(
             declarations
                 .iter()
-                .map(|declaration| -> Result<()> {
+                .map(|declaration| -> Result<(), CE> {
                     if let DeclarationEnum::FunctionDefinition(
                         _,
                         ref storage_class,
@@ -123,7 +129,7 @@ impl<'ctx> Generator<'ctx> {
         err.extend(
             declarations
                 .iter()
-                .map(|declaration| -> Result<()> {
+                .map(|declaration| -> Result<(), CE> {
                     if let DeclarationEnum::FunctionDefinition(
                         _,
                         _,
@@ -149,7 +155,7 @@ impl<'ctx> Generator<'ctx> {
 
         if err.len() > 0 {
             err.iter().for_each(|err| {
-                eprintln!("{}", err);
+                self.gen_err_output(0, err);
             });
             panic!("errors found while code gen")
         }
@@ -163,7 +169,7 @@ impl<'ctx> Generator<'ctx> {
         func_param: &Vec<BT>,
         is_variadic: bool,
         span: Span,
-    ) -> Result<()> {
+    ) -> Result<(), CE> {
         if self.function_map.contains_key(func_name) {
             return Err(CE::duplicated_function(func_name.to_string(), span).into());
         }
@@ -206,7 +212,7 @@ impl<'ctx> Generator<'ctx> {
         in_type: &BT,
         param_types: &Vec<BasicTypeEnum<'ctx>>,
         is_variadic: bool,
-    ) -> Result<FunctionType<'ctx>> {
+    ) -> Result<FunctionType<'ctx>, CE> {
         let param_types_meta = param_types
             .iter()
             .map(|ty| BasicMetadataTypeEnum::from(*ty))
@@ -230,7 +236,7 @@ impl<'ctx> Generator<'ctx> {
         curr_val: &BasicValueEnum<'ctx>,
         dest_type: &BaseType,
         span: Span,
-    ) -> Result<BasicValueEnum<'ctx>> {
+    ) -> Result<BasicValueEnum<'ctx>, CE> {
         if curr_type.equal_discarding_qualifiers(dest_type) {
             return Ok(curr_val.to_owned());
         }
@@ -249,7 +255,7 @@ impl<'ctx> Generator<'ctx> {
         &self,
         identifier: &String,
         span: Span,
-    ) -> Result<(BT, PointerValue<'ctx>)> {
+    ) -> Result<(BT, PointerValue<'ctx>), CE> {
         let mut result = None;
 
         self.val_map_block_stack.iter().rev().for_each(|addr_map| {
@@ -275,7 +281,7 @@ impl<'ctx> Generator<'ctx> {
         var_name: &String,
         ptr_to_init: &Option<Box<Expression>>,
         span: Span,
-    ) -> Result<()> {
+    ) -> Result<(), CE> {
         if self.global_variable_map.contains_key(var_name) {
             return Err(CE::duplicated_global_variable(var_name.to_string(), span).into());
         } else if self.function_map.contains_key(var_name) {

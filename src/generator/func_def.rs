@@ -4,7 +4,6 @@ use crate::ast::{
 };
 use crate::generator::Generator;
 use crate::utils::CompileErr as CE;
-use anyhow::Result;
 use inkwell::values::{BasicValue, PointerValue};
 use std::collections::HashMap;
 
@@ -16,7 +15,7 @@ impl<'ctx> Generator<'ctx> {
         func_param: &Vec<(BasicType, Option<String>)>,
         func_body: &Statement,
         span: Span,
-    ) -> Result<()> {
+    ) -> Result<(), CE> {
         let func = self.module.get_function(func_name.as_str()).unwrap();
         self.val_map_block_stack.push(HashMap::new());
 
@@ -122,7 +121,7 @@ impl<'ctx> Generator<'ctx> {
         identifier: &String,
         ptr: PointerValue<'ctx>,
         span: Span,
-    ) -> Result<()> {
+    ) -> Result<(), CE> {
         let local_map = self.val_map_block_stack.last_mut().unwrap();
 
         if local_map.contains_key(identifier) {
@@ -133,7 +132,7 @@ impl<'ctx> Generator<'ctx> {
         Ok(())
     }
 
-    pub(crate) fn gen_decl_in_fn(&mut self, decl: &Declaration) -> Result<()> {
+    pub(crate) fn gen_decl_in_fn(&mut self, decl: &Declaration) -> Result<(), CE> {
         if let DeclarationEnum::Declaration(ref var_type, ref identifier, ref expr) = decl.node {
             let llvm_type = self.convert_llvm_type(&var_type.basic_type.base_type);
             let p_val = self

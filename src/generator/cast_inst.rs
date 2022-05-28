@@ -1,11 +1,10 @@
 use crate::ast::{BaseType as Ty, IntegerType as IT, Span};
 use crate::generator::Generator;
 use crate::utils::CompileErr as CE;
-use anyhow::Result;
 use inkwell::values::InstructionOpcode as Op;
 
 impl<'ctx> Generator<'ctx> {
-    pub fn gen_cast_llvm_instruction(&self, curr: &Ty, dest: &Ty, span: Span) -> Result<Op> {
+    pub fn gen_cast_llvm_instruction(&self, curr: &Ty, dest: &Ty, span: Span) -> Result<Op, CE> {
         let instruction = match curr {
             // char
             Ty::UnsignedInteger(IT::Char) => match dest {
