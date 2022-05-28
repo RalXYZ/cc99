@@ -298,14 +298,10 @@ impl<'ctx> Generator<'ctx> {
 
         match ptr_to_init {
             Some(ptr_to_init) => {
-                let init_val_pair = self.gen_expression(&**ptr_to_init)?;
-                init_val_pair.0.test_cast(&var_type.basic_type.base_type)?;
-                let value_after_cast = self.cast_value(
-                    &init_val_pair.0,
-                    &init_val_pair.1,
-                    &var_type.basic_type.base_type,
-                    ptr_to_init.span,
-                )?;
+                let (e_t, e_v) = self.gen_expression(&**ptr_to_init)?;
+                e_t.test_cast(&var_type.basic_type.base_type, ptr_to_init.span)?;
+                let value_after_cast =
+                    self.cast_value(&e_t, &e_v, &var_type.basic_type.base_type, ptr_to_init.span)?;
 
                 global_value.set_initializer(&value_after_cast);
             }

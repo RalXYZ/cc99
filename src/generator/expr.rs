@@ -120,7 +120,7 @@ impl<'ctx> Generator<'ctx> {
                     }
                     // println!("{}", l_pv.get_type().print_to_string().to_string());
                     let (res_t, idx_int_val_vec) =
-                        self.process_arr_subscript(l_t, idx_vec.clone(), id_expr.span)?;
+                        self.process_arr_subscript(l_t, idx_vec.clone(), expr.span)?;
                     if let BaseType::Array(_, _) = res_t.base_type {
                         Ok((res_t.base_type, unsafe {
                             self.builder
@@ -747,7 +747,7 @@ impl<'ctx> Generator<'ctx> {
             )?
         };
 
-        r_t.test_cast(&l_t.base_type)?;
+        r_t.test_cast(&l_t.base_type, rhs.span)?;
 
         let cast_v = self.cast_value(&r_t, &r_v, &l_t.base_type, rhs.span)?;
 
@@ -803,7 +803,7 @@ impl<'ctx> Generator<'ctx> {
                             .into_pointer_value()
                     }
                     let (res_t, idx_int_val_vec) =
-                        self.process_arr_subscript(t, idx_vec.clone(), id_expr.span)?;
+                        self.process_arr_subscript(t, idx_vec.clone(), lhs.span)?;
                     Ok((res_t, unsafe {
                         self.builder
                             .build_gep(pv, idx_int_val_vec.as_ref(), "arr_subscript")
@@ -847,7 +847,7 @@ impl<'ctx> Generator<'ctx> {
                     Some(t) => {
                         let (e_t, e_v) = self.gen_expression(e)?;
 
-                        e_t.test_cast(&t.base_type)?;
+                        e_t.test_cast(&t.base_type, e.span)?;
                         let cast_v = self.cast_value(&e_t, &e_v, &t.base_type, e.span)?;
 
                         casted_args.push(BasicMetadataValueEnum::from(cast_v));

@@ -156,7 +156,7 @@ impl<'ctx> BaseType {
         false
     }
 
-    pub(crate) fn test_cast(&self, dest: &BaseType) -> Result<(), CE> {
+    pub fn test_cast(&self, dest: &BaseType, span: Span) -> Result<(), CE> {
         // same type, directly cast
         if self == dest {
             return Ok(());
@@ -198,14 +198,29 @@ impl<'ctx> BaseType {
             return Ok(());
         }
 
-        // Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into())
-        unimplemented!()
+        Err(CE::invalid_default_cast(self.to_string(), dest.to_string(), span))
     }
 }
 
 impl fmt::Display for BaseType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
+        match self {
+            BaseType::Void => write!(f, "void"),
+            BaseType::SignedInteger(IntegerType::Char) => write!(f, "char"),
+            BaseType::UnsignedInteger(IntegerType::Char) => write!(f, "unsigned char"),
+            BaseType::SignedInteger(IntegerType::Short) => write!(f, "short"),
+            BaseType::UnsignedInteger(IntegerType::Short) => write!(f, "unsigned short"),
+            BaseType::SignedInteger(IntegerType::Int) => write!(f, "int"),
+            BaseType::UnsignedInteger(IntegerType::Int) => write!(f, "unsigned int"),
+            BaseType::SignedInteger(IntegerType::Long) => write!(f, "long"),
+            BaseType::UnsignedInteger(IntegerType::Long) => write!(f, "unsigned long"),
+            BaseType::SignedInteger(IntegerType::LongLong) => write!(f, "long long"),
+            BaseType::UnsignedInteger(IntegerType::LongLong) => write!(f, "unsigned long long"),
+            BaseType::Bool => write!(f, "_Bool"),
+            BaseType::Float => write!(f, "float"),
+            BaseType::Double => write!(f, "double"),
+            _ => write!(f, "{:?}", self),
+        }
     }
 }
 
