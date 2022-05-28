@@ -154,7 +154,10 @@ impl CompileErr {
             message: "array dimension mismatch".to_string(),
             label: "this array subscript is invalid".to_string(),
             span,
-            notes: Some(format!("array has `{}` dimension, but found `{}` subscript", expect, found)),
+            notes: Some(format!(
+                "array has `{}` dimension, but found `{}` subscript",
+                expect, found
+            )),
         }
     }
 
@@ -164,14 +167,21 @@ impl CompileErr {
             message: "pointer dimension mismatch".to_string(),
             label: "pointer dimension mismatch here".to_string(),
             span,
-            notes: Some(format!("pointer dimension mismatch, expect {}, found {}", expect, found)),
+            notes: Some(format!(
+                "pointer dimension mismatch, expect {}, found {}",
+                expect, found
+            )),
         }
     }
 
     pub fn invalid_left_value(name: String, span: Span) -> CompileErr {
         CompileErr {
             code: "E015".to_string(),
-            message: format!("invalid left value for a not addressable variable `{}`", name).to_string(),
+            message: format!(
+                "invalid left value for a not addressable variable `{}`",
+                name
+            )
+            .to_string(),
             label: "invalid left value here".to_string(),
             span,
             notes: None,
@@ -181,7 +191,8 @@ impl CompileErr {
     pub fn invalid_dereference(name: String, span: Span) -> CompileErr {
         CompileErr {
             code: "E016".to_string(),
-            message: format!("invalid dereference for a no pointer variable `{}`", name).to_string(),
+            message: format!("invalid dereference for a no pointer variable `{}`", name)
+                .to_string(),
             label: "invalid dereference here".to_string(),
             span,
             notes: None,
