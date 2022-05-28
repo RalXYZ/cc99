@@ -3,9 +3,10 @@ FROM registry.cn-hangzhou.aliyuncs.com/raynor/rust-npm:1.0.0 as builder
 WORKDIR /app
 COPY . .
 ENV LLVM_SYS_130_PREFIX /usr
-RUN  apt install libz-dev -y
+RUN apt install libz-dev -y
 RUN cargo build --package cc99 --bin cc99 --release
-RUN cd cc99-frontend && chmod +x build_wasm.sh && ./build_wasm.sh && npm install && npm run build && mv build /srv && mv /srv/build /srv/cc99
+RUN cd cc99-frontend && chmod +x build_wasm.sh && ./build_wasm.sh  \
+RUN cd cc99-frontend && npm install && npm run build && mv build /srv && mv /srv/build /srv/cc99
 
 
 FROM golang:1.18-alpine as prod
@@ -16,7 +17,6 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 RUN apk update
 # cache deps before building and copying source so that we don't need to re-download as much
 # and so that source changes don't invalidate our downloaded layer
-WORKDIR /app
 ENV GO111MODULE=on \
     GOPROXY=https://goproxy.cn,direct
 COPY ./cc99-backend/go.mod go.mod
