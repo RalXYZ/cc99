@@ -18,7 +18,8 @@ func Run(c *gin.Context, data model_run.RunReq) response.Response {
 	if err != nil {
 		return response.JSONStWithMsg(define.StIOErr, "don't have a file named "+data.File)
 	}
-	cmd := exec.Command("time", "10", fmt.Sprintf("runtime/%s", data.File))
+	
+	cmd := exec.Command("timeout", "10", fmt.Sprintf("runtime/%s", data.File), data.ExecArgs)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdin = strings.NewReader(data.Stdin)

@@ -2,7 +2,6 @@ package model_gen
 
 type GenReq struct {
 	CompileOptions string `json:"compileOptions" form:"compileOptions"`
-	ExecArgs       string `json:"execArgs" form:"execArgs"`
 	Code           string `json:"code" form:"code" binding:"required"`
 }
 

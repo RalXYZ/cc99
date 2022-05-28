@@ -8,12 +8,12 @@ import (
 	"cc99-backend/utils/response"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"io/ioutil"
+	"os"
 	"os/exec"
 )
 
 func GenCode(c *gin.Context, data model_gen.GenReq) response.Response {
-	codeFile, err := ioutil.TempFile("", "cc99.*.c")
+	codeFile, err := os.CreateTemp("", "cc99.*.c")
 	if err != nil {
 		return response.JSONStWithMsg(define.StIOErr, err.Error())
 	}
@@ -26,7 +26,12 @@ func GenCode(c *gin.Context, data model_gen.GenReq) response.Response {
 	fmt.Println()
 	_ = codeFile.Sync()
 	outputFile := Rand.RandomString(10)
-	cmd := exec.Command(define.CC99Bin, "-o", fmt.Sprintf("runtime/%s", outputFile), codeFile.Name())
+	var cmd *exec.Cmd
+	if len(data.CompileOptions) == 0 {
+		cmd = exec.Command(define.CC99Bin, "-o", fmt.Sprintf("runtime/%s", outputFile), codeFile.Name())
+	} else {
+		cmd = exec.Command(define.CC99Bin, data.CompileOptions, "-o", fmt.Sprintf("runtime/%s", outputFile), codeFile.Name())
+	}
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

@@ -65,18 +65,18 @@ function App() {
       setStderr("");
       setExitCode("");
       setCompileStatus("");
-      let result = await axios.post("/api/gen", {
+      let result = await axios("http://localhost:5001/api/gen", {
+        method: "post",
         headers: {
-          ContentType: "application/x-www-form-urlencoded",
+          "Content-Type": "application/json",
         },
         data: {
           code,
-          execArgs,
           compileOptions,
         },
       });
 
-      if (result.data.st !== "success") {
+      if (result.data.st !== 0) {
         setCompileStatus("服务器相关错误，未编译成功");
         notification.error({
           duration: 5,
@@ -101,16 +101,18 @@ function App() {
         setStderr(result.data.data.stderr);
         return;
       }
-      let res = await axios.post("/api/run", {
+      let res = await axios("http://localhost:5001/api/run", {
+        method: "post",
         headers: {
-          ContentType: "application/x-www-form-urlencoded",
+          "Content-Type": "application/json",
         },
         data: {
           file,
+          execArgs,
           stdin,
         },
       });
-      if (res.data.st !== "success") {
+      if (res.data.st !== 0) {
         setCompileStatus("服务器相关错误，编译成功，执行出现错误");
         notification.error({
           duration: 5,
@@ -188,7 +190,7 @@ function App() {
               title="Visualization"
               extra={
                 <Button type="primary" onClick={compile}>
-                  Compile!
+                  Visual!
                 </Button>
               }
               headStyle={{ fontWeight: "bold", fontSize: 22 }}
@@ -204,7 +206,7 @@ function App() {
 
             <ResizePanel direction="w" style={{ flexGrow: 1 }}>
               <Card
-                title="Result"
+                title="Compiler And Run"
                 extra={
                   <Button type="primary" onClick={onClickRunCode}>
                     Run!
