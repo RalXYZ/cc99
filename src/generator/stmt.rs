@@ -1,26 +1,34 @@
-use crate::ast::{Expression, ForInitClause, Statement, StatementOrDeclaration};
+use crate::ast::{
+    Expression, ExpressionEnum, ForInitClause, ForInitClauseEnum, Span, Statement, StatementEnum,
+    StatementOrDeclaration, StatementOrDeclarationEnum,
+};
 use crate::generator::Generator;
 use crate::utils::CompileErr as CE;
 use anyhow::Result;
 use std::collections::HashMap;
-use std::ops::Deref;
 
 impl<'ctx> Generator<'ctx> {
     pub(crate) fn gen_statement(&mut self, statement: &Statement) -> Result<()> {
-        match statement {
-            Statement::Compound(state_or_decl) => self.gen_compound_statement(state_or_decl)?,
-            Statement::While(cond, body) => self.gen_while_statement(cond, body, false)?,
-            Statement::DoWhile(body, cond) => self.gen_while_statement(cond, body, true)?,
-            Statement::For(init, cond, iter, body) => {
+        match statement.node {
+            StatementEnum::Compound(ref state_or_decl) => {
+                self.gen_compound_statement(state_or_decl)?
+            }
+            StatementEnum::While(ref cond, ref body) => {
+                self.gen_while_statement(cond, body, false)?
+            }
+            StatementEnum::DoWhile(ref body, ref cond) => {
+                self.gen_while_statement(cond, body, true)?
+            }
+            StatementEnum::For(ref init, ref cond, ref iter, ref body) => {
                 self.gen_for_statement(init, cond, iter, body)?
             }
-            Statement::Break => self.gen_break_statement()?,
-            Statement::Continue => self.gen_continue_statement()?,
-            Statement::If(cond, then_stmt, else_stmt) => {
+            StatementEnum::Break => self.gen_break_statement()?,
+            StatementEnum::Continue => self.gen_continue_statement()?,
+            StatementEnum::If(ref cond, ref then_stmt, ref else_stmt) => {
                 self.gen_if_statement(cond, then_stmt, else_stmt)?
             }
-            Statement::Return(expr) => self.gen_return_statement(expr)?,
-            Statement::Expression(expr) => {
+            StatementEnum::Return(ref expr) => self.gen_return_statement(expr)?,
+            StatementEnum::Expression(ref expr) => {
                 self.gen_expression(expr)?;
             }
             _ => {
@@ -36,11 +44,11 @@ impl<'ctx> Generator<'ctx> {
 
         // generate IR for each statement or declaration in function body
         for element in statements {
-            match element {
-                StatementOrDeclaration::Statement(state) => {
+            match element.node {
+                StatementOrDeclarationEnum::Statement(ref state) => {
                     self.gen_statement(state)?;
                 }
-                StatementOrDeclaration::LocalDeclaration(decl) => {
+                StatementOrDeclarationEnum::LocalDeclaration(ref decl) => {
                     self.gen_decl_in_fn(decl)?;
                 }
             }
@@ -114,37 +122,63 @@ impl<'ctx> Generator<'ctx> {
         body: &Statement,
     ) -> Result<()> {
         let mut new_block: Vec<StatementOrDeclaration> = vec![];
-        if let Some(init) = init {
-            match init.deref() {
-                ForInitClause::Expression(expr) => {
-                    new_block.push(StatementOrDeclaration::Statement(Statement::Expression(
-                        Box::new(expr.to_owned()),
-                    )));
+        if let Some(ref init) = init {
+            match &init.node {
+                ForInitClauseEnum::Expression(ref expr) => {
+                    new_block.push(StatementOrDeclaration {
+                        node: StatementOrDeclarationEnum::Statement(Statement {
+                            node: StatementEnum::Expression(Box::new(expr.to_owned())),
+                            span: init.span.clone(),
+                        }),
+                        span: init.span.clone(),
+                    });
                 }
-                ForInitClause::ForDeclaration(decl) => {
+                ForInitClauseEnum::ForDeclaration(decl) => {
                     new_block.append(
                         decl.iter()
-                            .map(|d| StatementOrDeclaration::LocalDeclaration(d.to_owned()))
+                            .map(|d| StatementOrDeclaration {
+                                node: StatementOrDeclarationEnum::LocalDeclaration(d.to_owned()),
+                                span: d.span.clone(),
+                            })
                             .collect::<Vec<StatementOrDeclaration>>()
                             .as_mut(),
                     );
                 }
             }
         }
-        let mut new_body = vec![StatementOrDeclaration::Statement(body.to_owned())];
+        let mut new_body = vec![StatementOrDeclaration {
+            node: StatementOrDeclarationEnum::Statement(body.to_owned()),
+            span: body.span.clone(),
+        }];
         if let Some(iter) = iter {
-            new_body.push(StatementOrDeclaration::Statement(Statement::Expression(
-                iter.to_owned(),
-            )));
+            new_body.push(StatementOrDeclaration {
+                node: StatementOrDeclarationEnum::Statement(Statement {
+                    node: StatementEnum::Expression(iter.to_owned()),
+                    span: iter.span.clone(),
+                }),
+                span: iter.span.clone(),
+            });
         }
         let new_cond = match cond {
             Some(cond) => cond.to_owned(),
-            None => Box::new(Expression::Empty),
+            None => Box::new(Expression {
+                node: ExpressionEnum::Empty,
+                span: Span::new(0, 0),
+            }),
         };
-        new_block.push(StatementOrDeclaration::Statement(Statement::While(
-            new_cond,
-            Box::new(Statement::Compound(new_body)),
-        )));
+        new_block.push(StatementOrDeclaration {
+            node: StatementOrDeclarationEnum::Statement(Statement {
+                node: StatementEnum::While(
+                    new_cond.clone(),
+                    Box::new(Statement {
+                        node: StatementEnum::Compound(new_body),
+                        span: body.span.clone(),
+                    }),
+                ),
+                span: new_cond.span.clone(),
+            }),
+            span: new_cond.span.clone(),
+        });
         self.gen_compound_statement(&new_block)?;
         Ok(())
     }

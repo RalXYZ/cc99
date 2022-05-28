@@ -1,6 +1,6 @@
 use crate::ast::{
-    BaseType, BasicType as BT, Declaration, Expression, IntegerType, StorageClassSpecifier, Type,
-    AST,
+    BaseType, BasicType as BT, DeclarationEnum, Expression, IntegerType, StorageClassSpecifier,
+    Type, AST,
 };
 use crate::generator::Generator;
 use crate::utils::CompileErr;
@@ -54,11 +54,11 @@ impl<'ctx> Generator<'ctx> {
             declarations
                 .iter()
                 .filter_map(|declaration| {
-                    if let Declaration::Declaration(
+                    if let DeclarationEnum::Declaration(
                         ref type_info,
                         ref identifier,
                         ref initializer,
-                    ) = declaration
+                    ) = declaration.node
                     {
                         Some((type_info, identifier, initializer))
                     } else {
@@ -91,15 +91,15 @@ impl<'ctx> Generator<'ctx> {
             declarations
                 .iter()
                 .map(|declaration| -> Result<()> {
-                    if let Declaration::FunctionDefinition(
+                    if let DeclarationEnum::FunctionDefinition(
                         _,
                         ref storage_class,
                         ref return_type,
                         ref identifier,
                         ref params_type,
-                        is_variadic,
+                        ref is_variadic,
                         _,
-                    ) = declaration
+                    ) = declaration.node
                     {
                         if !self.function_map.contains_key(identifier) {
                             self.gen_function_proto(
@@ -120,7 +120,7 @@ impl<'ctx> Generator<'ctx> {
             declarations
                 .iter()
                 .map(|declaration| -> Result<()> {
-                    if let Declaration::FunctionDefinition(
+                    if let DeclarationEnum::FunctionDefinition(
                         _,
                         _,
                         ref return_type,
@@ -128,7 +128,7 @@ impl<'ctx> Generator<'ctx> {
                         ref params_type,
                         _,
                         ref statements,
-                    ) = declaration
+                    ) = declaration.node
                     {
                         self.gen_func_def(&return_type, identifier, params_type, statements)?;
                     }

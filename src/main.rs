@@ -10,12 +10,12 @@ use std::path::Path;
 use std::process::Command;
 
 mod ast;
-// mod generator;
+mod generator;
 mod parse;
 mod preprocess;
 mod utils;
 
-// use generator::*;
+use generator::*;
 use parse::*;
 use preprocess::*;
 
@@ -113,52 +113,52 @@ fn main() {
             fs::write(&output_file, &serde_json::to_string(&ast).unwrap())
                 .unwrap_or_else(|_| panic!("Unable to write file {}", output_file));
         } else {
-            //     // code_gen
-            //     let context = Context::create();
-            //     let mut code_gen = Generator::new(&context, &args.file);
-            //     code_gen.gen(&ast);
+                // code_gen
+                let context = Context::create();
+                let mut code_gen = Generator::new(&context, &args.file);
+                code_gen.gen(&ast);
 
-            //     if args.bitcode {
-            //         // generate LLVM bitcode
-            //         if !code_gen.out_bc(Some(output_file)) {
-            //             panic!("Unable to generate bitcode");
-            //         }
-            //     } else if args.compile {
-            //         // generate assembly code
-            //         if let Err(e) = code_gen.out_asm_or_obj(false, Some(output_file), opt_level) {
-            //             panic!("{}", e);
-            //         }
-            //     } else {
-            //         // generate object code
-            //         if let Err(e) = code_gen.out_asm_or_obj(
-            //             true,
-            //             Some(match args.assemble {
-            //                 true => output_file.clone(),
-            //                 false => basename.to_string() + ".o",
-            //             }),
-            //             opt_level,
-            //         ) {
-            //             panic!("{}", e);
-            //         }
-            //         if !args.assemble {
-            //             // generate binary
-            //             let clang_result = Command::new("clang")
-            //                 .arg(basename.to_string() + ".o")
-            //                 .arg("-o")
-            //                 .arg(output_file.as_str())
-            //                 .arg("-no-pie")
-            //                 .output()
-            //                 .expect("Unable to generate binary");
-            //             if !clang_result.status.success() {
-            //                 panic!("{}", String::from_utf8_lossy(&clang_result.stderr));
-            //             }
+                if args.bitcode {
+                    // generate LLVM bitcode
+                    if !code_gen.out_bc(Some(output_file)) {
+                        panic!("Unable to generate bitcode");
+                    }
+                } else if args.compile {
+                    // generate assembly code
+                    if let Err(e) = code_gen.out_asm_or_obj(false, Some(output_file), opt_level) {
+                        panic!("{}", e);
+                    }
+                } else {
+                    // generate object code
+                    if let Err(e) = code_gen.out_asm_or_obj(
+                        true,
+                        Some(match args.assemble {
+                            true => output_file.clone(),
+                            false => basename.to_string() + ".o",
+                        }),
+                        opt_level,
+                    ) {
+                        panic!("{}", e);
+                    }
+                    if !args.assemble {
+                        // generate binary
+                        let clang_result = Command::new("clang")
+                            .arg(basename.to_string() + ".o")
+                            .arg("-o")
+                            .arg(output_file.as_str())
+                            .arg("-no-pie")
+                            .output()
+                            .expect("Unable to generate binary");
+                        if !clang_result.status.success() {
+                            panic!("{}", String::from_utf8_lossy(&clang_result.stderr));
+                        }
 
-            //             // remove tmp files
-            //             fs::remove_file(basename.to_string() + ".o").unwrap_or_else(|_| {
-            //                 panic!("Unable to remove file {}", basename.to_string() + ".o");
-            //             });
-            //         }
-            //     }
+                        // remove tmp files
+                        fs::remove_file(basename.to_string() + ".o").unwrap_or_else(|_| {
+                            panic!("Unable to remove file {}", basename.to_string() + ".o");
+                        });
+                    }
+                }
         }
     }
 }

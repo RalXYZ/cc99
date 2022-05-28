@@ -1,6 +1,6 @@
 use crate::ast::{
-    AssignOperation, BaseType, BasicType, Declaration, Expression, Statement,
-    StatementOrDeclaration,
+    AssignOperation, AssignOperationEnum, BaseType, BasicType, Declaration, DeclarationEnum,
+    Expression, ExpressionEnum, Statement, StatementEnum, StatementOrDeclarationEnum,
 };
 use crate::generator::Generator;
 use crate::utils::CompileErr as CE;
@@ -69,13 +69,13 @@ impl<'ctx> Generator<'ctx> {
         }
 
         // generate IR for each statement or declaration in function body
-        if let Statement::Compound(state_or_decl) = &func_body {
+        if let StatementEnum::Compound(ref state_or_decl) = func_body.node {
             for element in state_or_decl {
-                match element {
-                    StatementOrDeclaration::Statement(state) => {
+                match element.node {
+                    StatementOrDeclarationEnum::Statement(ref state) => {
                         self.gen_statement(state)?;
                     }
-                    StatementOrDeclaration::LocalDeclaration(decl) => {
+                    StatementOrDeclarationEnum::LocalDeclaration(ref decl) => {
                         self.gen_decl_in_fn(decl)?;
                     }
                 }
@@ -131,7 +131,7 @@ impl<'ctx> Generator<'ctx> {
     }
 
     pub(crate) fn gen_decl_in_fn(&mut self, decl: &Declaration) -> Result<()> {
-        if let Declaration::Declaration(var_type, identifier, expr) = decl {
+        if let DeclarationEnum::Declaration(ref var_type, ref identifier, ref expr) = decl.node {
             let llvm_type = self.convert_llvm_type(&var_type.basic_type.base_type);
             let p_val = self
                 .builder
@@ -139,8 +139,14 @@ impl<'ctx> Generator<'ctx> {
             self.insert_to_val_map(&var_type.basic_type, &identifier.to_owned().unwrap(), p_val)?;
             if let Some(ref expr) = expr {
                 self.gen_assignment(
-                    &AssignOperation::Naive,
-                    &Box::new(Expression::Identifier(identifier.to_owned().unwrap())),
+                    &AssignOperation {
+                        node: AssignOperationEnum::Naive,
+                        span: expr.span.clone(),
+                    },
+                    &Box::new(Expression {
+                        node: ExpressionEnum::Identifier(identifier.to_owned().unwrap()),
+                        span: expr.span.clone(),
+                    }),
                     expr,
                 )?;
             }

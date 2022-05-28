@@ -1,5 +1,7 @@
 use crate::ast::{
-    AssignOperation, BaseType, BasicType, BinaryOperation, Expression, IntegerType, UnaryOperation,
+    AssignOperation, AssignOperationEnum, BaseType, BasicType, BinaryOperation,
+    BinaryOperationEnum, Expression, ExpressionEnum, IntegerType, UnaryOperation,
+    UnaryOperationEnum,
 };
 use crate::generator::Generator;
 use crate::utils::CompileErr;
@@ -10,76 +12,78 @@ use inkwell::values::{
 };
 use inkwell::{FloatPredicate, IntPredicate};
 use std::fmt::Error;
-use std::ops::Deref;
 
 impl<'ctx> Generator<'ctx> {
     pub(crate) fn gen_expression(
         &self,
         expr: &Expression,
     ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
-        match expr {
-            Expression::Empty => Ok((
+        match expr.node {
+            ExpressionEnum::Empty => Ok((
                 BaseType::Void,
                 self.context
                     .i8_type()
                     .const_int(0 as u64, false)
                     .as_basic_value_enum(),
             )),
-            Expression::Assignment(ref op, ref lhs, ref rhs) => self.gen_assignment(op, lhs, rhs),
-            Expression::Unary(op, expr) => self.gen_unary_expr(op, expr),
-            Expression::Binary(op, lhs, rhs) => self.gen_binary_expr(op, lhs, rhs),
-            Expression::FunctionCall(ref name, ref args) => self.gen_function_call(name, args),
-            Expression::CharacterConstant(ref value) => Ok((
+            ExpressionEnum::Assignment(ref op, ref lhs, ref rhs) => {
+                self.gen_assignment(op, lhs, rhs)
+            }
+            ExpressionEnum::Unary(ref op, ref expr) => self.gen_unary_expr(op, expr),
+            ExpressionEnum::Binary(ref op, ref lhs, ref rhs) => self.gen_binary_expr(op, lhs, rhs),
+            ExpressionEnum::FunctionCall(ref name, ref args) => self.gen_function_call(name, args),
+            ExpressionEnum::CharacterConstant(ref value) => Ok((
                 BaseType::SignedInteger(IntegerType::Char),
                 self.context
                     .i8_type()
                     .const_int(*value as u64, false)
                     .as_basic_value_enum(),
             )),
-            Expression::IntegerConstant(ref value) => Ok((
+            ExpressionEnum::IntegerConstant(ref value) => Ok((
                 BaseType::SignedInteger(IntegerType::Int),
                 self.context
                     .i32_type()
                     .const_int(*value as u64, false)
                     .as_basic_value_enum(),
             )),
-            Expression::UnsignedIntegerConstant(ref value) => Ok((
+            ExpressionEnum::UnsignedIntegerConstant(ref value) => Ok((
                 BaseType::UnsignedInteger(IntegerType::Int),
                 self.context
                     .i32_type()
                     .const_int(*value as u64, false)
                     .as_basic_value_enum(),
             )),
-            Expression::LongConstant(ref value) | Expression::LongLongConstant(ref value) => Ok((
+            ExpressionEnum::LongConstant(ref value)
+            | ExpressionEnum::LongLongConstant(ref value) => Ok((
                 BaseType::SignedInteger(IntegerType::Long),
                 self.context
                     .i64_type()
                     .const_int(*value as u64, false)
                     .as_basic_value_enum(),
             )),
-            Expression::UnsignedLongConstant(ref value)
-            | Expression::UnsignedLongLongConstant(ref value) => Ok((
+            ExpressionEnum::UnsignedLongConstant(ref value)
+            | ExpressionEnum::UnsignedLongLongConstant(ref value) => Ok((
                 BaseType::UnsignedInteger(IntegerType::Long),
                 self.context
                     .i64_type()
                     .const_int(*value as u64, false)
                     .as_basic_value_enum(),
             )),
-            Expression::FloatConstant(ref value) => Ok((
+            ExpressionEnum::FloatConstant(ref value) => Ok((
                 BaseType::Float,
                 self.context
                     .f32_type()
                     .const_float(*value as f64)
                     .as_basic_value_enum(),
             )),
-            Expression::DoubleConstant(ref value) => Ok((
+            ExpressionEnum::DoubleConstant(ref value) => Ok((
                 BaseType::Float,
                 self.context
                     .f64_type()
                     .const_float(*value as f64)
                     .as_basic_value_enum(),
             )),
-            Expression::Identifier(ref string_literal) => {
+            ExpressionEnum::Identifier(ref string_literal) => {
                 //if BaseType is Array, we just return Array type but don't load value!!
                 let deref = self.get_variable(string_literal)?;
                 let val = if let BaseType::Array(_, _) = deref.0.base_type {
@@ -89,7 +93,7 @@ impl<'ctx> Generator<'ctx> {
                 };
                 Ok((deref.0.base_type, val))
             }
-            Expression::StringLiteral(ref string) => Ok((
+            ExpressionEnum::StringLiteral(ref string) => Ok((
                 BaseType::Pointer(Box::new(BasicType {
                     qualifier: vec![],
                     base_type: BaseType::SignedInteger(IntegerType::Char),
@@ -98,8 +102,8 @@ impl<'ctx> Generator<'ctx> {
                     .build_global_string_ptr(string.as_str(), "str")
                     .as_basic_value_enum(),
             )),
-            Expression::ArraySubscript(ref id_expr, ref idx_vec) => {
-                if let Expression::Identifier(id) = id_expr.deref() {
+            ExpressionEnum::ArraySubscript(ref id_expr, ref idx_vec) => {
+                if let ExpressionEnum::Identifier(ref id) = id_expr.node {
                     let (l_t, mut l_pv) = self.get_variable(id)?;
 
                     //if type is pointer, get_variable will get the address of pointer, not the pointer point to!
@@ -215,8 +219,8 @@ impl<'ctx> Generator<'ctx> {
     ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
         let (expr_type, expr_value) = self.gen_expression(expr)?;
 
-        match op {
-            UnaryOperation::UnaryPlus => match expr_type {
+        match op.node {
+            UnaryOperationEnum::UnaryPlus => match expr_type {
                 BaseType::Bool
                 | BaseType::SignedInteger(_)
                 | BaseType::UnsignedInteger(_)
@@ -224,7 +228,7 @@ impl<'ctx> Generator<'ctx> {
                 | BaseType::Double => Ok((expr_type, expr_value)),
                 _ => return Err(CompileErr::InvalidUnary.into()),
             },
-            UnaryOperation::UnaryMinus => match expr_type {
+            UnaryOperationEnum::UnaryMinus => match expr_type {
                 BaseType::Bool | BaseType::SignedInteger(_) | BaseType::UnsignedInteger(_) => Ok((
                     expr_type,
                     self.builder
@@ -239,7 +243,7 @@ impl<'ctx> Generator<'ctx> {
                 )),
                 _ => return Err(CompileErr::InvalidUnary.into()),
             },
-            UnaryOperation::BitwiseNot => match expr_type {
+            UnaryOperationEnum::BitwiseNot => match expr_type {
                 BaseType::SignedInteger(_) | BaseType::UnsignedInteger(_) => Ok((
                     expr_type,
                     self.builder
@@ -248,7 +252,7 @@ impl<'ctx> Generator<'ctx> {
                 )),
                 _ => return Err(CompileErr::InvalidUnary.into()),
             },
-            UnaryOperation::LogicalNot => match expr_type {
+            UnaryOperationEnum::LogicalNot => match expr_type {
                 BaseType::SignedInteger(_) => {
                     let llvm_type = self.convert_llvm_type(&expr_type);
                     let result_int = self.builder.build_int_compare(
@@ -272,11 +276,11 @@ impl<'ctx> Generator<'ctx> {
                 }
                 _ => return Err(CompileErr::InvalidUnary.into()),
             },
-            UnaryOperation::Reference => {
+            UnaryOperationEnum::Reference => {
                 let (t, ptr) = self.get_lvalue(expr)?;
                 Ok((BaseType::Pointer(Box::new(t)), ptr.as_basic_value_enum()))
             }
-            UnaryOperation::Dereference => match expr_type {
+            UnaryOperationEnum::Dereference => match expr_type {
                 BaseType::Pointer(ref t) => Ok((
                     t.base_type.clone(),
                     self.builder
@@ -285,43 +289,67 @@ impl<'ctx> Generator<'ctx> {
                 )),
                 _ => return Err(CompileErr::InvalidUnary.into()),
             },
-            UnaryOperation::PostfixDecrement | UnaryOperation::PostfixIncrement => {
+            UnaryOperationEnum::PostfixDecrement | UnaryOperationEnum::PostfixIncrement => {
                 match expr_type {
                     BaseType::SignedInteger(_)
                     | BaseType::UnsignedInteger(_)
                     | BaseType::Double
                     | BaseType::Float
                     | BaseType::Pointer(_) => {
+                        let assign_op = if op.node == UnaryOperationEnum::PostfixIncrement {
+                            AssignOperation {
+                                node: AssignOperationEnum::Addition,
+                                span: op.span.clone(),
+                            }
+                        } else {
+                            AssignOperation {
+                                node: AssignOperationEnum::Subtraction,
+                                span: op.span.clone(),
+                            }
+                        };
                         let _ = self.gen_assignment(
-                            if *op == UnaryOperation::PostfixIncrement {
-                                &AssignOperation::Addition
-                            } else {
-                                &AssignOperation::Subtraction
-                            },
+                            &assign_op,
                             expr,
-                            &Box::new(Expression::IntegerConstant(1)),
+                            &Box::new(Expression {
+                                node: ExpressionEnum::IntegerConstant(1),
+                                span: op.span.clone(),
+                            }),
                         )?;
                         Ok((expr_type, expr_value))
                     }
                     _ => return Err(CompileErr::InvalidUnary.into()),
                 }
             }
-            UnaryOperation::PrefixIncrement | UnaryOperation::PrefixDecrement => match expr_type {
-                BaseType::SignedInteger(_)
-                | BaseType::UnsignedInteger(_)
-                | BaseType::Double
-                | BaseType::Float
-                | BaseType::Pointer(_) => self.gen_assignment(
-                    if *op == UnaryOperation::PrefixIncrement {
-                        &AssignOperation::Addition
-                    } else {
-                        &AssignOperation::Subtraction
-                    },
-                    expr,
-                    &Box::new(Expression::IntegerConstant(1)),
-                ),
-                _ => return Err(CompileErr::InvalidUnary.into()),
-            },
+            UnaryOperationEnum::PrefixIncrement | UnaryOperationEnum::PrefixDecrement => {
+                match expr_type {
+                    BaseType::SignedInteger(_)
+                    | BaseType::UnsignedInteger(_)
+                    | BaseType::Double
+                    | BaseType::Float
+                    | BaseType::Pointer(_) => {
+                        let assign_op = if op.node == UnaryOperationEnum::PostfixIncrement {
+                            AssignOperation {
+                                node: AssignOperationEnum::Addition,
+                                span: op.span.clone(),
+                            }
+                        } else {
+                            AssignOperation {
+                                node: AssignOperationEnum::Subtraction,
+                                span: op.span.clone(),
+                            }
+                        };
+                        self.gen_assignment(
+                            &assign_op,
+                            expr,
+                            &Box::new(Expression {
+                                node: ExpressionEnum::IntegerConstant(1),
+                                span: op.span.clone(),
+                            }),
+                        )
+                    }
+                    _ => return Err(CompileErr::InvalidUnary.into()),
+                }
+            }
             _ => return Err(CompileErr::InvalidUnary.into()),
         }
     }
@@ -448,13 +476,13 @@ impl<'ctx> Generator<'ctx> {
         lhs: PointerValue<'ctx>,
         rhs: IntValue<'ctx>,
     ) -> Result<BasicValueEnum<'ctx>> {
-        let result_v = match op {
-            BinaryOperation::Addition => unsafe {
+        let result_v = match op.node {
+            BinaryOperationEnum::Addition => unsafe {
                 let idx_int_val_vec = vec![rhs];
                 self.builder
                     .build_gep(lhs, idx_int_val_vec.as_ref(), "pointer add")
             },
-            BinaryOperation::Subtraction => unsafe {
+            BinaryOperationEnum::Subtraction => unsafe {
                 let idx_int_val_vec = vec![rhs.const_neg()];
                 self.builder
                     .build_gep(lhs, idx_int_val_vec.as_ref(), "pointer add")
@@ -472,55 +500,55 @@ impl<'ctx> Generator<'ctx> {
         lhs: IntValue<'ctx>,
         rhs: IntValue<'ctx>,
     ) -> Result<BasicValueEnum<'ctx>> {
-        let result_v = match op {
+        let result_v = match op.node {
             // arithmetic
-            BinaryOperation::Addition => self.builder.build_int_add(lhs, rhs, "int_add"),
-            BinaryOperation::Subtraction => self.builder.build_int_sub(lhs, rhs, "int_sub"),
-            BinaryOperation::Multiplication => self.builder.build_int_mul(lhs, rhs, "int_mul"),
-            BinaryOperation::Division => self.builder.build_int_signed_div(lhs, rhs, "int_div"),
-            BinaryOperation::Modulo => self.builder.build_int_signed_rem(lhs, rhs, "int_mod"),
-            BinaryOperation::BitwiseAnd => self.builder.build_and(lhs, rhs, "int_and"),
-            BinaryOperation::BitwiseOr => self.builder.build_or(lhs, rhs, "int_or"),
-            BinaryOperation::BitwiseXor => self.builder.build_xor(lhs, rhs, "int_xor"),
-            BinaryOperation::LeftShift => self.builder.build_left_shift(lhs, rhs, "int_shl"),
-            BinaryOperation::RightShift => {
+            BinaryOperationEnum::Addition => self.builder.build_int_add(lhs, rhs, "int_add"),
+            BinaryOperationEnum::Subtraction => self.builder.build_int_sub(lhs, rhs, "int_sub"),
+            BinaryOperationEnum::Multiplication => self.builder.build_int_mul(lhs, rhs, "int_mul"),
+            BinaryOperationEnum::Division => self.builder.build_int_signed_div(lhs, rhs, "int_div"),
+            BinaryOperationEnum::Modulo => self.builder.build_int_signed_rem(lhs, rhs, "int_mod"),
+            BinaryOperationEnum::BitwiseAnd => self.builder.build_and(lhs, rhs, "int_and"),
+            BinaryOperationEnum::BitwiseOr => self.builder.build_or(lhs, rhs, "int_or"),
+            BinaryOperationEnum::BitwiseXor => self.builder.build_xor(lhs, rhs, "int_xor"),
+            BinaryOperationEnum::LeftShift => self.builder.build_left_shift(lhs, rhs, "int_shl"),
+            BinaryOperationEnum::RightShift => {
                 self.builder.build_right_shift(lhs, rhs, true, "int_shr")
             }
             // comparison
-            BinaryOperation::LessThan => {
+            BinaryOperationEnum::LessThan => {
                 self.builder
                     .build_int_compare(IntPredicate::SLT, lhs, rhs, "int_lt")
             }
-            BinaryOperation::LessThanOrEqual => {
+            BinaryOperationEnum::LessThanOrEqual => {
                 self.builder
                     .build_int_compare(IntPredicate::SLE, lhs, rhs, "int_le")
             }
-            BinaryOperation::GreaterThan => {
+            BinaryOperationEnum::GreaterThan => {
                 self.builder
                     .build_int_compare(IntPredicate::SGT, lhs, rhs, "int_gt")
             }
-            BinaryOperation::GreaterThanOrEqual => {
+            BinaryOperationEnum::GreaterThanOrEqual => {
                 self.builder
                     .build_int_compare(IntPredicate::SGE, lhs, rhs, "int_ge")
             }
-            BinaryOperation::Equal => {
+            BinaryOperationEnum::Equal => {
                 self.builder
                     .build_int_compare(IntPredicate::EQ, lhs, rhs, "int_eq")
             }
-            BinaryOperation::NotEqual => {
+            BinaryOperationEnum::NotEqual => {
                 self.builder
                     .build_int_compare(IntPredicate::NE, lhs, rhs, "int_ne")
             }
             // logical
             //TODO FIXME 这里and 和 or 是完全错误的，这个build_int_cast只是截取了最后一位！！
-            BinaryOperation::LogicalAnd => self.builder.build_and(
+            BinaryOperationEnum::LogicalAnd => self.builder.build_and(
                 self.builder
                     .build_int_cast(lhs, self.context.bool_type(), "cast i32 to i1_1"),
                 self.builder
                     .build_int_cast(rhs, self.context.bool_type(), "cast i32 to i1_2"),
                 "logical int and",
             ),
-            BinaryOperation::LogicalOr => self.builder.build_or(
+            BinaryOperationEnum::LogicalOr => self.builder.build_or(
                 self.builder
                     .build_int_cast(lhs, self.context.bool_type(), "cast i32 to i1_1"),
                 self.builder
@@ -539,49 +567,55 @@ impl<'ctx> Generator<'ctx> {
         lhs: FloatValue<'ctx>,
         rhs: FloatValue<'ctx>,
     ) -> Result<BasicValueEnum<'ctx>> {
-        let result_f = match op {
+        let result_f = match op.node {
             // arithmetic
-            BinaryOperation::Addition => Ok(self.builder.build_float_add(lhs, rhs, "float add")),
-            BinaryOperation::Subtraction => Ok(self.builder.build_float_sub(lhs, rhs, "float sub")),
-            BinaryOperation::Multiplication => {
+            BinaryOperationEnum::Addition => {
+                Ok(self.builder.build_float_add(lhs, rhs, "float add"))
+            }
+            BinaryOperationEnum::Subtraction => {
+                Ok(self.builder.build_float_sub(lhs, rhs, "float sub"))
+            }
+            BinaryOperationEnum::Multiplication => {
                 Ok(self.builder.build_float_mul(lhs, rhs, "float mul"))
             }
-            BinaryOperation::Division => Ok(self.builder.build_float_div(lhs, rhs, "float div")),
-            BinaryOperation::Modulo => Ok(self.builder.build_float_rem(lhs, rhs, "float mod")),
+            BinaryOperationEnum::Division => {
+                Ok(self.builder.build_float_div(lhs, rhs, "float div"))
+            }
+            BinaryOperationEnum::Modulo => Ok(self.builder.build_float_rem(lhs, rhs, "float mod")),
             _ => Err(Error),
         };
         //return FloatValue
         if result_f.is_ok() {
             return Ok(result_f.unwrap().as_basic_value_enum());
         }
-        let result_i = match op {
-            BinaryOperation::LessThan => {
+        let result_i = match op.node {
+            BinaryOperationEnum::LessThan => {
                 self.builder
                     .build_float_compare(FloatPredicate::OLT, lhs, rhs, "float lt")
             }
-            BinaryOperation::LessThanOrEqual => {
+            BinaryOperationEnum::LessThanOrEqual => {
                 self.builder
                     .build_float_compare(FloatPredicate::OLE, lhs, rhs, "float le")
             }
-            BinaryOperation::GreaterThan => {
+            BinaryOperationEnum::GreaterThan => {
                 self.builder
                     .build_float_compare(FloatPredicate::OGT, lhs, rhs, "float gt")
             }
-            BinaryOperation::GreaterThanOrEqual => {
+            BinaryOperationEnum::GreaterThanOrEqual => {
                 self.builder
                     .build_float_compare(FloatPredicate::OGE, lhs, rhs, "float ge")
             }
-            BinaryOperation::Equal => {
+            BinaryOperationEnum::Equal => {
                 self.builder
                     .build_float_compare(FloatPredicate::OEQ, lhs, rhs, "float eq")
             }
-            BinaryOperation::NotEqual => {
+            BinaryOperationEnum::NotEqual => {
                 self.builder
                     .build_float_compare(FloatPredicate::ONE, lhs, rhs, "float ne")
             }
             // logical
             //TODO FIXME 这里and 和 or 是完全错误的，这个build_int_cast只是截取了最后一位！！
-            BinaryOperation::LogicalAnd => self.builder.build_and(
+            BinaryOperationEnum::LogicalAnd => self.builder.build_and(
                 self.builder.build_int_cast(
                     self.builder
                         .build_cast(
@@ -614,7 +648,7 @@ impl<'ctx> Generator<'ctx> {
                 ),
                 "logical float and",
             ),
-            BinaryOperation::LogicalOr => self.builder.build_or(
+            BinaryOperationEnum::LogicalOr => self.builder.build_or(
                 self.builder.build_int_cast(
                     self.builder
                         .build_cast(
@@ -660,22 +694,25 @@ impl<'ctx> Generator<'ctx> {
     ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
         let (l_t, l_pv) = self.get_lvalue(lhs)?;
 
-        let (r_t, r_v) = if let AssignOperation::Naive = op {
+        let (r_t, r_v) = if let AssignOperationEnum::Naive = op.node {
             self.gen_expression(rhs)?
         } else {
             self.gen_binary_expr(
-                &match op {
-                    AssignOperation::Addition => BinaryOperation::Addition,
-                    AssignOperation::Subtraction => BinaryOperation::Subtraction,
-                    AssignOperation::Multiplication => BinaryOperation::Multiplication,
-                    AssignOperation::Division => BinaryOperation::Division,
-                    AssignOperation::Modulo => BinaryOperation::Modulo,
-                    AssignOperation::BitwiseAnd => BinaryOperation::BitwiseAnd,
-                    AssignOperation::BitwiseOr => BinaryOperation::BitwiseOr,
-                    AssignOperation::BitwiseXor => BinaryOperation::BitwiseXor,
-                    AssignOperation::LeftShift => BinaryOperation::LeftShift,
-                    AssignOperation::RightShift => BinaryOperation::RightShift,
-                    AssignOperation::Naive => unreachable!(),
+                &BinaryOperation {
+                    node: match op.node {
+                        AssignOperationEnum::Addition => BinaryOperationEnum::Addition,
+                        AssignOperationEnum::Subtraction => BinaryOperationEnum::Subtraction,
+                        AssignOperationEnum::Multiplication => BinaryOperationEnum::Multiplication,
+                        AssignOperationEnum::Division => BinaryOperationEnum::Division,
+                        AssignOperationEnum::Modulo => BinaryOperationEnum::Modulo,
+                        AssignOperationEnum::BitwiseAnd => BinaryOperationEnum::BitwiseAnd,
+                        AssignOperationEnum::BitwiseOr => BinaryOperationEnum::BitwiseOr,
+                        AssignOperationEnum::BitwiseXor => BinaryOperationEnum::BitwiseXor,
+                        AssignOperationEnum::LeftShift => BinaryOperationEnum::LeftShift,
+                        AssignOperationEnum::RightShift => BinaryOperationEnum::RightShift,
+                        AssignOperationEnum::Naive => unreachable!(),
+                    },
+                    span: op.span,
                 },
                 lhs,
                 rhs,
@@ -692,14 +729,14 @@ impl<'ctx> Generator<'ctx> {
     }
 
     fn get_lvalue(&self, lhs: &Box<Expression>) -> Result<(BasicType, PointerValue<'ctx>)> {
-        match lhs.deref().deref() {
-            Expression::Identifier(ref id) => Ok(self.get_variable(id)?),
-            Expression::Unary(ref op, ref unary_operation) => {
+        match lhs.node {
+            ExpressionEnum::Identifier(ref id) => Ok(self.get_variable(id)?),
+            ExpressionEnum::Unary(ref op, ref unary_operation) => {
                 // we need lhs expression's type!!! But now we don't have a function only get the type
                 //TODO FIXME! It's really dirty
                 let (t, _) = self.gen_expression(lhs)?;
                 let (l_t, l_v) = self.gen_expression(unary_operation)?;
-                if let UnaryOperation::Dereference = op {
+                if let UnaryOperationEnum::Dereference = op.node {
                     if let BaseType::Pointer(_) = l_t {
                         Ok((
                             BasicType {
@@ -726,8 +763,8 @@ impl<'ctx> Generator<'ctx> {
                     Err(CompileErr::InvalidLeftValue(l_v.print_to_string().to_string()).into())
                 }
             }
-            Expression::ArraySubscript(ref id_expr, ref idx_vec) => {
-                if let Expression::Identifier(id) = id_expr.deref() {
+            ExpressionEnum::ArraySubscript(ref id_expr, ref idx_vec) => {
+                if let ExpressionEnum::Identifier(ref id) = id_expr.node {
                     let (t, mut pv) = self.get_variable(id)?;
                     //if type is pointer, get_variable will get the address of pointer, not the pointer point to!
                     //So if we want get the point to address, we need extra load action!
@@ -756,7 +793,7 @@ impl<'ctx> Generator<'ctx> {
         name: &Box<Expression>,
         args: &Vec<Expression>,
     ) -> Result<(BaseType, BasicValueEnum<'ctx>)> {
-        if let Expression::Identifier(ref id) = name.deref().deref() {
+        if let ExpressionEnum::Identifier(ref id) = name.node {
             let (ret_t, args_t, is_variadic) = self.function_map.get(id).unwrap().to_owned();
             let fv = self.module.get_function(id).unwrap();
 
