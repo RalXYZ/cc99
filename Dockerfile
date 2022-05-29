@@ -35,8 +35,11 @@ COPY --from=builder /srv/cc99 /srv/cc99
 COPY --from=builder /app/target/release/cc99 .
 COPY --from=builder /app/include ./include
 
+WORKDIR /backend
 RUN mv /app/cc99 /backend
 RUN mv /app/include /backend
+RUN apt install -y clang-11
+RUN ln -s /usr/bin/clang-11 /usr/bin/clang
 ENV PATH "$PATH:/backend"
 ENV TZ=Asia/Shanghai
 ENTRYPOINT ["/backend/cc99-backend"]
