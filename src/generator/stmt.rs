@@ -1,26 +1,33 @@
-use crate::ast::{Expression, ForInitClause, Statement, StatementOrDeclaration};
+use crate::ast::{
+    Expression, ExpressionEnum, ForInitClause, ForInitClauseEnum, Span, Statement, StatementEnum,
+    StatementOrDeclaration, StatementOrDeclarationEnum,
+};
 use crate::generator::Generator;
 use crate::utils::CompileErr as CE;
-use anyhow::Result;
 use std::collections::HashMap;
-use std::ops::Deref;
 
 impl<'ctx> Generator<'ctx> {
-    pub(crate) fn gen_statement(&mut self, statement: &Statement) -> Result<()> {
-        match statement {
-            Statement::Compound(state_or_decl) => self.gen_compound_statement(state_or_decl)?,
-            Statement::While(cond, body) => self.gen_while_statement(cond, body, false)?,
-            Statement::DoWhile(body, cond) => self.gen_while_statement(cond, body, true)?,
-            Statement::For(init, cond, iter, body) => {
+    pub(crate) fn gen_statement(&mut self, statement: &Statement) -> Result<(), CE> {
+        match statement.node {
+            StatementEnum::Compound(ref state_or_decl) => {
+                self.gen_compound_statement(state_or_decl)?
+            }
+            StatementEnum::While(ref cond, ref body) => {
+                self.gen_while_statement(cond, body, false)?
+            }
+            StatementEnum::DoWhile(ref body, ref cond) => {
+                self.gen_while_statement(cond, body, true)?
+            }
+            StatementEnum::For(ref init, ref cond, ref iter, ref body) => {
                 self.gen_for_statement(init, cond, iter, body)?
             }
-            Statement::Break => self.gen_break_statement()?,
-            Statement::Continue => self.gen_continue_statement()?,
-            Statement::If(cond, then_stmt, else_stmt) => {
+            StatementEnum::Break => self.gen_break_statement(statement.span)?,
+            StatementEnum::Continue => self.gen_continue_statement(statement.span)?,
+            StatementEnum::If(ref cond, ref then_stmt, ref else_stmt) => {
                 self.gen_if_statement(cond, then_stmt, else_stmt)?
             }
-            Statement::Return(expr) => self.gen_return_statement(expr)?,
-            Statement::Expression(expr) => {
+            StatementEnum::Return(ref expr) => self.gen_return_statement(expr)?,
+            StatementEnum::Expression(ref expr) => {
                 self.gen_expression(expr)?;
             }
             _ => {
@@ -31,16 +38,19 @@ impl<'ctx> Generator<'ctx> {
         Ok(())
     }
 
-    fn gen_compound_statement(&mut self, statements: &Vec<StatementOrDeclaration>) -> Result<()> {
+    fn gen_compound_statement(
+        &mut self,
+        statements: &Vec<StatementOrDeclaration>,
+    ) -> Result<(), CE> {
         self.val_map_block_stack.push(HashMap::new());
 
         // generate IR for each statement or declaration in function body
         for element in statements {
-            match element {
-                StatementOrDeclaration::Statement(state) => {
+            match element.node {
+                StatementOrDeclarationEnum::Statement(ref state) => {
                     self.gen_statement(state)?;
                 }
-                StatementOrDeclaration::LocalDeclaration(decl) => {
+                StatementOrDeclarationEnum::LocalDeclaration(ref decl) => {
                     self.gen_decl_in_fn(decl)?;
                 }
             }
@@ -55,7 +65,7 @@ impl<'ctx> Generator<'ctx> {
         cond: &Expression,
         body: &Statement,
         is_do_while: bool,
-    ) -> Result<()> {
+    ) -> Result<(), CE> {
         let func_val = self.current_function.as_ref().unwrap().0;
 
         let before_while_block = self.context.append_basic_block(func_val, "before_while");
@@ -112,55 +122,81 @@ impl<'ctx> Generator<'ctx> {
         cond: &Option<Box<Expression>>,
         iter: &Option<Box<Expression>>,
         body: &Statement,
-    ) -> Result<()> {
+    ) -> Result<(), CE> {
         let mut new_block: Vec<StatementOrDeclaration> = vec![];
-        if let Some(init) = init {
-            match init.deref() {
-                ForInitClause::Expression(expr) => {
-                    new_block.push(StatementOrDeclaration::Statement(Statement::Expression(
-                        Box::new(expr.to_owned()),
-                    )));
+        if let Some(ref init) = init {
+            match &init.node {
+                ForInitClauseEnum::Expression(ref expr) => {
+                    new_block.push(StatementOrDeclaration {
+                        node: StatementOrDeclarationEnum::Statement(Statement {
+                            node: StatementEnum::Expression(Box::new(expr.to_owned())),
+                            span: init.span.clone(),
+                        }),
+                        span: init.span.clone(),
+                    });
                 }
-                ForInitClause::ForDeclaration(decl) => {
+                ForInitClauseEnum::ForDeclaration(decl) => {
                     new_block.append(
                         decl.iter()
-                            .map(|d| StatementOrDeclaration::LocalDeclaration(d.to_owned()))
+                            .map(|d| StatementOrDeclaration {
+                                node: StatementOrDeclarationEnum::LocalDeclaration(d.to_owned()),
+                                span: d.span.clone(),
+                            })
                             .collect::<Vec<StatementOrDeclaration>>()
                             .as_mut(),
                     );
                 }
             }
         }
-        let mut new_body = vec![StatementOrDeclaration::Statement(body.to_owned())];
+        let mut new_body = vec![StatementOrDeclaration {
+            node: StatementOrDeclarationEnum::Statement(body.to_owned()),
+            span: body.span.clone(),
+        }];
         if let Some(iter) = iter {
-            new_body.push(StatementOrDeclaration::Statement(Statement::Expression(
-                iter.to_owned(),
-            )));
+            new_body.push(StatementOrDeclaration {
+                node: StatementOrDeclarationEnum::Statement(Statement {
+                    node: StatementEnum::Expression(iter.to_owned()),
+                    span: iter.span.clone(),
+                }),
+                span: iter.span.clone(),
+            });
         }
         let new_cond = match cond {
             Some(cond) => cond.to_owned(),
-            None => Box::new(Expression::Empty),
+            None => Box::new(Expression {
+                node: ExpressionEnum::Empty,
+                span: Span::default(),
+            }),
         };
-        new_block.push(StatementOrDeclaration::Statement(Statement::While(
-            new_cond,
-            Box::new(Statement::Compound(new_body)),
-        )));
+        new_block.push(StatementOrDeclaration {
+            node: StatementOrDeclarationEnum::Statement(Statement {
+                node: StatementEnum::While(
+                    new_cond.clone(),
+                    Box::new(Statement {
+                        node: StatementEnum::Compound(new_body),
+                        span: body.span.clone(),
+                    }),
+                ),
+                span: new_cond.span.clone(),
+            }),
+            span: new_cond.span.clone(),
+        });
         self.gen_compound_statement(&new_block)?;
         Ok(())
     }
 
-    fn gen_break_statement(&mut self) -> Result<()> {
+    fn gen_break_statement(&mut self, span: Span) -> Result<(), CE> {
         if self.break_labels.is_empty() {
-            return Err(CE::KeywordNotInLoop("break".to_string()).into());
+            return Err(CE::keyword_not_in_a_loop("break".to_string(), span).into());
         }
         let break_block = self.break_labels.back().unwrap();
         self.builder.build_unconditional_branch(*break_block);
         Ok(())
     }
 
-    fn gen_continue_statement(&mut self) -> Result<()> {
+    fn gen_continue_statement(&mut self, span: Span) -> Result<(), CE> {
         if self.continue_labels.is_empty() {
-            return Err(CE::KeywordNotInLoop("continue".to_string()).into());
+            return Err(CE::keyword_not_in_a_loop("continue".to_string(), span).into());
         }
         let continue_block = self.continue_labels.back().unwrap();
         self.builder.build_unconditional_branch(*continue_block);
@@ -172,7 +208,7 @@ impl<'ctx> Generator<'ctx> {
         cond: &Box<Expression>,
         then_stmt: &Box<Statement>,
         else_stmt: &Option<Box<Statement>>,
-    ) -> Result<()> {
+    ) -> Result<(), CE> {
         let func_val = self.current_function.as_ref().unwrap().0;
 
         let if_block = self.context.append_basic_block(func_val, "if_block");
@@ -202,7 +238,7 @@ impl<'ctx> Generator<'ctx> {
         Ok(())
     }
 
-    fn gen_return_statement(&mut self, expr: &Option<Box<Expression>>) -> Result<()> {
+    fn gen_return_statement(&mut self, expr: &Option<Box<Expression>>) -> Result<(), CE> {
         if expr.is_none() {
             self.builder.build_return(None);
             return Ok(());
@@ -215,11 +251,12 @@ impl<'ctx> Generator<'ctx> {
             .to_owned()
             .1
             .base_type;
-        let expr = self.gen_expression(&expr.to_owned().unwrap())?;
+        let (e_t, e_v) = self.gen_expression(&expr.to_owned().unwrap())?;
 
-        expr.0.test_cast(&func_return_type)?;
+        e_t.test_cast(&func_return_type, expr.as_ref().unwrap().span)?;
 
-        let return_val = self.cast_value(&expr.0, &expr.1, &func_return_type)?;
+        let return_val =
+            self.cast_value(&e_t, &e_v, &func_return_type, expr.as_ref().unwrap().span)?;
         self.builder.build_return(Some(&return_val));
 
         let func_block = self

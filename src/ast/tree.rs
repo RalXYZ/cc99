@@ -1,7 +1,8 @@
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use std::fmt;
 
 use super::operations::*;
+use super::span::*;
 use super::types::*;
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
@@ -9,8 +10,14 @@ pub enum AST {
     GlobalDeclaration(Vec<Declaration>),
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct Declaration {
+    pub node: DeclarationEnum,
+    pub span: Span,
+}
+
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum Declaration {
+pub enum DeclarationEnum {
     Declaration(
         Type,
         /// identifier (if it's a struct/union declaration, it might be None)
@@ -34,8 +41,14 @@ pub enum Declaration {
     ),
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct Statement {
+    pub node: StatementEnum,
+    pub span: Span,
+}
+
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum Statement {
+pub enum StatementEnum {
     // labeled statement
     Labeled(String, Box<Statement>),
     Case(
@@ -76,8 +89,14 @@ pub enum Statement {
     Goto(String),
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct Expression {
+    pub node: ExpressionEnum,
+    pub span: Span,
+}
+
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum Expression {
+pub enum ExpressionEnum {
     Assignment(
         AssignOperation,
         /// left hand side
@@ -142,32 +161,95 @@ pub enum Expression {
     Empty,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct ForInitClause {
+    pub node: ForInitClauseEnum,
+    pub span: Span,
+}
+
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum ForInitClause {
+pub enum ForInitClauseEnum {
     Expression(Expression),
     ForDeclaration(Vec<Declaration>),
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct StatementOrDeclaration {
+    pub node: StatementOrDeclarationEnum,
+    pub span: Span,
+}
+
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum StatementOrDeclaration {
+pub enum StatementOrDeclarationEnum {
     Statement(Statement),
     LocalDeclaration(Declaration),
 }
 
 impl Default for Statement {
     fn default() -> Self {
-        Statement::Expression(Default::default())
+        Statement {
+            node: StatementEnum::Expression(Box::new(Default::default())),
+            span: Default::default(),
+        }
     }
 }
 
 impl Default for Expression {
     fn default() -> Self {
-        Expression::Empty
+        Expression {
+            node: ExpressionEnum::Empty,
+            span: Default::default(),
+        }
     }
 }
 
 impl fmt::Display for Expression {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
+    }
+}
+
+impl Serialize for Declaration {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.node.serialize(serializer)
+    }
+}
+
+impl Serialize for Statement {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.node.serialize(serializer)
+    }
+}
+
+impl Serialize for Expression {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.node.serialize(serializer)
+    }
+}
+
+impl Serialize for ForInitClause {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.node.serialize(serializer)
+    }
+}
+
+impl Serialize for StatementOrDeclaration {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.node.serialize(serializer)
     }
 }

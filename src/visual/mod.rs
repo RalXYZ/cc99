@@ -27,7 +27,7 @@ pub fn compile_result(code: &str) -> String {
     };
     let include_dirs = vec![];
     match preprocess(code, &include_dirs) {
-        Ok(code) => match parse(&code) {
+        Ok(code) => match Parse::new(&code).parse() {
             Ok(ast) => {
                 result.ast = ast;
             }

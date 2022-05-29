@@ -1,7 +1,14 @@
-use serde::Serialize;
+use super::span::*;
+use serde::{Serialize, Serializer};
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct AssignOperation {
+    pub node: AssignOperationEnum,
+    pub span: Span,
+}
 
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum AssignOperation {
+pub enum AssignOperationEnum {
     Naive,
     Addition,
     Subtraction,
@@ -15,8 +22,14 @@ pub enum AssignOperation {
     RightShift,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct UnaryOperation {
+    pub node: UnaryOperationEnum,
+    pub span: Span,
+}
+
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum UnaryOperation {
+pub enum UnaryOperationEnum {
     // increment, decrement
     PrefixIncrement,
     PrefixDecrement,
@@ -35,8 +48,14 @@ pub enum UnaryOperation {
     SizeofExpr,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct BinaryOperation {
+    pub node: BinaryOperationEnum,
+    pub span: Span,
+}
+
 #[derive(Serialize, Debug, PartialEq, Clone)]
-pub enum BinaryOperation {
+pub enum BinaryOperationEnum {
     // arithmetic
     Addition,
     Subtraction,
@@ -64,18 +83,54 @@ pub enum BinaryOperation {
 
 impl Default for AssignOperation {
     fn default() -> Self {
-        AssignOperation::Naive
+        AssignOperation {
+            node: AssignOperationEnum::Naive,
+            span: Default::default(),
+        }
     }
 }
 
 impl Default for UnaryOperation {
     fn default() -> Self {
-        UnaryOperation::PrefixIncrement
+        UnaryOperation {
+            node: UnaryOperationEnum::PrefixIncrement,
+            span: Default::default(),
+        }
     }
 }
 
 impl Default for BinaryOperation {
     fn default() -> Self {
-        BinaryOperation::Comma
+        BinaryOperation {
+            node: BinaryOperationEnum::Comma,
+            span: Default::default(),
+        }
+    }
+}
+
+impl Serialize for AssignOperation {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.node.serialize(serializer)
+    }
+}
+
+impl Serialize for UnaryOperation {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.node.serialize(serializer)
+    }
+}
+
+impl Serialize for BinaryOperation {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.node.serialize(serializer)
     }
 }

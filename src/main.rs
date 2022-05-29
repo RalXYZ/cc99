@@ -105,7 +105,9 @@ fn main() {
             .unwrap_or_else(|_| panic!("Unable to write file {}", output_file));
     } else {
         // parse
-        let ast = parse(&code).unwrap_or_else(|e| panic!("Parse failed:\n{}", e));
+        let ast = Parse::new()
+            .parse(&code)
+            .unwrap_or_else(|e| panic!("Parse failed:\n{}", e));
 
         if args.parse {
             fs::write(&output_file, &serde_json::to_string(&ast).unwrap())
@@ -113,7 +115,7 @@ fn main() {
         } else {
             // code_gen
             let context = Context::create();
-            let mut code_gen = Generator::new(&context, &args.file);
+            let mut code_gen = Generator::new(&context, &args.file, &code);
             code_gen.gen(&ast);
 
             if args.bitcode {

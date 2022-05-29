@@ -1,10 +1,9 @@
 use crate::ast::{
-    AssignOperation, BaseType, BasicType, Declaration, Expression, Statement,
-    StatementOrDeclaration,
+    AssignOperation, AssignOperationEnum, BaseType, BasicType, Declaration, DeclarationEnum,
+    Expression, ExpressionEnum, Span, Statement, StatementEnum, StatementOrDeclarationEnum,
 };
 use crate::generator::Generator;
 use crate::utils::CompileErr as CE;
-use anyhow::Result;
 use inkwell::values::{BasicValue, PointerValue};
 use std::collections::HashMap;
 
@@ -15,7 +14,8 @@ impl<'ctx> Generator<'ctx> {
         func_name: &String,
         func_param: &Vec<(BasicType, Option<String>)>,
         func_body: &Statement,
-    ) -> Result<()> {
+        span: Span,
+    ) -> Result<(), CE> {
         let func = self.module.get_function(func_name.as_str()).unwrap();
         self.val_map_block_stack.push(HashMap::new());
 
@@ -59,6 +59,7 @@ impl<'ctx> Generator<'ctx> {
                     &func_param[i].0,
                     &func_param[i].1.as_ref().unwrap(),
                     alloca,
+                    span,
                 )?;
             }
         }
@@ -69,13 +70,13 @@ impl<'ctx> Generator<'ctx> {
         }
 
         // generate IR for each statement or declaration in function body
-        if let Statement::Compound(state_or_decl) = &func_body {
+        if let StatementEnum::Compound(ref state_or_decl) = func_body.node {
             for element in state_or_decl {
-                match element {
-                    StatementOrDeclaration::Statement(state) => {
+                match element.node {
+                    StatementOrDeclarationEnum::Statement(ref state) => {
                         self.gen_statement(state)?;
                     }
-                    StatementOrDeclaration::LocalDeclaration(decl) => {
+                    StatementOrDeclarationEnum::LocalDeclaration(ref decl) => {
                         self.gen_decl_in_fn(decl)?;
                     }
                 }
@@ -119,34 +120,51 @@ impl<'ctx> Generator<'ctx> {
         var_type: &BasicType,
         identifier: &String,
         ptr: PointerValue<'ctx>,
-    ) -> Result<()> {
+        span: Span,
+    ) -> Result<(), CE> {
         let local_map = self.val_map_block_stack.last_mut().unwrap();
 
         if local_map.contains_key(identifier) {
-            return Err(CE::DuplicatedVariable(identifier.to_string()).into());
+            return Err(CE::duplicated_variable(identifier.to_string(), span).into());
         }
 
         local_map.insert(identifier.to_string(), (var_type.clone(), ptr));
         Ok(())
     }
 
-    pub(crate) fn gen_decl_in_fn(&mut self, decl: &Declaration) -> Result<()> {
-        if let Declaration::Declaration(var_type, identifier, expr) = decl {
+    pub(crate) fn gen_decl_in_fn(&mut self, decl: &Declaration) -> Result<(), CE> {
+        if let DeclarationEnum::Declaration(ref var_type, ref identifier, ref expr) = decl.node {
             let llvm_type = self.convert_llvm_type(&var_type.basic_type.base_type);
             let p_val = self
                 .builder
                 .build_alloca(llvm_type, &identifier.to_owned().unwrap());
-            self.insert_to_val_map(&var_type.basic_type, &identifier.to_owned().unwrap(), p_val)?;
+            self.insert_to_val_map(
+                &var_type.basic_type,
+                &identifier.to_owned().unwrap(),
+                p_val,
+                decl.span,
+            )?;
             if let Some(ref expr) = expr {
                 self.gen_assignment(
-                    &AssignOperation::Naive,
-                    &Box::new(Expression::Identifier(identifier.to_owned().unwrap())),
+                    &AssignOperation {
+                        node: AssignOperationEnum::Naive,
+                        span: expr.span.clone(),
+                    },
+                    &Box::new(Expression {
+                        node: ExpressionEnum::Identifier(identifier.to_owned().unwrap()),
+                        span: expr.span.clone(),
+                    }),
                     expr,
+                    decl.span,
                 )?;
             }
             Ok(())
         } else {
-            Err(CE::Error("FunctionDefinition cannot exist in function".to_string()).into())
+            Err(CE::plain_error(
+                "FunctionDefinition cannot exist in function".to_string(),
+                decl.span,
+            )
+            .into())
         }
     }
 }
