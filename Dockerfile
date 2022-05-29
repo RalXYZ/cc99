@@ -9,13 +9,13 @@ RUN cd cc99-frontend && chmod +x build_wasm.sh && ./build_wasm.sh  \
 RUN cd cc99-frontend && npm install && npm run build && mv build /srv && mv /srv/build /srv/cc99
 
 
-FROM golang:1.18-alpine as prod
+FROM golang:1.18-bullseye as prod
 EXPOSE 5001
-
+RUN mkdir /backend && mkdir /app
 WORKDIR /backend
-RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-RUN apk update
-# cache deps before building and copying source so that we don't need to re-download as much
+RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list
+RUN apt update
+# cache deps before building and copying source so that we don't need to re-download as muchw
 # and so that source changes don't invalidate our downloaded layer
 ENV GO111MODULE=on \
     GOPROXY=https://goproxy.cn,direct
@@ -31,9 +31,9 @@ RUN chmod +x cc99-backend
 
 #copy frontend and cc99 and header file
 WORKDIR /app
-COPY --from=0 /srv/cc99 /srv/cc99
-COPY --from=0 /app/target/release/cc99 .
-COPY --from=0 /app/include ./include
+COPY --from=builder /srv/cc99 /srv/cc99
+COPY --from=builder /app/target/release/cc99 .
+COPY --from=builder /app/include ./include
 
 RUN mv /app/cc99 /backend
 RUN mv /app/include /backend
