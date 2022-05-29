@@ -65,7 +65,7 @@ function App() {
       setStderr("");
       setExitCode("");
       setCompileStatus("");
-      let result = await axios("http://localhost:5001/api/gen", {
+      let result = await axios("/api/gen", {
         method: "post",
         headers: {
           "Content-Type": "application/json",
@@ -101,7 +101,7 @@ function App() {
         setStderr(result.data.data.stderr);
         return;
       }
-      let res = await axios("http://localhost:5001/api/run", {
+      let res = await axios("/api/run", {
         method: "post",
         headers: {
           "Content-Type": "application/json",
