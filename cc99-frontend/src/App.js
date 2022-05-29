@@ -19,6 +19,8 @@ import init, { compile_result } from "cc99";
 import AntVG6 from "./components/AntVG6";
 import Logger from "./utils/logger";
 import axios from "axios";
+import Ansi from "ansi-to-react";
+
 const { Panel } = Collapse;
 const { TextArea } = Input;
 const { Header, Footer, Content } = Layout;
@@ -247,10 +249,14 @@ function App() {
                   defaultActiveKey={["stdout", "stderr"]}
                 >
                   <Panel header="Stdout" key="stdout">
-                    <p style={{ whiteSpace: "pre-wrap" }}>{stdout}</p>
+                    <pre>
+                      <Ansi>{stdout}</Ansi>
+                    </pre>
                   </Panel>
                   <Panel header="Stderr" key="stderr">
-                    <p style={{ whiteSpace: "pre-wrap" }}>{stderr}</p>
+                    <pre>
+                      <Ansi>{stderr}</Ansi>
+                    </pre>
                   </Panel>
                 </Collapse>
               </Card>
