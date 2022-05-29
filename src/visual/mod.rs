@@ -2,7 +2,7 @@ use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
 use super::ast::AST;
-use super::parse::parse;
+use super::parse::Parse;
 use super::preprocess::preprocess;
 
 #[derive(Debug, Serialize)]
@@ -27,7 +27,7 @@ pub fn compile_result(code: &str) -> String {
     };
     let include_dirs = vec![];
     match preprocess(code, &include_dirs) {
-        Ok(code) => match Parse::new(&code).parse() {
+        Ok(code) => match Parse::new().parse(&code) {
             Ok(ast) => {
                 result.ast = ast;
             }
