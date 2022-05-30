@@ -17,6 +17,6 @@ impl<'ctx> Generator<'ctx> {
         let writer = StandardStream::stderr(ColorChoice::Always);
         let config = term::Config::default();
 
-        term::emit(&mut writer.lock(), &config, &self.files, &diagnostic);
+        term::emit(&mut writer.lock(), &config, &self.files, &diagnostic).expect("unreachable");
     }
 }

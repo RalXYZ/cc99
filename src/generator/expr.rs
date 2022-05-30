@@ -10,6 +10,7 @@ use inkwell::values::{
     PointerValue,
 };
 use inkwell::{FloatPredicate, IntPredicate};
+use std::cmp::Ordering;
 use std::fmt::Error;
 
 impl<'ctx> Generator<'ctx> {
@@ -157,24 +158,23 @@ impl<'ctx> Generator<'ctx> {
         span: Span,
     ) -> Result<(BasicType, Vec<IntValue<'ctx>>), CE> {
         if let BaseType::Array(ref arr_t, arr_len_vec) = l_t.base_type {
-            let res_t: BaseType;
-            if idx_vec.len() > arr_len_vec.len() {
-                return Err(CE::array_dimension_mismatch(
-                    arr_len_vec.len(),
-                    idx_vec.len(),
-                    span,
-                ));
-            } else if idx_vec.len() == arr_len_vec.len() {
-                res_t = arr_t.base_type.clone();
-            } else {
-                res_t = BaseType::Array(
+            let res_t = match idx_vec.len().cmp(&arr_len_vec.len()) {
+                Ordering::Less => BaseType::Array(
                     arr_t.clone(),
                     (idx_vec.len()..arr_len_vec.len()).fold(vec![], |mut acc, i| {
                         acc.push(arr_len_vec[i].clone());
                         acc
                     }),
-                );
-            }
+                ),
+                Ordering::Equal => arr_t.base_type.clone(),
+                Ordering::Greater => {
+                    return Err(CE::array_dimension_mismatch(
+                        arr_len_vec.len(),
+                        idx_vec.len(),
+                        span,
+                    ));
+                }
+            };
 
             let mut idx_int_val_vec = vec![self.context.i32_type().const_zero()];
             idx_int_val_vec.extend(
@@ -607,8 +607,8 @@ impl<'ctx> Generator<'ctx> {
             _ => Err(Error),
         };
         //return FloatValue
-        if result_f.is_ok() {
-            return Ok(result_f.unwrap().as_basic_value_enum());
+        if let Ok(result_f) = result_f {
+            return Ok(result_f.as_basic_value_enum())
         }
         let result_i = match op.node {
             BinaryOperationEnum::LessThan => {
@@ -874,7 +874,7 @@ impl<'ctx> Generator<'ctx> {
             {
                 Ok((
                     ret_t.base_type,
-                    ret_v.unwrap_or(self.context.i32_type().const_zero().as_basic_value_enum()),
+                    ret_v.unwrap_or_else(|| self.context.i32_type().const_zero().as_basic_value_enum()),
                 ))
             } else {
                 unreachable!()

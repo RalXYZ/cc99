@@ -224,6 +224,6 @@ impl CompileErr {
                 (self.span.start)..(self.span.end),
             )
             .with_message(self.label.clone())])
-            .with_notes(vec![self.notes.clone().unwrap_or("".to_string())])
+            .with_notes(vec![self.notes.clone().unwrap_or_else(|| "".to_string())])
     }
 }
