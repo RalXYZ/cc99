@@ -1,6 +1,8 @@
 kind: pipeline
 type: docker
 name: build
+concurrency:
+  limit: 1
 platform:
   os: linux
   arch: amd64
