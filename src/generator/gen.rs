@@ -157,7 +157,7 @@ impl<'ctx> Generator<'ctx> {
             err.iter().for_each(|err| {
                 self.gen_err_output(0, err);
             });
-            panic!("errors found while code gen")
+            std::process::exit(err.len() as i32);
         }
     }
 
