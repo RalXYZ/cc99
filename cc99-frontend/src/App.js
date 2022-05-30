@@ -30,7 +30,6 @@ function App() {
     init();
   }, []);
   const [code, setCode] = useState(ExampleCode[0].code);
-  const [ast, setAst] = useState({ id: "0", label: "CC99" });
   const [visAst, setVisAst] = useState({ id: "0", label: "CC99" });
   const [output, setOutput] = useState(
     Logger.Info("Please compile the code before running!")
@@ -79,17 +78,17 @@ function App() {
       });
 
       if (result.data.st !== 0) {
-        setCompileStatus("服务器相关错误，未编译成功");
+        setCompileStatus("Server-related errors, did not compile successfully");
         notification.error({
           duration: 5,
-          description: "服务器相关错误",
+          description: "Server related errors",
           message: result.data.msg,
         });
         return;
       }
       //查看编译是否成功，根据exitCode进行判断
       if (result.data.data.exitCode !== 0) {
-        setCompileStatus("未编译成功");
+        setCompileStatus("not compiled successfully");
         setExitCode(result.data.data.exitCode);
         setStdout(result.data.data.stdout);
         setStderr(result.data.data.stderr);
@@ -97,7 +96,7 @@ function App() {
       }
       let file = result.data.data.file;
       if (!file) {
-        setCompileStatus("编译成功，但是没有生成文件");
+        setCompileStatus("Compilation succeeds, but no files are generated");
         setExitCode(result.data.data.exitCode);
         setStdout(result.data.data.stdout);
         setStderr(result.data.data.stderr);
@@ -115,18 +114,21 @@ function App() {
         },
       });
       if (res.data.st !== 0) {
-        setCompileStatus("服务器相关错误，编译成功，执行出现错误");
+        setCompileStatus(
+          "Server-related errors, compilation is successful, execution errors occur"
+        );
         notification.error({
           duration: 5,
-          description: "服务器相关错误，编译成功，执行出现错误",
+          description:
+            "Server-related errors, compilation is successful, execution errors occur",
           message: result.data.msg,
         });
         return;
       }
       if (res.data.data.exitCode !== 0) {
-        setCompileStatus("编译成功，执行出现错误");
+        setCompileStatus("Compilation succeeded, execution error occurred");
       } else {
-        setCompileStatus("编译成功，执行成功");
+        setCompileStatus("Compilation succeeded, execution succeeded");
       }
       setStdout(res.data.data.stdout);
       setStderr(res.data.data.stderr);
@@ -134,7 +136,7 @@ function App() {
     } catch (e) {
       notification.error({
         duration: 5,
-        description: "未知错误",
+        description: "Unknown Error!",
         message: e,
       });
     }
@@ -144,14 +146,13 @@ function App() {
     let data = JSON.parse(compile_result(code));
     console.log(data);
     if (!data["error"]) {
-      setAst(data["ast"]);
       setVisAst(Ast2Vis(data["ast"]));
 
-      message.success("编译成功!");
+      message.success("Compile Success!");
       appendOutput(Logger.Info("compile success!"));
     } else {
       notification.error({
-        message: "编译失败",
+        message: "Compile Error",
         description: data["message"],
         duration: 5,
       });
@@ -271,8 +272,8 @@ function App() {
             >
               cc99{" "}
             </a>{" "}
-            is the final project of ZJU Compiler Principle course, made by TO/GA, RalXYZ and
-            Raynor. NOT{" "}
+            is the final project of ZJU Compiler Principle course, made by
+            TO/GA, RalXYZ and Raynor. NOT{" "}
             <a
               href={"https://cc98.org"}
               className="no-underline hover:underline"
