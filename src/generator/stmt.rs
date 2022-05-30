@@ -38,10 +38,7 @@ impl<'ctx> Generator<'ctx> {
         Ok(())
     }
 
-    fn gen_compound_statement(
-        &mut self,
-        statements: &Vec<StatementOrDeclaration>,
-    ) -> Result<(), CE> {
+    fn gen_compound_statement(&mut self, statements: &[StatementOrDeclaration]) -> Result<(), CE> {
         self.val_map_block_stack.push(HashMap::new());
 
         // generate IR for each statement or declaration in function body
@@ -205,8 +202,8 @@ impl<'ctx> Generator<'ctx> {
 
     fn gen_if_statement(
         &mut self,
-        cond: &Box<Expression>,
-        then_stmt: &Box<Statement>,
+        cond: &Expression,
+        then_stmt: &Statement,
         else_stmt: &Option<Box<Statement>>,
     ) -> Result<(), CE> {
         let func_val = self.current_function.as_ref().unwrap().0;

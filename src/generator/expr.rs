@@ -222,7 +222,7 @@ impl<'ctx> Generator<'ctx> {
     fn gen_unary_expr(
         &self,
         op: &UnaryOperation,
-        expr: &Box<Expression>,
+        expr: &Expression,
         span: Span,
     ) -> Result<(BaseType, BasicValueEnum<'ctx>), CE> {
         let (expr_type, expr_value) = self.gen_expression(expr)?;
@@ -367,8 +367,8 @@ impl<'ctx> Generator<'ctx> {
     fn gen_binary_expr(
         &self,
         op: &BinaryOperation,
-        lhs: &Box<Expression>,
-        rhs: &Box<Expression>,
+        lhs: &Expression,
+        rhs: &Expression,
         span: Span,
     ) -> Result<(BaseType, BasicValueEnum<'ctx>), CE> {
         let (ref l_t, l_v) = self.gen_expression(lhs)?;
@@ -715,8 +715,8 @@ impl<'ctx> Generator<'ctx> {
     pub(crate) fn gen_assignment(
         &self,
         op: &AssignOperation,
-        lhs: &Box<Expression>,
-        rhs: &Box<Expression>,
+        lhs: &Expression,
+        rhs: &Expression,
         span: Span,
     ) -> Result<(BaseType, BasicValueEnum<'ctx>), CE> {
         let (l_t, l_pv) = self.get_lvalue(lhs)?;
@@ -756,7 +756,7 @@ impl<'ctx> Generator<'ctx> {
         Ok((l_t.base_type, cast_v))
     }
 
-    fn get_lvalue(&self, lhs: &Box<Expression>) -> Result<(BasicType, PointerValue<'ctx>), CE> {
+    fn get_lvalue(&self, lhs: &Expression) -> Result<(BasicType, PointerValue<'ctx>), CE> {
         match lhs.node {
             ExpressionEnum::Identifier(ref id) => Ok(self.get_variable(id, lhs.span)?),
             ExpressionEnum::Unary(ref op, ref unary_operation) => {
@@ -821,8 +821,8 @@ impl<'ctx> Generator<'ctx> {
 
     fn gen_function_call(
         &self,
-        name: &Box<Expression>,
-        args: &Vec<Expression>,
+        name: &Expression,
+        args: &[Expression],
         span: Span,
     ) -> Result<(BaseType, BasicValueEnum<'ctx>), CE> {
         if let ExpressionEnum::Identifier(ref id) = name.node {

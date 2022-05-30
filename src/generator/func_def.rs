@@ -11,12 +11,12 @@ impl<'ctx> Generator<'ctx> {
     pub(crate) fn gen_func_def(
         &mut self,
         return_type: &BasicType,
-        func_name: &String,
-        func_param: &Vec<(BasicType, Option<String>)>,
+        func_name: &str,
+        func_param: &[(BasicType, Option<String>)],
         func_body: &Statement,
         span: Span,
     ) -> Result<(), CE> {
-        let func = self.module.get_function(func_name.as_str()).unwrap();
+        let func = self.module.get_function(func_name).unwrap();
         self.val_map_block_stack.push(HashMap::new());
 
         let func_ty = self.function_map.get(func_name).unwrap().to_owned();
@@ -118,7 +118,7 @@ impl<'ctx> Generator<'ctx> {
     fn insert_to_val_map(
         &mut self,
         var_type: &BasicType,
-        identifier: &String,
+        identifier: &str,
         ptr: PointerValue<'ctx>,
         span: Span,
     ) -> Result<(), CE> {

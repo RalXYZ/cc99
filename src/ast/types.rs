@@ -113,21 +113,21 @@ impl<'ctx> BasicType {
 #[cfg(not(feature = "web"))]
 impl<'ctx> BaseType {
     fn cast_rank(&self) -> i32 {
-        match self {
-            &BaseType::Void => 0,
-            &BaseType::Bool => 1,
-            &BaseType::SignedInteger(IntegerType::Char) => 2,
-            &BaseType::UnsignedInteger(IntegerType::Char) => 2,
-            &BaseType::SignedInteger(IntegerType::Short) => 3,
-            &BaseType::UnsignedInteger(IntegerType::Short) => 3,
-            &BaseType::SignedInteger(IntegerType::Int) => 4,
-            &BaseType::UnsignedInteger(IntegerType::Int) => 4,
-            &BaseType::SignedInteger(IntegerType::Long) => 5,
-            &BaseType::UnsignedInteger(IntegerType::Long) => 5,
-            &BaseType::SignedInteger(IntegerType::LongLong) => 6,
-            &BaseType::UnsignedInteger(IntegerType::LongLong) => 6,
-            &BaseType::Float => 7,
-            &BaseType::Double => 8,
+        match *self {
+            BaseType::Void => 0,
+            BaseType::Bool => 1,
+            BaseType::SignedInteger(IntegerType::Char) => 2,
+            BaseType::UnsignedInteger(IntegerType::Char) => 2,
+            BaseType::SignedInteger(IntegerType::Short) => 3,
+            BaseType::UnsignedInteger(IntegerType::Short) => 3,
+            BaseType::SignedInteger(IntegerType::Int) => 4,
+            BaseType::UnsignedInteger(IntegerType::Int) => 4,
+            BaseType::SignedInteger(IntegerType::Long) => 5,
+            BaseType::UnsignedInteger(IntegerType::Long) => 5,
+            BaseType::SignedInteger(IntegerType::LongLong) => 6,
+            BaseType::UnsignedInteger(IntegerType::LongLong) => 6,
+            BaseType::Float => 7,
+            BaseType::Double => 8,
             _ => panic!(),
         }
     }

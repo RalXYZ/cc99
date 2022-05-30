@@ -50,7 +50,7 @@ impl<'ctx> Generator<'ctx> {
     }
 
     // first-time scanning
-    pub fn gen(&mut self, ast: &Box<AST>) {
+    pub fn gen(&mut self, ast: &AST) {
         let AST::GlobalDeclaration(ref declarations) = ast.deref();
 
         let mut err: Vec<CE> = vec![];
@@ -115,7 +115,11 @@ impl<'ctx> Generator<'ctx> {
                                 storage_class,
                                 return_type,
                                 identifier,
-                                &params_type.iter().map(|param| param.0.clone()).collect(),
+                                params_type
+                                    .iter()
+                                    .map(|param| param.0.clone())
+                                    .collect::<Vec<_>>()
+                                    .as_slice(),
                                 *is_variadic,
                                 declaration.span,
                             )?;
@@ -165,8 +169,8 @@ impl<'ctx> Generator<'ctx> {
         &mut self,
         storage_class: &StorageClassSpecifier,
         ret_type: &BT,
-        func_name: &String,
-        func_param: &Vec<BT>,
+        func_name: &str,
+        func_param: &[BT],
         is_variadic: bool,
         span: Span,
     ) -> Result<(), CE> {
@@ -186,7 +190,7 @@ impl<'ctx> Generator<'ctx> {
             llvm_params.push(self.convert_llvm_type(&param.base_type));
         }
 
-        let llvm_func_ty = self.to_return_type(ret_type, &llvm_params, is_variadic)?;
+        let llvm_func_ty = self.gen_return_type(ret_type, &llvm_params, is_variadic)?;
 
         let linkage = match storage_class {
             StorageClassSpecifier::Static => Some(Linkage::Internal),
@@ -197,8 +201,7 @@ impl<'ctx> Generator<'ctx> {
         };
 
         // create function
-        self.module
-            .add_function(func_name.as_str(), llvm_func_ty, linkage);
+        self.module.add_function(func_name, llvm_func_ty, linkage);
         self.function_map.insert(
             func_name.to_owned(),
             (ret_type.to_owned(), params, is_variadic),
@@ -207,10 +210,10 @@ impl<'ctx> Generator<'ctx> {
     }
 
     // add void type as return type
-    fn to_return_type(
+    fn gen_return_type(
         &mut self,
         in_type: &BT,
-        param_types: &Vec<BasicTypeEnum<'ctx>>,
+        param_types: &[BasicTypeEnum<'ctx>],
         is_variadic: bool,
     ) -> Result<FunctionType<'ctx>, CE> {
         let param_types_meta = param_types
@@ -253,7 +256,7 @@ impl<'ctx> Generator<'ctx> {
 
     pub(crate) fn get_variable(
         &self,
-        identifier: &String,
+        identifier: &str,
         span: Span,
     ) -> Result<(BT, PointerValue<'ctx>), CE> {
         let mut result = None;
@@ -278,7 +281,7 @@ impl<'ctx> Generator<'ctx> {
     fn gen_global_variable(
         &mut self,
         var_type: &Type,
-        var_name: &String,
+        var_name: &str,
         ptr_to_init: &Option<Box<Expression>>,
         span: Span,
     ) -> Result<(), CE> {
@@ -289,7 +292,7 @@ impl<'ctx> Generator<'ctx> {
         }
 
         let llvm_type = self.convert_llvm_type(&var_type.basic_type.base_type);
-        let global_value = self.module.add_global(llvm_type, None, var_name.as_str());
+        let global_value = self.module.add_global(llvm_type, None, var_name);
         global_value.set_linkage(Linkage::Common);
 
         if var_type.basic_type.is_const() {
@@ -322,45 +325,45 @@ impl<'ctx> Generator<'ctx> {
     }
 
     pub(crate) fn convert_llvm_type(&self, base_type: &BaseType) -> BasicTypeEnum<'ctx> {
-        match base_type {
-            &BaseType::Bool => self.context.bool_type().as_basic_type_enum(),
-            &BaseType::SignedInteger(IntegerType::Char) => {
+        match *base_type {
+            BaseType::Bool => self.context.bool_type().as_basic_type_enum(),
+            BaseType::SignedInteger(IntegerType::Char) => {
                 self.context.i8_type().as_basic_type_enum()
             }
-            &BaseType::UnsignedInteger(IntegerType::Char) => {
+            BaseType::UnsignedInteger(IntegerType::Char) => {
                 self.context.i8_type().as_basic_type_enum()
             }
-            &BaseType::SignedInteger(IntegerType::Short) => {
+            BaseType::SignedInteger(IntegerType::Short) => {
                 self.context.i16_type().as_basic_type_enum()
             }
-            &BaseType::UnsignedInteger(IntegerType::Short) => {
+            BaseType::UnsignedInteger(IntegerType::Short) => {
                 self.context.i16_type().as_basic_type_enum()
             }
-            &BaseType::SignedInteger(IntegerType::Int) => {
+            BaseType::SignedInteger(IntegerType::Int) => {
                 self.context.i32_type().as_basic_type_enum()
             }
-            &BaseType::UnsignedInteger(IntegerType::Int) => {
+            BaseType::UnsignedInteger(IntegerType::Int) => {
                 self.context.i32_type().as_basic_type_enum()
             }
-            &BaseType::SignedInteger(IntegerType::Long) => {
+            BaseType::SignedInteger(IntegerType::Long) => {
                 self.context.i64_type().as_basic_type_enum()
             }
-            &BaseType::UnsignedInteger(IntegerType::Long) => {
+            BaseType::UnsignedInteger(IntegerType::Long) => {
                 self.context.i64_type().as_basic_type_enum()
             }
-            &BaseType::SignedInteger(IntegerType::LongLong) => {
+            BaseType::SignedInteger(IntegerType::LongLong) => {
                 self.context.i64_type().as_basic_type_enum()
             }
-            &BaseType::UnsignedInteger(IntegerType::LongLong) => {
+            BaseType::UnsignedInteger(IntegerType::LongLong) => {
                 self.context.i64_type().as_basic_type_enum()
             }
-            &BaseType::Float => self.context.f32_type().as_basic_type_enum(),
-            &BaseType::Double => self.context.f64_type().as_basic_type_enum(),
-            &BaseType::Pointer(ref basic_type) => self
+            BaseType::Float => self.context.f32_type().as_basic_type_enum(),
+            BaseType::Double => self.context.f64_type().as_basic_type_enum(),
+            BaseType::Pointer(ref basic_type) => self
                 .convert_llvm_type(&basic_type.base_type)
                 .ptr_type(AddressSpace::Generic)
                 .as_basic_type_enum(),
-            &BaseType::Array(ref basic_type, ref size) => size
+            BaseType::Array(ref basic_type, ref size) => size
                 .iter()
                 .rev()
                 .map(|x| {
