@@ -3,13 +3,13 @@ extern crate pest;
 extern crate pest_derive;
 extern crate core;
 
+use cc99::compile_result;
 use clap::{ArgGroup, Parser};
 use inkwell::{context::Context, OptimizationLevel};
 use std::fs;
-use std::io::{Read, stdin};
+use std::io::{stdin, Read};
 use std::path::Path;
 use std::process::Command;
-use cc99::compile_result;
 
 mod ast;
 mod generator;
@@ -77,15 +77,15 @@ fn main() {
     };
     if args.visual {
         let mut buffer = String::new();
-        let size=stdin().read_to_string(&mut buffer);
+        let size = stdin().read_to_string(&mut buffer);
         match size {
-            Ok(_)=>{
-                let res=compile_result(buffer.as_str());
-                print!("{}",res);
+            Ok(_) => {
+                let res = compile_result(buffer.as_str());
+                print!("{}", res);
                 std::process::exit(0);
             }
-            Err(e)=>{
-                eprintln!("Unable to read stdin: {}",e);
+            Err(e) => {
+                eprintln!("Unable to read stdin: {}", e);
                 std::process::exit(1);
             }
         }
@@ -117,37 +117,32 @@ fn main() {
         _ => {
             eprintln!("Invalid optimization level");
             std::process::exit(1);
-        },
+        }
     };
 
     // preprocess
-    let code = preprocess_file(&args.file, &include_dirs)
-        .unwrap_or_else(|e|  {
-            eprintln!("Preprocess failed:\n{}", e);
+    let code = preprocess_file(&args.file, &include_dirs).unwrap_or_else(|e| {
+        eprintln!("Preprocess failed:\n{}", e);
+        std::process::exit(1);
+    });
+
+    if args.expand {
+        fs::write(&output_file, &code).unwrap_or_else(|_| {
+            eprintln!("Unable to write file {}", output_file);
+            std::process::exit(1);
+        });
+    } else {
+        // parse
+        let ast = Parse::new().parse(&code).unwrap_or_else(|e| {
+            eprintln!("Parse failed:\n{}", e);
             std::process::exit(1);
         });
 
-    if args.expand {
-        fs::write(&output_file, &code)
-            .unwrap_or_else(|_| {
+        if args.parse {
+            fs::write(&output_file, &serde_json::to_string(&ast).unwrap()).unwrap_or_else(|_| {
                 eprintln!("Unable to write file {}", output_file);
                 std::process::exit(1);
             });
-    } else {
-        // parse
-        let ast = Parse::new()
-            .parse(&code)
-            .unwrap_or_else(|e| {
-                eprintln!("Parse failed:\n{}", e);
-                std::process::exit(1);
-            });
-
-        if args.parse {
-            fs::write(&output_file, &serde_json::to_string(&ast).unwrap())
-                .unwrap_or_else(|_| {
-                    eprintln!("Unable to write file {}", output_file);
-                    std::process::exit(1);
-                });
         } else {
             // code_gen
             let context = Context::create();
