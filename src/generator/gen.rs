@@ -133,7 +133,7 @@ impl<'ctx> Generator<'ctx> {
         err.extend(
             declarations
                 .iter()
-                .map(|declaration| -> Result<(), CE> {
+                .map(|declaration| -> Result<(), Vec<CE>> {
                     if let DeclarationEnum::FunctionDefinition(
                         _,
                         _,
@@ -154,7 +154,9 @@ impl<'ctx> Generator<'ctx> {
                     }
                     Ok(())
                 })
-                .filter_map(|result| if result.is_err() { result.err() } else { None }),
+                .filter_map(|result| result.err())
+                .flatten()
+                .collect::<Vec<_>>(),
         );
 
         if !err.is_empty() {

@@ -168,14 +168,12 @@ impl<'ctx> BaseType {
             {
                 return Ok(());
             };
-            // return Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into());
-            unimplemented!()
+            return Err(CE::invalid_default_cast(self.to_string(), dest.to_string(), span));
         }
 
         if let (BaseType::Array(lhs_type, lhs_expr), BaseType::Pointer(rhs_ptr)) = (self, dest) {
             if lhs_expr.len() != 1 {
-                // return Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into());
-                unimplemented!()
+                return Err(CE::invalid_default_cast(self.to_string(), dest.to_string(), span));
             }
             //make sure they are both basic type(not pointer or array)
             lhs_type.base_type.cast_rank();
@@ -184,12 +182,10 @@ impl<'ctx> BaseType {
         }
 
         if let BaseType::Pointer(_) = self {
-            // return Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into());
-            unimplemented!()
+            return Err(CE::invalid_default_cast(self.to_string(), dest.to_string(), span));
         }
         if let BaseType::Pointer(_) = dest {
-            // return Err(CompileErr::InvalidDefaultCast(self.clone(), dest.clone()).into());
-            unimplemented!()
+            return Err(CE::invalid_default_cast(self.to_string(), dest.to_string(), span));
         }
 
         if self.cast_rank() < dest.cast_rank() {
@@ -221,6 +217,10 @@ impl fmt::Display for BaseType {
             BaseType::Bool => write!(f, "_Bool"),
             BaseType::Float => write!(f, "float"),
             BaseType::Double => write!(f, "double"),
+            BaseType::Pointer(inner) => {
+                write!(f, "{}", inner.base_type)?;
+                write!(f, "*")
+            },
             _ => write!(f, "{:?}", self),
         }
     }

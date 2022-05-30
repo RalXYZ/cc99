@@ -15,7 +15,7 @@ impl<'ctx> Generator<'ctx> {
         func_param: &[(BasicType, Option<String>)],
         func_body: &Statement,
         span: Span,
-    ) -> Result<(), CE> {
+    ) -> Result<(), Vec<CE>> {
         let func = self.module.get_function(func_name).unwrap();
         self.val_map_block_stack.push(HashMap::new());
 
@@ -23,6 +23,7 @@ impl<'ctx> Generator<'ctx> {
         self.current_function = Some((func, func_ty.0));
 
         let mut func_param_alloca = Vec::new();
+        let mut errors: Vec<CE> = Vec::new();
 
         // create function block
         let func_block = self.context.append_basic_block(func, "entry");
@@ -55,12 +56,14 @@ impl<'ctx> Generator<'ctx> {
             func_param_alloca.push(alloca);
 
             if func_param[i].1.is_some() {
-                self.insert_to_val_map(
+                if let Err(e) = self.insert_to_val_map(
                     &func_param[i].0,
                     func_param[i].1.as_ref().unwrap(),
                     alloca,
                     span,
-                )?;
+                ) {
+                    errors.push(e);
+                }
             }
         }
 
@@ -71,16 +74,19 @@ impl<'ctx> Generator<'ctx> {
 
         // generate IR for each statement or declaration in function body
         if let StatementEnum::Compound(ref state_or_decl) = func_body.node {
-            for element in state_or_decl {
-                match element.node {
-                    StatementOrDeclarationEnum::Statement(ref state) => {
-                        self.gen_statement(state)?;
-                    }
-                    StatementOrDeclarationEnum::LocalDeclaration(ref decl) => {
-                        self.gen_decl_in_fn(decl)?;
-                    }
-                }
-            }
+            errors.extend(
+                state_or_decl
+                    .iter()
+                    .map(|element| match element.node {
+                        StatementOrDeclarationEnum::Statement(ref state) => {
+                            self.gen_statement(state)
+                        }
+                        StatementOrDeclarationEnum::LocalDeclaration(ref decl) => {
+                            self.gen_decl_in_fn(decl)
+                        }
+                    })
+                    .filter_map(|result| if result.is_err() { result.err() } else { None }),
+            );
         } else {
             panic!("internal error: func_body is not Statement::Compound");
         }
@@ -112,7 +118,12 @@ impl<'ctx> Generator<'ctx> {
 
         self.val_map_block_stack.pop();
         self.current_function = None;
-        Ok(())
+
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
     }
 
     fn insert_to_val_map(
