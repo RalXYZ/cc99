@@ -45,7 +45,20 @@ impl Parse {
                 if escape_sequence == "\\0" {
                     return Ok('\0');
                 }
-                unimplemented!();
+                if escape_sequence.starts_with("\\x") {
+                    let hex_string = escape_sequence.chars().skip(2).collect::<String>();
+                    let hex_value = u8::from_str_radix(&hex_string, 16)?;
+                    return Ok(char::from(hex_value));
+                }
+                if escape_sequence.starts_with("\\u") {
+                    unimplemented!();
+                }
+                if escape_sequence.starts_with("\\U") {
+                    unimplemented!();
+                }
+                let oct_string = escape_sequence.chars().skip(1).collect::<String>();
+                let oct_value = u8::from_str_radix(&oct_string, 8)?;
+                return Ok(char::from(oct_value));
             }
         })
     }
@@ -333,7 +346,6 @@ impl Parse {
         &mut self,
         _pair: Pair<'_, Rule>,
     ) -> Result<Expression, Box<dyn Error>> {
-        // TODO(TO/GA)
         unimplemented!();
     }
 }
