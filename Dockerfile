@@ -5,7 +5,6 @@ COPY . .
 ENV LLVM_SYS_130_PREFIX /usr
 RUN apt install libz-dev -y
 RUN cargo build --package cc99 --bin cc99 --release
-RUN cd cc99-frontend && chmod +x build_wasm.sh && ./build_wasm.sh  \
 RUN cd cc99-frontend && npm install && npm run build && mv build /srv && mv /srv/build /srv/cc99
 
 

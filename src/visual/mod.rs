@@ -1,5 +1,4 @@
 use serde::Serialize;
-use wasm_bindgen::prelude::*;
 
 use super::ast::AST;
 use super::parse::Parse;
@@ -18,7 +17,6 @@ struct VisualResult {
     ast: Box<AST>,
 }
 
-#[wasm_bindgen]
 pub fn compile_result(code: &str) -> String {
     let mut result = VisualResult {
         error: false,

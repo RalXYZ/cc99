@@ -17,7 +17,6 @@ crate-type = ["cdylib", "lib"]
 [features]
 default = ["local"]
 local = ["clap","inkwell"]
-web =["wasm-bindgen"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -28,7 +27,6 @@ serde = { version = "1.0", features = ["derive"] }
 walkdir = "2.3.2"
 serde_json = "1.0.59"
 clap = { version = "3.1.8", features = ["derive"], optional = true }
-wasm-bindgen = { version = "0.2.80", optional = true }
 inkwell = { features = ["llvm13-0"], optional = true}
 anyhow = "1.0"
 thiserror = "1.0"

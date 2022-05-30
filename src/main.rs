@@ -6,8 +6,10 @@ extern crate core;
 use clap::{ArgGroup, Parser};
 use inkwell::{context::Context, OptimizationLevel};
 use std::fs;
+use std::io::{Read, stdin};
 use std::path::Path;
 use std::process::Command;
+use cc99::compile_result;
 
 mod ast;
 mod generator;
@@ -23,7 +25,7 @@ use preprocess::*;
 #[clap(author, version, about, long_about = None)]
 #[clap(group(
     ArgGroup::new("stage")
-        .args(&["expand", "parse", "bitcode", "compile", "assemble"])
+        .args(&["expand", "parse", "bitcode", "compile", "assemble","visual"])
 ))]
 struct Args {
     /// Source code
@@ -58,6 +60,10 @@ struct Args {
     #[clap(short = 'O', long, default_value = "0")]
     opt_level: u32,
 
+    /// Visual Compile AST
+    #[clap(short = 'V', long)]
+    visual: bool,
+
     /// Add the directory <dir>,<dir>,<dir>(from left to right) to the list of directories to be searched for header files during preprocessing
     #[clap(short, long)]
     include: Option<String>,
@@ -69,6 +75,21 @@ fn main() {
         Some(ref includes) => includes.split(',').collect(),
         None => Default::default(),
     };
+    if args.visual {
+        let mut buffer = String::new();
+        let size=stdin().read_to_string(&mut buffer);
+        match size {
+            Ok(_)=>{
+                let res=compile_result(buffer.as_str());
+                print!("{}",res);
+                std::process::exit(0);
+            }
+            Err(e)=>{
+                eprintln!("Unable to read stdin: {}",e);
+                std::process::exit(1);
+            }
+        }
+    }
     let basename = Path::new(&args.file).file_stem().unwrap().to_str().unwrap();
     let output_file = match args.output {
         Some(output) => output,
@@ -93,25 +114,40 @@ fn main() {
         1 => OptimizationLevel::Less,
         2 => OptimizationLevel::Default,
         3 => OptimizationLevel::Aggressive,
-        _ => panic!("Invalid optimization level"),
+        _ => {
+            eprintln!("Invalid optimization level");
+            std::process::exit(1);
+        },
     };
 
     // preprocess
     let code = preprocess_file(&args.file, &include_dirs)
-        .unwrap_or_else(|e| panic!("Preprocess failed:\n{}", e));
+        .unwrap_or_else(|e|  {
+            eprintln!("Preprocess failed:\n{}", e);
+            std::process::exit(1);
+        });
 
     if args.expand {
         fs::write(&output_file, &code)
-            .unwrap_or_else(|_| panic!("Unable to write file {}", output_file));
+            .unwrap_or_else(|_| {
+                eprintln!("Unable to write file {}", output_file);
+                std::process::exit(1);
+            });
     } else {
         // parse
         let ast = Parse::new()
             .parse(&code)
-            .unwrap_or_else(|e| panic!("Parse failed:\n{}", e));
+            .unwrap_or_else(|e| {
+                eprintln!("Parse failed:\n{}", e);
+                std::process::exit(1);
+            });
 
         if args.parse {
             fs::write(&output_file, &serde_json::to_string(&ast).unwrap())
-                .unwrap_or_else(|_| panic!("Unable to write file {}", output_file));
+                .unwrap_or_else(|_| {
+                    eprintln!("Unable to write file {}", output_file);
+                    std::process::exit(1);
+                });
         } else {
             // code_gen
             let context = Context::create();
@@ -121,12 +157,14 @@ fn main() {
             if args.bitcode {
                 // generate LLVM bitcode
                 if !code_gen.out_bc(Some(output_file)) {
-                    panic!("Unable to generate bitcode");
+                    eprintln!("Unable to generate bitcode");
+                    std::process::exit(1);
                 }
             } else if args.compile {
                 // generate assembly code
                 if let Err(e) = code_gen.out_asm_or_obj(false, Some(output_file), opt_level) {
-                    panic!("{}", e);
+                    eprintln!("{}", e);
+                    std::process::exit(1);
                 }
             } else {
                 // generate object code
@@ -138,7 +176,8 @@ fn main() {
                     }),
                     opt_level,
                 ) {
-                    panic!("{}", e);
+                    eprintln!("{}", e);
+                    std::process::exit(1);
                 }
                 if !args.assemble {
                     // generate binary
@@ -150,12 +189,14 @@ fn main() {
                         .output()
                         .expect("Unable to generate binary");
                     if !clang_result.status.success() {
-                        panic!("{}", String::from_utf8_lossy(&clang_result.stderr));
+                        eprintln!("{}", String::from_utf8_lossy(&clang_result.stderr));
+                        std::process::exit(1);
                     }
 
                     // remove tmp files
                     fs::remove_file(basename.to_string() + ".o").unwrap_or_else(|_| {
-                        panic!("Unable to remove file {}", basename.to_string() + ".o");
+                        eprintln!("Unable to remove file {}", basename.to_string() + ".o");
+                        std::process::exit(1);
                     });
                 }
             }

@@ -11,8 +11,6 @@
     "ansi-to-react": "^6.1.6",
     "antd": "^4.19.3",
     "axios": "^0.27.2",
-    "cc99": "file:../pkg",
-    "customize-cra": "^1.0.0",
     "js-yaml": "^4.1.0",
     "react": "^17.0.0",
     "react-ace": "^9.5.0",
@@ -20,13 +18,12 @@
     "react-dom": "^17.0.0",
     "react-resize-panel": "^0.3.5",
     "react-scripts": "5.0.0",
-    "wasm-loader": "^1.3.0",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-app-rewired start",
-    "build": "react-app-rewired build",
-    "test": "react-app-rewired test",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
   "eslintConfig": {

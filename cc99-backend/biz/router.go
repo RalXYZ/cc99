@@ -4,6 +4,7 @@ import (
 	"cc99-backend/biz/handler/gen"
 	"cc99-backend/biz/handler/ping"
 	"cc99-backend/biz/handler/run"
+	"cc99-backend/biz/handler/visual"
 	"cc99-backend/mw"
 	"github.com/gin-gonic/gin"
 )
@@ -19,6 +20,8 @@ func InitRouter() *gin.Engine {
 	api.GET("/ping", ping.Pong) // ping
 	api.POST("/gen", gen.Gen)
 	api.POST("/run", run.Run)
+	api.POST("/visual", visual.Visual)
+
 	return r
 
 }

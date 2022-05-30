@@ -11,11 +11,10 @@ import {
 } from "antd";
 
 import ResizePanel from "react-resize-panel";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Editor from "./components/AceEditor";
 import { ExampleCode } from "./data/example";
 import Ast2Vis from "./utils/AST2Vis";
-import init, { compile_result } from "cc99";
 import AntVG6 from "./components/AntVG6";
 import Logger from "./utils/logger";
 import axios from "axios";
@@ -26,14 +25,8 @@ const { TextArea } = Input;
 const { Header, Footer, Content } = Layout;
 const { Option } = Select;
 function App() {
-  useEffect(() => {
-    init();
-  }, []);
   const [code, setCode] = useState(ExampleCode[0].code);
   const [visAst, setVisAst] = useState({ id: "0", label: "CC99" });
-  const [output, setOutput] = useState(
-    Logger.Info("Please compile the code before running!")
-  );
   const [stdin, setStdin] = useState("");
   const [compileOptions, setCompileOptions] = useState("");
   const [execArgs, setExecArgs] = useState("");
@@ -56,9 +49,6 @@ function App() {
       ))}
     </Select>
   );
-  const appendOutput = (data) => {
-    setOutput(`${output}\n${data}`);
-  };
 
   const onClickRunCode = async () => {
     try {
@@ -142,23 +132,45 @@ function App() {
     }
   };
 
-  const compile = () => {
-    let data = JSON.parse(compile_result(code));
-    console.log(data);
-    if (!data["error"]) {
-      setVisAst(Ast2Vis(data["ast"]));
-
-      message.success("Compile Success!");
-      appendOutput(Logger.Info("compile success!"));
-    } else {
-      notification.error({
-        message: "Compile Error",
-        description: data["message"],
-        duration: 5,
+  const compile = async () => {
+    try {
+      let res = await axios("http://localhost:5001/api/visual", {
+        method: "post",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        data: {
+          code,
+        },
       });
-      appendOutput("compile error!\n" + Logger.Error(data["message"]));
-    }
+      if (res.data.st !== 0) {
+        notification.error({
+          duration: 5,
+          description: "Server related errors",
+          message: res.data.msg,
+        });
+        return;
+      }
+      let data = JSON.parse(res.data.data.res);
+      console.log(data);
+      if (!data["error"]) {
+        setVisAst(Ast2Vis(data["ast"]));
 
+        message.success("Compile Success!");
+      } else {
+        notification.error({
+          message: "Compile Error",
+          description: data["message"],
+          duration: 5,
+        });
+      }
+    } catch (e) {
+      notification.error({
+        duration: 5,
+        description: "Server related errors",
+        message: e,
+      });
+    }
     // console.log(JSON.stringify(data["ast"], null, "\t"));
   };
   return (

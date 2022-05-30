@@ -1,4 +1,3 @@
-#[cfg(not(feature = "web"))]
 use super::super::utils::CompileErr as CE;
 use super::*;
 use std::fmt;
@@ -110,7 +109,6 @@ impl<'ctx> BasicType {
     }
 }
 
-#[cfg(not(feature = "web"))]
 impl<'ctx> BaseType {
     fn cast_rank(&self) -> i32 {
         match *self {
