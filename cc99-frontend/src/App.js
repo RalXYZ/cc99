@@ -16,7 +16,6 @@ import Editor from "./components/AceEditor";
 import { ExampleCode } from "./data/example";
 import Ast2Vis from "./utils/AST2Vis";
 import AntVG6 from "./components/AntVG6";
-import Logger from "./utils/logger";
 import axios from "axios";
 import Ansi from "ansi-to-react";
 
@@ -123,6 +122,7 @@ function App() {
       setStdout(res.data.data.stdout);
       setStderr(res.data.data.stderr);
       setExitCode(res.data.data.exitCode);
+      await compile();
     } catch (e) {
       notification.error({
         duration: 5,
@@ -134,7 +134,7 @@ function App() {
 
   const compile = async () => {
     try {
-      let res = await axios("http://localhost:5001/api/visual", {
+      let res = await axios("/api/visual", {
         method: "post",
         headers: {
           "Content-Type": "application/json",
