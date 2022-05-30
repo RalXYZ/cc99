@@ -608,7 +608,7 @@ impl<'ctx> Generator<'ctx> {
         };
         //return FloatValue
         if let Ok(result_f) = result_f {
-            return Ok(result_f.as_basic_value_enum())
+            return Ok(result_f.as_basic_value_enum());
         }
         let result_i = match op.node {
             BinaryOperationEnum::LessThan => {
@@ -874,7 +874,9 @@ impl<'ctx> Generator<'ctx> {
             {
                 Ok((
                     ret_t.base_type,
-                    ret_v.unwrap_or_else(|| self.context.i32_type().const_zero().as_basic_value_enum()),
+                    ret_v.unwrap_or_else(|| {
+                        self.context.i32_type().const_zero().as_basic_value_enum()
+                    }),
                 ))
             } else {
                 unreachable!()
