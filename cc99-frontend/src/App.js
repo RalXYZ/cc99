@@ -269,17 +269,17 @@ function App() {
               href={"https://github.com/RalXYZ/cc99"}
               className="no-underline hover:underline"
             >
-              CC99{" "}
+              cc99{" "}
             </a>{" "}
-            is the course project of ZJU Compilation, made by TO/GA,Ralph and
+            is the final project of ZJU Compiler Principle course, made by TO/GA, RalXYZ and
             Raynor. NOT{" "}
             <a
               href={"https://cc98.org"}
               className="no-underline hover:underline"
             >
-              CC98.org{" "}
+              cc98.org{" "}
             </a>{" "}
-            , we are Compile of C99!
+            !
           </div>
         </Footer>
       </Layout>
