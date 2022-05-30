@@ -159,9 +159,11 @@ impl<'ctx> Generator<'ctx> {
         if let BaseType::Array(ref arr_t, arr_len_vec) = l_t.base_type {
             let res_t: BaseType;
             if idx_vec.len() > arr_len_vec.len() {
-                return Err(
-                    CE::array_dimension_mismatch(arr_len_vec.len(), idx_vec.len(), span),
-                );
+                return Err(CE::array_dimension_mismatch(
+                    arr_len_vec.len(),
+                    idx_vec.len(),
+                    span,
+                ));
             } else if idx_vec.len() == arr_len_vec.len() {
                 res_t = arr_t.base_type.clone();
             } else {
@@ -772,9 +774,10 @@ impl<'ctx> Generator<'ctx> {
                             l_v.into_pointer_value(),
                         ))
                     } else {
-                        Err(
-                            CE::invalid_dereference(l_v.print_to_string().to_string(), lhs.span),
-                        )
+                        Err(CE::invalid_dereference(
+                            l_v.print_to_string().to_string(),
+                            lhs.span,
+                        ))
                     }
                 } else if l_v.is_pointer_value() {
                     Ok((
@@ -785,7 +788,10 @@ impl<'ctx> Generator<'ctx> {
                         l_v.into_pointer_value(),
                     ))
                 } else {
-                    Err(CE::invalid_left_value(l_v.print_to_string().to_string(), lhs.span))
+                    Err(CE::invalid_left_value(
+                        l_v.print_to_string().to_string(),
+                        lhs.span,
+                    ))
                 }
             }
             ExpressionEnum::ArraySubscript(ref id_expr, ref idx_vec) => {

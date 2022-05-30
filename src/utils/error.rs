@@ -180,8 +180,7 @@ impl CompileErr {
             message: format!(
                 "invalid left value for a not addressable variable `{}`",
                 name
-            )
-            ,
+            ),
             label: "invalid left value here".to_string(),
             span,
             notes: None,
@@ -191,8 +190,7 @@ impl CompileErr {
     pub fn invalid_dereference(name: String, span: Span) -> CompileErr {
         CompileErr {
             code: "E016".to_string(),
-            message: format!("invalid dereference for a no pointer variable `{}`", name)
-                ,
+            message: format!("invalid dereference for a no pointer variable `{}`", name),
             label: "invalid dereference here".to_string(),
             span,
             notes: None,
