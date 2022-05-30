@@ -1,7 +1,7 @@
 [package]
 name = "cc99"
-version = "0.1.0"
-authors = ["TO/GA", "Ralph", "Raynor"]
+version = "0.2.0"
+authors = ["TO/GA", "RalXYZ", "Raynor"]
 edition = "2021"
 description = "A C-like language compiler"
 readme = "README.md"
