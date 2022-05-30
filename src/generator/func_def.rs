@@ -57,7 +57,7 @@ impl<'ctx> Generator<'ctx> {
             if func_param[i].1.is_some() {
                 self.insert_to_val_map(
                     &func_param[i].0,
-                    &func_param[i].1.as_ref().unwrap(),
+                    func_param[i].1.as_ref().unwrap(),
                     alloca,
                     span,
                 )?;
@@ -112,7 +112,7 @@ impl<'ctx> Generator<'ctx> {
 
         self.val_map_block_stack.pop();
         self.current_function = None;
-        return Ok(());
+        Ok(())
     }
 
     fn insert_to_val_map(
@@ -125,7 +125,7 @@ impl<'ctx> Generator<'ctx> {
         let local_map = self.val_map_block_stack.last_mut().unwrap();
 
         if local_map.contains_key(identifier) {
-            return Err(CE::duplicated_variable(identifier.to_string(), span).into());
+            return Err(CE::duplicated_variable(identifier.to_string(), span));
         }
 
         local_map.insert(identifier.to_string(), (var_type.clone(), ptr));
@@ -148,11 +148,11 @@ impl<'ctx> Generator<'ctx> {
                 self.gen_assignment(
                     &AssignOperation {
                         node: AssignOperationEnum::Naive,
-                        span: expr.span.clone(),
+                        span: expr.span,
                     },
                     &Box::new(Expression {
                         node: ExpressionEnum::Identifier(identifier.to_owned().unwrap()),
-                        span: expr.span.clone(),
+                        span: expr.span,
                     }),
                     expr,
                     decl.span,
@@ -163,8 +163,7 @@ impl<'ctx> Generator<'ctx> {
             Err(CE::plain_error(
                 "FunctionDefinition cannot exist in function".to_string(),
                 decl.span,
-            )
-            .into())
+            ))
         }
     }
 }

@@ -32,7 +32,7 @@ impl<'ctx> Generator<'ctx> {
 
         let triple = TargetMachine::get_default_triple();
         let cpu = match opt {
-            OptimizationLevel::None => std::env::consts::ARCH.to_string().replace("_", "-"),
+            OptimizationLevel::None => std::env::consts::ARCH.to_string().replace('_', "-"),
             _ => TargetMachine::get_host_cpu_name().to_string(),
         };
         let features = match opt {
@@ -93,6 +93,6 @@ impl<'ctx> Generator<'ctx> {
             )
             .unwrap();
 
-        return Ok(());
+        Ok(())
     }
 }

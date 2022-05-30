@@ -22,7 +22,7 @@ impl<'ctx> Generator<'ctx> {
                 BaseType::Void,
                 self.context
                     .i8_type()
-                    .const_int(0 as u64, false)
+                    .const_int(0_u64, false)
                     .as_basic_value_enum(),
             )),
             ExpressionEnum::Assignment(ref op, ref lhs, ref rhs) => {
@@ -146,7 +146,7 @@ impl<'ctx> Generator<'ctx> {
                     unreachable!()
                 }
             }
-            _ => return Err(CE::unknown_expression(expr.span).into()),
+            _ => Err(CE::unknown_expression(expr.span)),
         }
     }
 
@@ -160,7 +160,7 @@ impl<'ctx> Generator<'ctx> {
             let res_t: BaseType;
             if idx_vec.len() > arr_len_vec.len() {
                 return Err(
-                    CE::array_dimension_mismatch(arr_len_vec.len(), idx_vec.len(), span).into(),
+                    CE::array_dimension_mismatch(arr_len_vec.len(), idx_vec.len(), span),
                 );
             } else if idx_vec.len() == arr_len_vec.len() {
                 res_t = arr_t.base_type.clone();
@@ -189,15 +189,14 @@ impl<'ctx> Generator<'ctx> {
             ))
         } else if let BaseType::Pointer(ref point_t) = l_t.base_type {
             if idx_vec.len() != 1 {
-                return Err(CE::pointer_dimension_mismatch(1, idx_vec.len(), span).into());
+                return Err(CE::pointer_dimension_mismatch(1, idx_vec.len(), span));
             }
             // we don't support more than 1 dimension pointer
             if let BaseType::Pointer(_) = point_t.base_type {
                 return Err(CE::plain_error(
                     "unsupported multidimensional pointer".to_string(),
                     span,
-                )
-                .into());
+                ));
             }
             //pointer doesn't need extra 0
             let mut idx_int_val_vec = vec![];
@@ -233,7 +232,7 @@ impl<'ctx> Generator<'ctx> {
                 | BaseType::UnsignedInteger(_)
                 | BaseType::Float
                 | BaseType::Double => Ok((expr_type, expr_value)),
-                _ => return Err(CE::invalid_unary(span).into()),
+                _ => Err(CE::invalid_unary(span)),
             },
             UnaryOperationEnum::UnaryMinus => match expr_type {
                 BaseType::Bool | BaseType::SignedInteger(_) | BaseType::UnsignedInteger(_) => Ok((
@@ -248,7 +247,7 @@ impl<'ctx> Generator<'ctx> {
                         .build_float_neg(expr_value.into_float_value(), "float_neg")
                         .as_basic_value_enum(),
                 )),
-                _ => return Err(CE::invalid_unary(span).into()),
+                _ => Err(CE::invalid_unary(span)),
             },
             UnaryOperationEnum::BitwiseNot => match expr_type {
                 BaseType::SignedInteger(_) | BaseType::UnsignedInteger(_) => Ok((
@@ -257,14 +256,14 @@ impl<'ctx> Generator<'ctx> {
                         .build_not(expr_value.into_int_value(), "bitwise_not")
                         .as_basic_value_enum(),
                 )),
-                _ => return Err(CE::invalid_unary(span).into()),
+                _ => Err(CE::invalid_unary(span)),
             },
             UnaryOperationEnum::LogicalNot => match expr_type {
                 BaseType::SignedInteger(_) => {
                     let llvm_type = self.convert_llvm_type(&expr_type);
                     let result_int = self.builder.build_int_compare(
                         IntPredicate::EQ,
-                        llvm_type.into_int_type().const_int(0 as u64, true),
+                        llvm_type.into_int_type().const_int(0_u64, true),
                         expr_value.into_int_value(),
                         "logical_not_result_int",
                     );
@@ -281,7 +280,7 @@ impl<'ctx> Generator<'ctx> {
                             .as_basic_value_enum(),
                     ))
                 }
-                _ => return Err(CE::invalid_unary(span).into()),
+                _ => Err(CE::invalid_unary(span)),
             },
             UnaryOperationEnum::Reference => {
                 let (t, ptr) = self.get_lvalue(expr)?;
@@ -294,7 +293,7 @@ impl<'ctx> Generator<'ctx> {
                         .build_load(expr_value.into_pointer_value(), "dereference")
                         .as_basic_value_enum(),
                 )),
-                _ => return Err(CE::invalid_unary(span).into()),
+                _ => Err(CE::invalid_unary(span)),
             },
             UnaryOperationEnum::PostfixDecrement | UnaryOperationEnum::PostfixIncrement => {
                 match expr_type {
@@ -306,12 +305,12 @@ impl<'ctx> Generator<'ctx> {
                         let assign_op = if op.node == UnaryOperationEnum::PostfixIncrement {
                             AssignOperation {
                                 node: AssignOperationEnum::Addition,
-                                span: op.span.clone(),
+                                span: op.span,
                             }
                         } else {
                             AssignOperation {
                                 node: AssignOperationEnum::Subtraction,
-                                span: op.span.clone(),
+                                span: op.span,
                             }
                         };
                         let _ = self.gen_assignment(
@@ -319,13 +318,13 @@ impl<'ctx> Generator<'ctx> {
                             expr,
                             &Box::new(Expression {
                                 node: ExpressionEnum::IntegerConstant(1),
-                                span: op.span.clone(),
+                                span: op.span,
                             }),
                             span,
                         )?;
                         Ok((expr_type, expr_value))
                     }
-                    _ => return Err(CE::invalid_unary(span).into()),
+                    _ => Err(CE::invalid_unary(span)),
                 }
             }
             UnaryOperationEnum::PrefixIncrement | UnaryOperationEnum::PrefixDecrement => {
@@ -338,12 +337,12 @@ impl<'ctx> Generator<'ctx> {
                         let assign_op = if op.node == UnaryOperationEnum::PostfixIncrement {
                             AssignOperation {
                                 node: AssignOperationEnum::Addition,
-                                span: op.span.clone(),
+                                span: op.span,
                             }
                         } else {
                             AssignOperation {
                                 node: AssignOperationEnum::Subtraction,
-                                span: op.span.clone(),
+                                span: op.span,
                             }
                         };
                         self.gen_assignment(
@@ -351,15 +350,15 @@ impl<'ctx> Generator<'ctx> {
                             expr,
                             &Box::new(Expression {
                                 node: ExpressionEnum::IntegerConstant(1),
-                                span: op.span.clone(),
+                                span: op.span,
                             }),
                             span,
                         )
                     }
-                    _ => return Err(CE::invalid_unary(span).into()),
+                    _ => Err(CE::invalid_unary(span)),
                 }
             }
-            _ => return Err(CE::invalid_unary(span).into()),
+            _ => Err(CE::invalid_unary(span)),
         }
     }
 
@@ -383,7 +382,7 @@ impl<'ctx> Generator<'ctx> {
                 } else if let BaseType::Array(array_type, array_vec) = r_t {
                     visit = 1;
                     if array_vec.len() != 1 {
-                        Err(CE::array_dimension_mismatch(1, array_vec.len(), span).into())
+                        Err(CE::array_dimension_mismatch(1, array_vec.len(), span))
                     } else {
                         let point_v = self.cast_value(
                             r_t,
@@ -398,7 +397,7 @@ impl<'ctx> Generator<'ctx> {
                         )
                     }
                 } else {
-                    Err(CE::plain_error("".to_string(), span).into())
+                    Err(CE::plain_error("".to_string(), span))
                 }
             }
             BaseType::Pointer(_) => match r_t {
@@ -410,12 +409,12 @@ impl<'ctx> Generator<'ctx> {
                     visit = 2;
                     self.build_point_binary_op(op, l_v.into_pointer_value(), r_v.into_int_value())
                 }
-                _ => Err(CE::plain_error("".to_string(), span).into()),
+                _ => Err(CE::plain_error("".to_string(), span)),
             },
             BaseType::Array(array_type, array_vec) => {
                 visit = 2;
                 if array_vec.len() != 1 {
-                    Err(CE::array_dimension_mismatch(1, array_vec.len(), span).into())
+                    Err(CE::array_dimension_mismatch(1, array_vec.len(), span))
                 } else {
                     let point_v = self.cast_value(
                         l_t,
@@ -430,7 +429,7 @@ impl<'ctx> Generator<'ctx> {
                     )
                 }
             }
-            _ => Err(CE::plain_error("".to_string(), span).into()),
+            _ => Err(CE::plain_error("".to_string(), span)),
         };
         if visit > 0 {
             return match tmp {
@@ -445,16 +444,15 @@ impl<'ctx> Generator<'ctx> {
             };
         }
 
-        let cast_t = BaseType::upcast(&l_t, &r_t)?;
-        let l_cast_v = self.cast_value(&l_t, &l_v, &cast_t, lhs.span)?;
-        let r_cast_v = self.cast_value(&r_t, &r_v, &cast_t, lhs.span)?;
+        let cast_t = BaseType::upcast(l_t, r_t)?;
+        let l_cast_v = self.cast_value(l_t, &l_v, &cast_t, lhs.span)?;
+        let r_cast_v = self.cast_value(r_t, &r_v, &cast_t, lhs.span)?;
 
         match cast_t {
             BaseType::Void => Err(CE::plain_error(
                 "Invalid void type for binary operation".to_string(),
                 span,
-            )
-            .into()),
+            )),
             BaseType::SignedInteger(_) | BaseType::UnsignedInteger(_) | BaseType::Bool => {
                 let int_or_bool_value = self.build_int_binary_op(
                     op,
@@ -578,7 +576,7 @@ impl<'ctx> Generator<'ctx> {
                 "logical int or",
             ),
 
-            _ => return Err(CE::invalid_binary(span).into()),
+            _ => return Err(CE::invalid_binary(span)),
         };
 
         Ok(result_v.as_basic_value_enum())
@@ -707,7 +705,7 @@ impl<'ctx> Generator<'ctx> {
                 ),
                 "logical float or",
             ),
-            _ => return Err(CE::invalid_binary(op.span).into()),
+            _ => return Err(CE::invalid_binary(op.span)),
         };
         //return IntValue
         Ok(result_i.as_basic_value_enum())
@@ -775,8 +773,7 @@ impl<'ctx> Generator<'ctx> {
                         ))
                     } else {
                         Err(
-                            CE::invalid_dereference(l_v.print_to_string().to_string(), lhs.span)
-                                .into(),
+                            CE::invalid_dereference(l_v.print_to_string().to_string(), lhs.span),
                         )
                     }
                 } else if l_v.is_pointer_value() {
@@ -788,7 +785,7 @@ impl<'ctx> Generator<'ctx> {
                         l_v.into_pointer_value(),
                     ))
                 } else {
-                    Err(CE::invalid_left_value(l_v.print_to_string().to_string(), lhs.span).into())
+                    Err(CE::invalid_left_value(l_v.print_to_string().to_string(), lhs.span))
                 }
             }
             ExpressionEnum::ArraySubscript(ref id_expr, ref idx_vec) => {
@@ -834,8 +831,7 @@ impl<'ctx> Generator<'ctx> {
                     fv.get_type().count_param_types() as usize,
                     args.len(),
                     span,
-                )
-                .into());
+                ));
             }
 
             let mut casted_args = Vec::with_capacity(args.len());

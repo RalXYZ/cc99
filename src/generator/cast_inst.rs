@@ -12,14 +12,14 @@ impl<'ctx> Generator<'ctx> {
                 Ty::UnsignedInteger(_) => Op::ZExt,
                 Ty::Float | Ty::Double => Op::SIToFP,
                 Ty::Pointer(_) => Op::IntToPtr,
-                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span).into()),
+                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span)),
             },
             Ty::SignedInteger(IT::Char) => match dest {
                 Ty::SignedInteger(IT::Char) => Op::BitCast,
                 Ty::SignedInteger(_) | Ty::UnsignedInteger(_) => Op::ZExt,
                 Ty::Float | Ty::Double => Op::UIToFP,
                 Ty::Pointer(_) => Op::IntToPtr,
-                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span).into()),
+                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span)),
             },
 
             // short
@@ -30,7 +30,7 @@ impl<'ctx> Generator<'ctx> {
                 Ty::UnsignedInteger(_) => Op::ZExt,
                 Ty::Float | Ty::Double => Op::SIToFP,
                 Ty::Pointer(_) => Op::IntToPtr,
-                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span).into()),
+                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span)),
             },
             Ty::UnsignedInteger(IT::Short) => match dest {
                 Ty::SignedInteger(IT::Char) | Ty::UnsignedInteger(IT::Char) => Op::Trunc,
@@ -38,7 +38,7 @@ impl<'ctx> Generator<'ctx> {
                 Ty::SignedInteger(_) | Ty::UnsignedInteger(_) => Op::ZExt,
                 Ty::Float | Ty::Double => Op::UIToFP,
                 Ty::Pointer(_) => Op::IntToPtr,
-                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span).into()),
+                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span)),
             },
 
             // int
@@ -52,7 +52,7 @@ impl<'ctx> Generator<'ctx> {
                 Ty::UnsignedInteger(_) => Op::ZExt,
                 Ty::Float | Ty::Double => Op::SIToFP,
                 Ty::Pointer(_) => Op::IntToPtr,
-                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span).into()),
+                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span)),
             },
             Ty::UnsignedInteger(IT::Int) => match dest {
                 Ty::SignedInteger(IT::Char)
@@ -63,7 +63,7 @@ impl<'ctx> Generator<'ctx> {
                 Ty::SignedInteger(_) | Ty::UnsignedInteger(_) => Op::ZExt,
                 Ty::Float | Ty::Double => Op::UIToFP,
                 Ty::Pointer(_) => Op::IntToPtr,
-                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span).into()),
+                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span)),
             },
 
             // long
@@ -79,7 +79,7 @@ impl<'ctx> Generator<'ctx> {
                 Ty::UnsignedInteger(_) => Op::ZExt,
                 Ty::Float | Ty::Double => Op::SIToFP,
                 Ty::Pointer(_) => Op::IntToPtr,
-                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span).into()),
+                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span)),
             },
             Ty::UnsignedInteger(IT::Long) => match dest {
                 Ty::SignedInteger(IT::Char)
@@ -92,7 +92,7 @@ impl<'ctx> Generator<'ctx> {
                 Ty::SignedInteger(_) | Ty::UnsignedInteger(_) => Op::ZExt,
                 Ty::Float | Ty::Double => Op::UIToFP,
                 Ty::Pointer(_) => Op::IntToPtr,
-                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span).into()),
+                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span)),
             },
 
             // long long
@@ -108,7 +108,7 @@ impl<'ctx> Generator<'ctx> {
                 Ty::UnsignedInteger(IT::LongLong) => Op::BitCast,
                 Ty::Float | Ty::Double => Op::SIToFP,
                 Ty::Pointer(_) => Op::IntToPtr,
-                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span).into()),
+                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span)),
             },
             Ty::UnsignedInteger(IT::LongLong) => match dest {
                 Ty::SignedInteger(IT::Char)
@@ -122,38 +122,38 @@ impl<'ctx> Generator<'ctx> {
                 Ty::SignedInteger(IT::LongLong) => Op::BitCast,
                 Ty::Float | Ty::Double => Op::UIToFP,
                 Ty::Pointer(_) => Op::IntToPtr,
-                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span).into()),
+                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span)),
             },
 
             Ty::Bool => match dest {
                 Ty::SignedInteger(_) | Ty::UnsignedInteger(_) => Op::ZExt,
                 Ty::Float | Ty::Double => Op::UIToFP,
-                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span).into()),
+                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span)),
             },
 
             Ty::Float => match dest {
                 Ty::SignedInteger(_) => Op::FPToSI,
                 Ty::UnsignedInteger(_) => Op::FPToUI,
                 Ty::Double => Op::FPExt,
-                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span).into()),
+                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span)),
             },
             Ty::Double => match dest {
                 Ty::SignedInteger(_) => Op::FPToSI,
                 Ty::UnsignedInteger(_) => Op::FPToUI,
                 Ty::Float => Op::FPTrunc,
-                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span).into()),
+                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span)),
             },
 
             Ty::Pointer(_) => match dest {
                 Ty::SignedInteger(_) | Ty::UnsignedInteger(_) => Op::PtrToInt,
                 Ty::Pointer(_) => Op::BitCast,
-                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span).into()),
+                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span)),
             },
             Ty::Array(_, _) => match dest {
                 Ty::Pointer(_) => Op::BitCast,
-                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span).into()),
+                _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span)),
             },
-            _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span).into()),
+            _ => return Err(CE::invalid_cast(curr.to_string(), dest.to_string(), span)),
         };
         Ok(instruction)
     }

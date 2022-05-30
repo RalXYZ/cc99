@@ -181,7 +181,7 @@ impl CompileErr {
                 "invalid left value for a not addressable variable `{}`",
                 name
             )
-            .to_string(),
+            ,
             label: "invalid left value here".to_string(),
             span,
             notes: None,
@@ -192,7 +192,7 @@ impl CompileErr {
         CompileErr {
             code: "E016".to_string(),
             message: format!("invalid dereference for a no pointer variable `{}`", name)
-                .to_string(),
+                ,
             label: "invalid dereference here".to_string(),
             span,
             notes: None,

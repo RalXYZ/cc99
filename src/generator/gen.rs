@@ -141,7 +141,7 @@ impl<'ctx> Generator<'ctx> {
                     ) = declaration.node
                     {
                         self.gen_func_def(
-                            &return_type,
+                            return_type,
                             identifier,
                             params_type,
                             statements,
@@ -153,7 +153,7 @@ impl<'ctx> Generator<'ctx> {
                 .filter_map(|result| if result.is_err() { result.err() } else { None }),
         );
 
-        if err.len() > 0 {
+        if !err.is_empty() {
             err.iter().for_each(|err| {
                 self.gen_err_output(0, err);
             });
@@ -171,10 +171,10 @@ impl<'ctx> Generator<'ctx> {
         span: Span,
     ) -> Result<(), CE> {
         if self.function_map.contains_key(func_name) {
-            return Err(CE::duplicated_function(func_name.to_string(), span).into());
+            return Err(CE::duplicated_function(func_name.to_string(), span));
         }
         if self.global_variable_map.contains_key(func_name) {
-            return Err(CE::redefinition_symbol(func_name.to_string(), span).into());
+            return Err(CE::redefinition_symbol(func_name.to_string(), span));
         }
 
         // function parameter should be added in this llvm_func_type
@@ -269,7 +269,7 @@ impl<'ctx> Generator<'ctx> {
         }
 
         if result.is_none() {
-            return Err(CE::missing_variable(identifier.to_string(), span).into());
+            return Err(CE::missing_variable(identifier.to_string(), span));
         }
 
         Ok(result.unwrap())
@@ -283,9 +283,9 @@ impl<'ctx> Generator<'ctx> {
         span: Span,
     ) -> Result<(), CE> {
         if self.global_variable_map.contains_key(var_name) {
-            return Err(CE::duplicated_global_variable(var_name.to_string(), span).into());
+            return Err(CE::duplicated_global_variable(var_name.to_string(), span));
         } else if self.function_map.contains_key(var_name) {
-            return Err(CE::duplicated_symbol(var_name.to_string(), span).into());
+            return Err(CE::duplicated_symbol(var_name.to_string(), span));
         }
 
         let llvm_type = self.convert_llvm_type(&var_type.basic_type.base_type);

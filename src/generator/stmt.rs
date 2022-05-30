@@ -130,9 +130,9 @@ impl<'ctx> Generator<'ctx> {
                     new_block.push(StatementOrDeclaration {
                         node: StatementOrDeclarationEnum::Statement(Statement {
                             node: StatementEnum::Expression(Box::new(expr.to_owned())),
-                            span: init.span.clone(),
+                            span: init.span,
                         }),
-                        span: init.span.clone(),
+                        span: init.span,
                     });
                 }
                 ForInitClauseEnum::ForDeclaration(decl) => {
@@ -140,7 +140,7 @@ impl<'ctx> Generator<'ctx> {
                         decl.iter()
                             .map(|d| StatementOrDeclaration {
                                 node: StatementOrDeclarationEnum::LocalDeclaration(d.to_owned()),
-                                span: d.span.clone(),
+                                span: d.span,
                             })
                             .collect::<Vec<StatementOrDeclaration>>()
                             .as_mut(),
@@ -150,15 +150,15 @@ impl<'ctx> Generator<'ctx> {
         }
         let mut new_body = vec![StatementOrDeclaration {
             node: StatementOrDeclarationEnum::Statement(body.to_owned()),
-            span: body.span.clone(),
+            span: body.span,
         }];
         if let Some(iter) = iter {
             new_body.push(StatementOrDeclaration {
                 node: StatementOrDeclarationEnum::Statement(Statement {
                     node: StatementEnum::Expression(iter.to_owned()),
-                    span: iter.span.clone(),
+                    span: iter.span,
                 }),
-                span: iter.span.clone(),
+                span: iter.span,
             });
         }
         let new_cond = match cond {
@@ -174,12 +174,12 @@ impl<'ctx> Generator<'ctx> {
                     new_cond.clone(),
                     Box::new(Statement {
                         node: StatementEnum::Compound(new_body),
-                        span: body.span.clone(),
+                        span: body.span,
                     }),
                 ),
-                span: new_cond.span.clone(),
+                span: new_cond.span,
             }),
-            span: new_cond.span.clone(),
+            span: new_cond.span,
         });
         self.gen_compound_statement(&new_block)?;
         Ok(())
@@ -187,7 +187,7 @@ impl<'ctx> Generator<'ctx> {
 
     fn gen_break_statement(&mut self, span: Span) -> Result<(), CE> {
         if self.break_labels.is_empty() {
-            return Err(CE::keyword_not_in_a_loop("break".to_string(), span).into());
+            return Err(CE::keyword_not_in_a_loop("break".to_string(), span));
         }
         let break_block = self.break_labels.back().unwrap();
         self.builder.build_unconditional_branch(*break_block);
@@ -196,7 +196,7 @@ impl<'ctx> Generator<'ctx> {
 
     fn gen_continue_statement(&mut self, span: Span) -> Result<(), CE> {
         if self.continue_labels.is_empty() {
-            return Err(CE::keyword_not_in_a_loop("continue".to_string(), span).into());
+            return Err(CE::keyword_not_in_a_loop("continue".to_string(), span));
         }
         let continue_block = self.continue_labels.back().unwrap();
         self.builder.build_unconditional_branch(*continue_block);

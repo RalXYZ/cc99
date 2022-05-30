@@ -25,12 +25,12 @@ mod tests {
             if !source_path.ends_with(".c") {
                 continue;
             }
-            println!(">>> {} {} <<<", "Start compiling", source_path);
+            println!(">>> Start compiling {} <<<", source_path);
 
-            let res = preprocess_file(&source_path, &include_dirs).unwrap();
+            let res = preprocess_file(source_path, &include_dirs).unwrap();
             let ast = Parse::new().parse(&res).unwrap();
             println!("{}", serde_json::to_string(&ast).unwrap());
-            println!(">>> {} <<<", "Finish Parsing");
+            println!(">>> Finish Parsing <<<");
         }
     }
 
