@@ -63,7 +63,6 @@ impl<'ctx> Generator<'ctx> {
                 fpm.add_correlated_value_propagation_pass();
                 fpm.add_early_cse_pass();
                 fpm
-
             }
             _ => {
                 let fpm = PassManager::create(());
