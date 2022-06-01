@@ -33,39 +33,39 @@ struct Args {
     file: String,
 
     /// Place the output into <OUTPUT>
-    #[clap(short, long)]
+    #[clap(short, long, display_order = 0)]
     output: Option<String>,
 
     /// Preprocess only; do not parse, compile, assemble or link
-    #[clap(short = 'E', long)]
+    #[clap(short = 'E', long, display_order = 3)]
     expand: bool,
 
     /// Preprocess and parse; do not compile, assemble or link
-    #[clap(short, long)]
+    #[clap(short, long, display_order = 4)]
     parse: bool,
 
     /// Generate LLVM Bitcode only
-    #[clap(short, long)]
+    #[clap(short, long, display_order = 5)]
     bitcode: bool,
 
     /// Compile only; do not assemble or link
-    #[clap(short = 'S', long)]
+    #[clap(short = 'S', long, display_order = 6)]
     compile: bool,
 
     /// Compile and assemble, but do not link
-    #[clap(short = 'c', long)]
+    #[clap(short = 'c', long, display_order = 7)]
     assemble: bool,
 
-    /// Optimization level
-    #[clap(short = 'O', long, default_value = "0")]
-    opt_level: u32,
-
-    /// Visual Compile AST
-    #[clap(short = 'V', long)]
+    /// AST Visualization
+    #[clap(short = 'V', long, display_order = 8)]
     visual: bool,
 
+    /// Optimization level, from 0 to 3
+    #[clap(short = 'O', long, default_value = "0", display_order = 2)]
+    opt_level: u32,
+
     /// Add the directory <dir>,<dir>,<dir>(from left to right) to the list of directories to be searched for header files during preprocessing
-    #[clap(short, long)]
+    #[clap(short, long, display_order = 1)]
     include: Option<String>,
 }
 
