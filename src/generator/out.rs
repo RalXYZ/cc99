@@ -48,6 +48,23 @@ impl<'ctx> Generator<'ctx> {
                 pb.populate_module_pass_manager(&fpm);
                 fpm
             }
+            OptimizationLevel::Aggressive => {
+                let fpm = PassManager::create(());
+                let pb = PassManagerBuilder::create();
+                pb.set_optimization_level(opt);
+                pb.set_disable_unroll_loops(false);
+                pb.populate_module_pass_manager(&fpm);
+                fpm.add_strip_symbol_pass();
+                fpm.add_merged_load_store_motion_pass();
+                fpm.add_loop_deletion_pass();
+                fpm.add_loop_idiom_pass();
+                fpm.add_partially_inline_lib_calls_pass();
+                fpm.add_simplify_lib_calls_pass();
+                fpm.add_correlated_value_propagation_pass();
+                fpm.add_early_cse_pass();
+                fpm
+
+            }
             _ => {
                 let fpm = PassManager::create(());
                 let pb = PassManagerBuilder::create();
