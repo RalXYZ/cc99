@@ -1,6 +1,5 @@
 use pest::error::ErrorVariant;
 use pest::iterators::Pair;
-use hexf::hexf64;
 
 use super::*;
 
@@ -357,30 +356,6 @@ impl Parse {
         &mut self,
         _pair: Pair<'_, Rule>,
     ) -> Result<Expression, Box<dyn Error>> {
-        let span = pair.as_span();
-        let mut number: f64 = Default::default();
-        let mut is_double = true;
-        for token in pair.into_inner() {
-            match token.as_rule() {
-                Rule::hex_floating_constant_no_suffix => {
-                    number = hexf64!(token.as_str().to_string());
-                }
-                Rule::floating_suffix => {
-                    is_double = match token.into_inner().next().unwrap().as_rule() {
-                        Rule::f_ => false,
-                        Rule::l_ => true,
-                        _ => unreachable!(),
-                    };
-                }
-                _ => {}
-            }
-        }
-        Ok(Expression {
-            node: match is_double {
-                false => ExpressionEnum::FloatConstant(number as f32),
-                true => ExpressionEnum::DoubleConstant(number),
-            },
-            span: Span::from(span),
-        })
+        unimplemented!()
     }
 }
