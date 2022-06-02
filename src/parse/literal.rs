@@ -1,5 +1,6 @@
 use pest::error::ErrorVariant;
 use pest::iterators::Pair;
+use hexf::hexf64;
 
 use super::*;
 
@@ -28,6 +29,7 @@ impl Parse {
     }
 
     fn build_escape_sequence(&mut self, pair: Pair<'_, Rule>) -> Result<char, Box<dyn Error>> {
+        let span = pair.as_span();
         let escape_sequence = pair.as_str();
         Ok(match escape_sequence {
             "\\'" => '\'',
@@ -50,11 +52,21 @@ impl Parse {
                     let hex_value = u8::from_str_radix(&hex_string, 16)?;
                     return Ok(char::from(hex_value));
                 }
-                if escape_sequence.starts_with("\\u") {
-                    unimplemented!();
-                }
-                if escape_sequence.starts_with("\\U") {
-                    unimplemented!();
+                if escape_sequence.starts_with("\\u") || escape_sequence.starts_with("\\U") {
+                    let hex_string = escape_sequence.chars().skip(2).collect::<String>();
+                    let hex_value = u32::from_str_radix(&hex_string, 16)?;
+                    let c = char::from_u32(hex_value);
+                    match c {
+                        Some(c) => return Ok(c),
+                        None => {
+                            return Err(Box::new(pest::error::Error::<Rule>::new_from_span(
+                                ErrorVariant::CustomError {
+                                    message: "invalid unicode character".to_string(),
+                                },
+                                span,
+                            )));
+                        }
+                    }
                 }
                 let oct_string = escape_sequence.chars().skip(1).collect::<String>();
                 let oct_value = u8::from_str_radix(&oct_string, 8)?;
@@ -320,8 +332,7 @@ impl Parse {
         for token in pair.into_inner() {
             match token.as_rule() {
                 Rule::decimal_floating_constant_no_suffix => {
-                    number = token.as_str().to_string().parse::<f64>().unwrap();
-                    // TODO(TO/GA): test
+                    number = token.as_str().to_string().parse::<f64>()?;
                 }
                 Rule::floating_suffix => {
                     is_double = match token.into_inner().next().unwrap().as_rule() {
@@ -346,6 +357,30 @@ impl Parse {
         &mut self,
         _pair: Pair<'_, Rule>,
     ) -> Result<Expression, Box<dyn Error>> {
-        unimplemented!();
+        let span = pair.as_span();
+        let mut number: f64 = Default::default();
+        let mut is_double = true;
+        for token in pair.into_inner() {
+            match token.as_rule() {
+                Rule::hex_floating_constant_no_suffix => {
+                    number = hexf64!(token.as_str().to_string());
+                }
+                Rule::floating_suffix => {
+                    is_double = match token.into_inner().next().unwrap().as_rule() {
+                        Rule::f_ => false,
+                        Rule::l_ => true,
+                        _ => unreachable!(),
+                    };
+                }
+                _ => {}
+            }
+        }
+        Ok(Expression {
+            node: match is_double {
+                false => ExpressionEnum::FloatConstant(number as f32),
+                true => ExpressionEnum::DoubleConstant(number),
+            },
+            span: Span::from(span),
+        })
     }
 }
