@@ -41,6 +41,7 @@ impl<'ctx> Generator<'ctx> {
             module,
             builder,
             val_map_block_stack,
+            global_struct_map: HashMap::new(),
             current_function: None,
             break_labels: VecDeque::new(),
             continue_labels: VecDeque::new(),
@@ -49,87 +50,71 @@ impl<'ctx> Generator<'ctx> {
         }
     }
 
-    // first-time scanning
     pub fn gen(&mut self, ast: &AST) {
         let AST::GlobalDeclaration(ref declarations) = ast.deref();
 
         let mut err: Vec<CE> = vec![];
 
-        err.extend(
-            declarations
-                .iter()
-                .filter_map(|declaration| {
-                    if let DeclarationEnum::Declaration(
-                        ref type_info,
-                        ref identifier,
-                        ref initializer,
-                    ) = declaration.node
-                    {
-                        Some((type_info, identifier, initializer, declaration.span))
-                    } else {
-                        None
-                    }
-                })
-                .map(
-                    |(type_info, identifier, initializer, span)| -> Result<(), CE> {
-                        if let BaseType::Function(ref return_type, ref params_type, is_variadic) =
-                            type_info.basic_type.base_type
-                        {
-                            self.gen_function_proto(
-                                &type_info.storage_class_specifier,
-                                return_type,
-                                identifier.as_ref().unwrap(),
-                                params_type,
-                                is_variadic,
-                                span,
-                            )?;
-                        } else {
-                            self.gen_global_variable(
-                                type_info,
-                                identifier.as_ref().unwrap(),
-                                initializer,
-                                span,
-                            )?;
-                        }
-                        Ok(())
-                    },
-                )
-                .filter_map(|result| if result.is_err() { result.err() } else { None }),
-        );
+        // first-time scanning, gen declarations
         err.extend(
             declarations
                 .iter()
                 .map(|declaration| -> Result<(), CE> {
-                    if let DeclarationEnum::FunctionDefinition(
-                        _,
-                        ref storage_class,
-                        ref return_type,
-                        ref identifier,
-                        ref params_type,
-                        ref is_variadic,
-                        _,
-                    ) = declaration.node
-                    {
-                        if !self.function_map.contains_key(identifier) {
-                            self.gen_function_proto(
-                                storage_class,
-                                return_type,
-                                identifier,
-                                params_type
-                                    .iter()
-                                    .map(|param| param.0.clone())
-                                    .collect::<Vec<_>>()
-                                    .as_slice(),
-                                *is_variadic,
+                    match declaration.node {
+                        DeclarationEnum::Declaration(
+                            ref type_info,
+                            ref identifier,
+                            ref initializer,
+                        ) => match type_info.basic_type.base_type {
+                            BaseType::Function(ref return_type, ref params_type, is_variadic) => {
+                                self.gen_function_proto(
+                                    &type_info.storage_class_specifier,
+                                    return_type,
+                                    identifier.as_ref().unwrap(),
+                                    params_type,
+                                    is_variadic,
+                                    declaration.span,
+                                )
+                            }
+                            _ => self.gen_global_variable(
+                                type_info,
+                                identifier.as_ref().unwrap(),
+                                initializer,
                                 declaration.span,
-                            )?;
+                            ),
+                        },
+                        DeclarationEnum::FunctionDefinition(
+                            _,
+                            ref storage_class,
+                            ref return_type,
+                            ref identifier,
+                            ref params_type,
+                            ref is_variadic,
+                            _,
+                        ) => {
+                            if !self.function_map.contains_key(identifier) {
+                                self.gen_function_proto(
+                                    storage_class,
+                                    return_type,
+                                    identifier,
+                                    params_type
+                                        .iter()
+                                        .map(|param| param.0.clone())
+                                        .collect::<Vec<_>>()
+                                        .as_slice(),
+                                    *is_variadic,
+                                    declaration.span,
+                                )
+                            } else {
+                                Ok(())
+                            }
                         }
                     }
-                    Ok(())
                 })
                 .filter_map(|result| if result.is_err() { result.err() } else { None }),
         );
 
+        // second-time scanning, gen func definitions
         err.extend(
             declarations
                 .iter()
@@ -380,6 +365,15 @@ impl<'ctx> Generator<'ctx> {
                     acc.array_type(len).as_basic_type_enum()
                 })
                 .as_basic_type_enum(),
+            BaseType::Struct(ref _name, ref members) => {
+                let mut member_types = Vec::new();
+                for x in members.clone().unwrap() {
+                    member_types.push(self.convert_llvm_type(&x.member_type.base_type));
+                }
+                self.context
+                    .struct_type(member_types.as_slice(), false)
+                    .as_basic_type_enum()
+            }
             _ => panic!(),
         }
     }
