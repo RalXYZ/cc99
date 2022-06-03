@@ -215,6 +215,29 @@ impl CompileErr {
         }
     }
 
+    pub fn duplicated_struct_definition(name: String, span: Span) -> CompileErr {
+        CompileErr {
+            code: "E018".to_string(),
+            message: format!("duplicated struct named `{}`", name),
+            label: "duplicated definition here".to_string(),
+            span,
+            notes: None,
+        }
+    }
+
+    pub fn struct_not_found(name: String, span: Span) -> CompileErr {
+        CompileErr {
+            code: "E019".to_string(),
+            message: format!("struct `{}` not found", name),
+            label: format!(
+                "variable declared here, but struct named `{}` not found in scope",
+                name
+            ),
+            span,
+            notes: None,
+        }
+    }
+
     pub fn to_diagnostic<FileId>(&self, file_id: FileId) -> Diagnostic<FileId> {
         Diagnostic::error()
             .with_message(self.message.clone())

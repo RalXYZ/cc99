@@ -76,6 +76,42 @@ impl<'ctx> Generator<'ctx> {
                                     declaration.span,
                                 )
                             }
+                            BaseType::Struct(ref name, ref members) => {
+                                dbg!(declaration.node.clone());
+                                if members.is_some() {
+                                    if self
+                                        .global_struct_map
+                                        .contains_key(name.clone().unwrap().as_str())
+                                    {
+                                        return Err(CE::duplicated_struct_definition(
+                                            name.clone().unwrap(),
+                                            declaration.span,
+                                        ));
+                                    }
+                                    self.global_struct_map
+                                        .insert(name.clone().unwrap(), members.clone().unwrap());
+                                    Ok(())
+                                } else {
+                                    let members =
+                                        self.global_struct_map.get(name.as_ref().unwrap());
+                                    if members.is_none() {
+                                        return Err(CE::struct_not_found(
+                                            name.clone().unwrap(),
+                                            declaration.span,
+                                        ));
+                                    }
+                                    let members = members.unwrap().clone();
+                                    let mut type_info = type_info.clone();
+                                    type_info.basic_type.base_type =
+                                        BaseType::Struct(name.clone(), Some(members));
+                                    self.gen_global_variable(
+                                        &type_info,
+                                        identifier.as_ref().unwrap(),
+                                        initializer,
+                                        declaration.span,
+                                    )
+                                }
+                            }
                             _ => self.gen_global_variable(
                                 type_info,
                                 identifier.as_ref().unwrap(),

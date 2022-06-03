@@ -1,5 +1,5 @@
-use crate::ast::BaseType;
 use crate::ast::BasicType as BT;
+use crate::ast::StructMember;
 use codespan_reporting::files::SimpleFiles;
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
@@ -30,7 +30,7 @@ pub struct Generator<'ctx> {
     // value -> (type, pointer) map in a LLVM basic block
     val_map_block_stack: Vec<HashMap<String, (BT, PointerValue<'ctx>)>>,
     // struct name -> type map globally
-    global_struct_map: HashMap<String, BaseType>,
+    global_struct_map: HashMap<String, Vec<StructMember>>,
     // current function block
     current_function: Option<(FunctionValue<'ctx>, BT)>,
     // break labels (in loop statements)
