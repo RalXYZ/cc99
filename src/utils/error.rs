@@ -267,7 +267,17 @@ impl CompileErr {
             notes: None,
         }
     }
-
+    
+    pub fn invalid_size_of_type(type_name: String, span: Span) -> CompileErr {
+        CompileErr {
+            code: "E021".to_string(),
+            message: format!("invalid application of 'sizeof' to a {} type", type_name),
+            label: "invalid 'sizeof' type".to_string(),
+            span,
+            notes: None,
+        }
+    }
+    
     pub fn to_diagnostic<FileId>(&self, file_id: FileId) -> Diagnostic<FileId> {
         Diagnostic::error()
             .with_message(self.message.clone())

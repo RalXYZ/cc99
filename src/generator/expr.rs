@@ -1,3 +1,4 @@
+use crate::ast::StructMember;
 use crate::ast::{
     AssignOperation, AssignOperationEnum, BaseType, BasicType, BinaryOperation,
     BinaryOperationEnum, Expression, ExpressionEnum, IntegerType, Span, UnaryOperation,
@@ -175,10 +176,85 @@ impl<'ctx> Generator<'ctx> {
                     }
                 }
             }
+            ExpressionEnum::SizeofType(ref basic_type) => {
+                let t = self
+                    .calculate_size_of(&basic_type.base_type, &expr.span)
+                    .unwrap();
+                Ok((
+                    BaseType::SignedInteger(IntegerType::Int),
+                    self.context
+                        .i32_type()
+                        .const_int(t as u64, false)
+                        .as_basic_value_enum(),
+                ))
+            }
             _ => Err(CE::unknown_expression(expr.span)),
         }
     }
-
+    fn calculate_size_of(&self, bt: &BaseType, span: &Span) -> Result<u32, CE> {
+        match bt {
+            BaseType::Void => Err(CE::invalid_size_of_type("void".to_string(), *span)),
+            BaseType::SignedInteger(int_type) | BaseType::UnsignedInteger(int_type) => {
+                match int_type {
+                    IntegerType::Int => Ok(4),
+                    IntegerType::Char => Ok(1),
+                    IntegerType::Short => Ok(2),
+                    IntegerType::Long => Ok(8),
+                    IntegerType::LongLong => Ok(8),
+                }
+            }
+            BaseType::Bool => Ok(1),
+            BaseType::Float => Ok(4),
+            BaseType::Double => Ok(8),
+            BaseType::Pointer(_) => Ok(8),
+            BaseType::Array(arr_bt, arr_expr) => {
+                let t = arr_expr
+                    .iter()
+                    .map(|expr| self.gen_expression(expr).unwrap().1.into_int_value())
+                    .fold(1, |mut v, i| {
+                        v = v * (i.get_zero_extended_constant().unwrap() as u32);
+                        v
+                    });
+                Ok(self.calculate_size_of(&arr_bt.base_type, span)? * t)
+            }
+            BaseType::Function(_, _, _) => {
+                Err(CE::invalid_size_of_type("function".to_string(), *span))
+            }
+            BaseType::Struct(name, member) => {
+                let custom_member = self.global_struct_map.get(name.as_ref().unwrap());
+                let m: Vec<StructMember> = match custom_member {
+                    Some(v) => v.clone(),
+                    None => match member {
+                        Some(t) => t.clone(),
+                        None => Vec::new(),
+                    },
+                };
+                if m.is_empty() {
+                    return Err(CE::invalid_size_of_type("struct".to_string(), *span));
+                }
+                Ok(m.iter().fold(0, |mut v, i| {
+                    v = v + self
+                        .calculate_size_of(&i.member_type.base_type, span)
+                        .unwrap();
+                    v
+                }))
+            }
+            BaseType::Union(_, member) => Ok(member
+                .clone()
+                .unwrap()
+                .iter()
+                .map(|i| {
+                    self.calculate_size_of(&i.member_type.base_type, span)
+                        .unwrap()
+                })
+                .max()
+                .unwrap()),
+            BaseType::Identifier(string_literal) => {
+                let deref = self.get_variable(string_literal, *span)?;
+                self.calculate_size_of(&deref.0.base_type, span)
+            }
+        }
+    }
     fn process_arr_subscript(
         &self,
         l_t: &BasicType,
@@ -401,7 +477,16 @@ impl<'ctx> Generator<'ctx> {
                     _ => Err(CE::invalid_unary(span)),
                 }
             }
-            _ => Err(CE::invalid_unary(span)),
+            UnaryOperationEnum::SizeofExpr => {
+                let t = self.calculate_size_of(&expr_type, &expr.span).unwrap();
+                Ok((
+                    BaseType::SignedInteger(IntegerType::Int),
+                    self.context
+                        .i32_type()
+                        .const_int(t as u64, false)
+                        .as_basic_value_enum(),
+                ))
+            }
         }
     }
 
