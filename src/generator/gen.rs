@@ -413,6 +413,7 @@ impl<'ctx> Generator<'ctx> {
                     .struct_type(member_types.as_slice(), false)
                     .as_basic_type_enum()
             }
+            BaseType::Void => self.context.i8_type().as_basic_type_enum(),
             _ => panic!(),
         }
     }

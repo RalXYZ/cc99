@@ -160,19 +160,9 @@ impl<'ctx> BaseType {
             return Ok(());
         }
 
-        if let (BaseType::Pointer(lhs_ptr), BaseType::Pointer(rhs_ptr)) = (self, dest) {
+        if let (BaseType::Pointer(_), BaseType::Pointer(_)) = (self, dest) {
             // TODO: handle const
-            if lhs_ptr
-                .base_type
-                .equal_discarding_qualifiers(&rhs_ptr.base_type)
-            {
-                return Ok(());
-            };
-            return Err(CE::invalid_default_cast(
-                self.to_string(),
-                dest.to_string(),
-                span,
-            ));
+            return Ok(());
         }
 
         if let (BaseType::Array(lhs_type, lhs_expr), BaseType::Pointer(rhs_ptr)) = (self, dest) {

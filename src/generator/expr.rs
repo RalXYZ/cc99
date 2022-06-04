@@ -127,28 +127,53 @@ impl<'ctx> Generator<'ctx> {
                             .into_pointer_value();
                     }
                     // println!("{}", l_pv.get_type().print_to_string().to_string());
-                    let (res_t, idx_int_val_vec) =
-                        self.process_arr_subscript(l_t, idx_vec.clone(), expr.span)?;
-                    if let BaseType::Array(_, _) = res_t.base_type {
-                        Ok((res_t.base_type, unsafe {
-                            self.builder
-                                .build_gep(l_pv, idx_int_val_vec.as_ref(), "arr_subscript")
-                                .as_basic_value_enum()
-                        }))
-                    } else {
+                    let (res_t, mut idx_int_val_vec) =
+                        self.process_arr_subscript(&l_t, idx_vec.clone(), expr.span)?;
+                    //Pointer
+                    if let BaseType::Pointer(_) = l_t.base_type {
+                        while idx_int_val_vec.len() > 0 {
+                            l_pv = unsafe {
+                                self.builder.build_gep(
+                                    l_pv,
+                                    [idx_int_val_vec[0]].as_ref(),
+                                    "pointer_subscript",
+                                )
+                            };
+                            idx_int_val_vec.remove(0);
+                            if idx_int_val_vec.len() > 0 {
+                                l_pv = self
+                                    .builder
+                                    .build_load(l_pv, "dereference")
+                                    .into_pointer_value()
+                            }
+                        }
                         Ok((
                             res_t.base_type,
-                            self.builder.build_load(
-                                unsafe {
-                                    self.builder.build_gep(
-                                        l_pv,
-                                        idx_int_val_vec.as_ref(),
-                                        "arr_subscript",
-                                    )
-                                },
-                                "load_arr_subscript",
-                            ),
+                            self.builder.build_load(l_pv, "dereference"),
                         ))
+                    } else {
+                        //Array
+                        if let BaseType::Array(_, _) = res_t.base_type {
+                            Ok((res_t.base_type, unsafe {
+                                self.builder
+                                    .build_gep(l_pv, idx_int_val_vec.as_ref(), "arr_subscript")
+                                    .as_basic_value_enum()
+                            }))
+                        } else {
+                            Ok((
+                                res_t.base_type,
+                                self.builder.build_load(
+                                    unsafe {
+                                        self.builder.build_gep(
+                                            l_pv,
+                                            idx_int_val_vec.as_ref(),
+                                            "arr_subscript",
+                                        )
+                                    },
+                                    "load_arr_subscript",
+                                ),
+                            ))
+                        }
                     }
                 } else {
                     unreachable!()
@@ -160,11 +185,11 @@ impl<'ctx> Generator<'ctx> {
 
     fn process_arr_subscript(
         &self,
-        l_t: BasicType,
+        l_t: &BasicType,
         idx_vec: Vec<Expression>,
         span: Span,
     ) -> Result<(BasicType, Vec<IntValue<'ctx>>), CE> {
-        if let BaseType::Array(ref arr_t, arr_len_vec) = l_t.base_type {
+        if let BaseType::Array(ref arr_t, arr_len_vec) = &l_t.base_type {
             let res_t = match idx_vec.len().cmp(&arr_len_vec.len()) {
                 Ordering::Less => BaseType::Array(
                     arr_t.clone(),
@@ -191,33 +216,36 @@ impl<'ctx> Generator<'ctx> {
             );
             Ok((
                 BasicType {
-                    qualifier: l_t.qualifier,
+                    qualifier: l_t.qualifier.clone(),
                     base_type: res_t,
                 },
                 idx_int_val_vec,
             ))
-        } else if let BaseType::Pointer(ref point_t) = l_t.base_type {
-            if idx_vec.len() != 1 {
-                return Err(CE::pointer_dimension_mismatch(1, idx_vec.len(), span));
-            }
-            // we don't support more than 1 dimension pointer
-            if let BaseType::Pointer(_) = point_t.base_type {
-                return Err(CE::plain_error(
-                    "unsupported multidimensional pointer".to_string(),
-                    span,
-                ));
-            }
-            //pointer doesn't need extra 0
+        } else if let BaseType::Pointer(_) = l_t.base_type {
+            let mut res_t = &l_t.base_type;
+
             let mut idx_int_val_vec = vec![];
-            idx_int_val_vec.extend(
-                idx_vec
-                    .iter()
-                    .map(|expr| self.gen_expression(expr).unwrap().1.into_int_value()),
-            );
+
+            let mut not_match = false;
+            idx_int_val_vec.extend(idx_vec.iter().map(|expr| {
+                match res_t {
+                    BaseType::Pointer(p) => {
+                        res_t = &p.base_type;
+                    }
+                    _ => {
+                        not_match = true;
+                    }
+                }
+                self.gen_expression(expr).unwrap().1.into_int_value()
+            }));
+            if not_match {
+                //NOT found the expect number now!
+                return Err(CE::pointer_dimension_mismatch(0, idx_vec.len(), span));
+            }
             Ok((
                 BasicType {
-                    qualifier: l_t.qualifier,
-                    base_type: point_t.base_type.clone(),
+                    qualifier: l_t.qualifier.clone(),
+                    base_type: res_t.clone(),
                 },
                 idx_int_val_vec,
             ))
@@ -812,12 +840,34 @@ impl<'ctx> Generator<'ctx> {
                             .build_load(pv, "dereference")
                             .into_pointer_value()
                     }
-                    let (res_t, idx_int_val_vec) =
-                        self.process_arr_subscript(t, idx_vec.clone(), lhs.span)?;
-                    Ok((res_t, unsafe {
-                        self.builder
-                            .build_gep(pv, idx_int_val_vec.as_ref(), "arr_subscript")
-                    }))
+                    let (res_t, mut idx_int_val_vec) =
+                        self.process_arr_subscript(&t, idx_vec.clone(), lhs.span)?;
+                    //Pointer
+                    if let BaseType::Pointer(_) = t.base_type {
+                        while idx_int_val_vec.len() > 0 {
+                            pv = unsafe {
+                                self.builder.build_gep(
+                                    pv,
+                                    [idx_int_val_vec[0]].as_ref(),
+                                    "ptr_subscript",
+                                )
+                            };
+                            idx_int_val_vec.remove(0);
+                            if idx_int_val_vec.len() > 0 {
+                                pv = self
+                                    .builder
+                                    .build_load(pv, "dereference")
+                                    .into_pointer_value()
+                            }
+                        }
+                        Ok((res_t, pv))
+                    } else {
+                        //array
+                        Ok((res_t, unsafe {
+                            self.builder
+                                .build_gep(pv, idx_int_val_vec.as_ref(), "arr_subscript")
+                        }))
+                    }
                 } else {
                     unreachable!()
                 }
