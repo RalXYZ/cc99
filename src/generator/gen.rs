@@ -158,13 +158,16 @@ impl<'ctx> Generator<'ctx> {
                         ref statements,
                     ) = declaration.node
                     {
-                        self.gen_func_def(
-                            return_type,
-                            identifier,
-                            params_type,
-                            statements,
-                            declaration.span,
-                        )?;
+                        if self.module.get_function(identifier).is_some() {
+                            // might be CE during gen_function_proto
+                            self.gen_func_def(
+                                return_type,
+                                identifier,
+                                params_type,
+                                statements,
+                                declaration.span,
+                            )?;
+                        }
                     }
                     Ok(())
                 })
