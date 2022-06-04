@@ -114,69 +114,65 @@ impl<'ctx> Generator<'ctx> {
                     .as_basic_value_enum(),
             )),
             ExpressionEnum::ArraySubscript(ref id_expr, ref idx_vec) => {
-                if let ExpressionEnum::Identifier(ref id) = id_expr.node {
-                    let (l_t, mut l_pv) = self.get_variable(id, expr.span)?;
+                let (l_t, mut l_pv) = self.get_lvalue(id_expr)?;
 
-                    //if type is pointer, get_variable will get the address of pointer, not the pointer point to!
-                    //So if we want get the point to address, we need extra load action!
-                    if let BaseType::Pointer(_) = l_t.base_type {
-                        // println!("{}", l_pv.get_type().print_to_string().to_string());
-                        l_pv = self
-                            .builder
-                            .build_load(l_pv, "dereference")
-                            .into_pointer_value();
-                    }
+                //if type is pointer, get_variable will get the address of pointer, not the pointer point to!
+                //So if we want get the point to address, we need extra load action!
+                if let BaseType::Pointer(_) = l_t.base_type {
                     // println!("{}", l_pv.get_type().print_to_string().to_string());
-                    let (res_t, mut idx_int_val_vec) =
-                        self.process_arr_subscript(&l_t, idx_vec.clone(), expr.span)?;
-                    //Pointer
-                    if let BaseType::Pointer(_) = l_t.base_type {
-                        while idx_int_val_vec.len() > 0 {
-                            l_pv = unsafe {
-                                self.builder.build_gep(
-                                    l_pv,
-                                    [idx_int_val_vec[0]].as_ref(),
-                                    "pointer_subscript",
-                                )
-                            };
-                            idx_int_val_vec.remove(0);
-                            if idx_int_val_vec.len() > 0 {
-                                l_pv = self
-                                    .builder
-                                    .build_load(l_pv, "dereference")
-                                    .into_pointer_value()
-                            }
+                    l_pv = self
+                        .builder
+                        .build_load(l_pv, "dereference")
+                        .into_pointer_value();
+                }
+                // println!("{}", l_pv.get_type().print_to_string().to_string());
+                let (res_t, mut idx_int_val_vec) =
+                    self.process_arr_subscript(&l_t, idx_vec.clone(), expr.span)?;
+                //Pointer
+                if let BaseType::Pointer(_) = l_t.base_type {
+                    while idx_int_val_vec.len() > 0 {
+                        l_pv = unsafe {
+                            self.builder.build_gep(
+                                l_pv,
+                                [idx_int_val_vec[0]].as_ref(),
+                                "pointer_subscript",
+                            )
+                        };
+                        idx_int_val_vec.remove(0);
+                        if idx_int_val_vec.len() > 0 {
+                            l_pv = self
+                                .builder
+                                .build_load(l_pv, "dereference")
+                                .into_pointer_value()
                         }
+                    }
+                    Ok((
+                        res_t.base_type,
+                        self.builder.build_load(l_pv, "dereference"),
+                    ))
+                } else {
+                    //Array
+                    if let BaseType::Array(_, _) = res_t.base_type {
+                        Ok((res_t.base_type, unsafe {
+                            self.builder
+                                .build_gep(l_pv, idx_int_val_vec.as_ref(), "arr_subscript")
+                                .as_basic_value_enum()
+                        }))
+                    } else {
                         Ok((
                             res_t.base_type,
-                            self.builder.build_load(l_pv, "dereference"),
+                            self.builder.build_load(
+                                unsafe {
+                                    self.builder.build_gep(
+                                        l_pv,
+                                        idx_int_val_vec.as_ref(),
+                                        "arr_subscript",
+                                    )
+                                },
+                                "load_arr_subscript",
+                            ),
                         ))
-                    } else {
-                        //Array
-                        if let BaseType::Array(_, _) = res_t.base_type {
-                            Ok((res_t.base_type, unsafe {
-                                self.builder
-                                    .build_gep(l_pv, idx_int_val_vec.as_ref(), "arr_subscript")
-                                    .as_basic_value_enum()
-                            }))
-                        } else {
-                            Ok((
-                                res_t.base_type,
-                                self.builder.build_load(
-                                    unsafe {
-                                        self.builder.build_gep(
-                                            l_pv,
-                                            idx_int_val_vec.as_ref(),
-                                            "arr_subscript",
-                                        )
-                                    },
-                                    "load_arr_subscript",
-                                ),
-                            ))
-                        }
                     }
-                } else {
-                    unreachable!()
                 }
             }
             _ => Err(CE::unknown_expression(expr.span)),
