@@ -1,5 +1,6 @@
 use super::super::utils::CompileErr as CE;
 use super::*;
+use std::collections::HashMap;
 use std::fmt;
 
 use serde::Serialize;
@@ -110,8 +111,18 @@ impl<'ctx> BasicType {
 }
 
 impl<'ctx> BaseType {
-    fn cast_rank(&self) -> i32 {
-        match *self {
+    fn cast_rank(&self, typedef_map: &HashMap<String, Type>) -> i32 {
+        let true_self = match *self {
+            BaseType::Identifier(ref name) => {
+                if let Some(typedef) = typedef_map.get(name) {
+                    &typedef.basic_type.base_type
+                } else {
+                    unreachable!()
+                }
+            }
+            _ => self,
+        };
+        match *true_self {
             BaseType::Void => 0,
             BaseType::Bool => 1,
             BaseType::SignedInteger(IntegerType::Char) => 2,
@@ -130,42 +141,99 @@ impl<'ctx> BaseType {
         }
     }
 
-    pub(crate) fn upcast(lhs: &BaseType, rhs: &BaseType) -> Result<BaseType, CE> {
-        if lhs.cast_rank() >= rhs.cast_rank() {
+    pub(crate) fn upcast(
+        lhs: &BaseType,
+        rhs: &BaseType,
+        typedef_map: &HashMap<String, Type>,
+    ) -> Result<BaseType, CE> {
+        if lhs.cast_rank(typedef_map) >= rhs.cast_rank(typedef_map) {
             Ok(lhs.clone())
         } else {
             Ok(rhs.clone())
         }
     }
 
-    pub(crate) fn equal_discarding_qualifiers(&self, rhs: &BaseType) -> bool {
-        if self == rhs {
+    pub(crate) fn equal_discarding_qualifiers(
+        &self,
+        rhs: &BaseType,
+        typedef_map: &HashMap<String, Type>,
+    ) -> bool {
+        let true_self = match *self {
+            BaseType::Identifier(ref name) => {
+                if let Some(typedef) = typedef_map.get(name) {
+                    &typedef.basic_type.base_type
+                } else {
+                    unreachable!()
+                }
+            }
+            _ => self,
+        };
+        let true_rhs = match *rhs {
+            BaseType::Identifier(ref name) => {
+                if let Some(typedef) = typedef_map.get(name) {
+                    &typedef.basic_type.base_type
+                } else {
+                    unreachable!()
+                }
+            }
+            _ => rhs,
+        };
+
+        if true_self == true_rhs {
             return true;
         }
 
-        if let BaseType::Pointer(lhs_inner) = self {
-            if let BaseType::Pointer(rhs_inner) = rhs {
+        if let BaseType::Pointer(lhs_inner) = true_self {
+            if let BaseType::Pointer(rhs_inner) = true_rhs {
                 return lhs_inner
                     .base_type
-                    .equal_discarding_qualifiers(&rhs_inner.base_type);
+                    .equal_discarding_qualifiers(&rhs_inner.base_type, typedef_map);
             }
         }
 
         false
     }
 
-    pub fn test_cast(&self, dest: &BaseType, span: Span) -> Result<(), CE> {
+    pub fn test_cast(
+        &self,
+        dest: &BaseType,
+        span: Span,
+        typedef_map: &HashMap<String, Type>,
+    ) -> Result<(), CE> {
+        let true_self = match *self {
+            BaseType::Identifier(ref name) => {
+                if let Some(typedef) = typedef_map.get(name) {
+                    &typedef.basic_type.base_type
+                } else {
+                    unreachable!()
+                }
+            }
+            _ => self,
+        };
+        let true_dest = match *dest {
+            BaseType::Identifier(ref name) => {
+                if let Some(typedef) = typedef_map.get(name) {
+                    &typedef.basic_type.base_type
+                } else {
+                    unreachable!()
+                }
+            }
+            _ => dest,
+        };
+
         // same type, directly cast
-        if self == dest {
+        if true_self == true_dest {
             return Ok(());
         }
 
-        if let (BaseType::Pointer(_), BaseType::Pointer(_)) = (self, dest) {
+        if let (BaseType::Pointer(_), BaseType::Pointer(_)) = (true_self, true_dest) {
             // TODO: handle const
             return Ok(());
         }
 
-        if let (BaseType::Array(lhs_type, lhs_expr), BaseType::Pointer(rhs_ptr)) = (self, dest) {
+        if let (BaseType::Array(lhs_type, lhs_expr), BaseType::Pointer(rhs_ptr)) =
+            (true_self, true_dest)
+        {
             if lhs_expr.len() != 1 {
                 return Err(CE::invalid_default_cast(
                     self.to_string(),
@@ -174,19 +242,19 @@ impl<'ctx> BaseType {
                 ));
             }
             //make sure they are both basic type(not pointer or array)
-            lhs_type.base_type.cast_rank();
-            rhs_ptr.base_type.cast_rank();
+            lhs_type.base_type.cast_rank(typedef_map);
+            rhs_ptr.base_type.cast_rank(typedef_map);
             return Ok(());
         }
 
-        if let BaseType::Pointer(_) = self {
+        if let BaseType::Pointer(_) = true_self {
             return Err(CE::invalid_default_cast(
                 self.to_string(),
                 dest.to_string(),
                 span,
             ));
         }
-        if let BaseType::Pointer(_) = dest {
+        if let BaseType::Pointer(_) = true_dest {
             return Err(CE::invalid_default_cast(
                 self.to_string(),
                 dest.to_string(),
@@ -194,7 +262,7 @@ impl<'ctx> BaseType {
             ));
         }
 
-        if self.cast_rank() < dest.cast_rank() {
+        if self.cast_rank(typedef_map) < dest.cast_rank(typedef_map) {
             return Ok(());
         }
 

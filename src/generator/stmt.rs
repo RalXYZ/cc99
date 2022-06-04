@@ -250,7 +250,11 @@ impl<'ctx> Generator<'ctx> {
             .base_type;
         let (e_t, e_v) = self.gen_expression(&expr.to_owned().unwrap())?;
 
-        e_t.test_cast(&func_return_type, expr.as_ref().unwrap().span)?;
+        e_t.test_cast(
+            &func_return_type,
+            expr.as_ref().unwrap().span,
+            &self.typedef_map,
+        )?;
 
         let return_val =
             self.cast_value(&e_t, &e_v, &func_return_type, expr.as_ref().unwrap().span)?;

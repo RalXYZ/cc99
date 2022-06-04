@@ -189,7 +189,17 @@ impl<'ctx> Generator<'ctx> {
         idx_vec: Vec<Expression>,
         span: Span,
     ) -> Result<(BasicType, Vec<IntValue<'ctx>>), CE> {
-        if let BaseType::Array(ref arr_t, arr_len_vec) = &l_t.base_type {
+        let true_l_t = match l_t.base_type {
+            BaseType::Identifier(ref name) => {
+                if let Some(typedef) = self.typedef_map.get(name) {
+                    &typedef.basic_type
+                } else {
+                    unreachable!()
+                }
+            }
+            _ => l_t,
+        };
+        if let BaseType::Array(ref arr_t, arr_len_vec) = &true_l_t.base_type {
             let res_t = match idx_vec.len().cmp(&arr_len_vec.len()) {
                 Ordering::Less => BaseType::Array(
                     arr_t.clone(),
@@ -216,13 +226,13 @@ impl<'ctx> Generator<'ctx> {
             );
             Ok((
                 BasicType {
-                    qualifier: l_t.qualifier.clone(),
+                    qualifier: true_l_t.qualifier.clone(),
                     base_type: res_t,
                 },
                 idx_int_val_vec,
             ))
-        } else if let BaseType::Pointer(_) = l_t.base_type {
-            let mut res_t = &l_t.base_type;
+        } else if let BaseType::Pointer(_) = true_l_t.base_type {
+            let mut res_t = &true_l_t.base_type;
 
             let mut idx_int_val_vec = vec![];
 
@@ -244,7 +254,7 @@ impl<'ctx> Generator<'ctx> {
             }
             Ok((
                 BasicType {
-                    qualifier: l_t.qualifier.clone(),
+                    qualifier: true_l_t.qualifier.clone(),
                     base_type: res_t.clone(),
                 },
                 idx_int_val_vec,
@@ -481,7 +491,7 @@ impl<'ctx> Generator<'ctx> {
             };
         }
 
-        let cast_t = BaseType::upcast(l_t, r_t)?;
+        let cast_t = BaseType::upcast(l_t, r_t, &self.typedef_map)?;
         let l_cast_v = self.cast_value(l_t, &l_v, &cast_t, lhs.span)?;
         let r_cast_v = self.cast_value(r_t, &r_v, &cast_t, lhs.span)?;
 
@@ -782,7 +792,7 @@ impl<'ctx> Generator<'ctx> {
             )?
         };
 
-        r_t.test_cast(&l_t.base_type, rhs.span)?;
+        r_t.test_cast(&l_t.base_type, rhs.span, &self.typedef_map)?;
 
         let cast_v = self.cast_value(&r_t, &r_v, &l_t.base_type, rhs.span)?;
 
@@ -910,7 +920,7 @@ impl<'ctx> Generator<'ctx> {
                     Some(t) => {
                         let (e_t, e_v) = self.gen_expression(e)?;
 
-                        e_t.test_cast(&t.base_type, e.span)?;
+                        e_t.test_cast(&t.base_type, e.span, &self.typedef_map)?;
                         let cast_v = self.cast_value(&e_t, &e_v, &t.base_type, e.span)?;
 
                         casted_args.push(BasicMetadataValueEnum::from(cast_v));

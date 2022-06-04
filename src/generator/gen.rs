@@ -47,6 +47,7 @@ impl<'ctx> Generator<'ctx> {
             continue_labels: VecDeque::new(),
             function_map: HashMap::new(),
             global_variable_map: HashMap::new(),
+            typedef_map: HashMap::new(),
         }
     }
 
@@ -255,7 +256,7 @@ impl<'ctx> Generator<'ctx> {
         dest_type: &BaseType,
         span: Span,
     ) -> Result<BasicValueEnum<'ctx>, CE> {
-        if curr_type.equal_discarding_qualifiers(dest_type) {
+        if curr_type.equal_discarding_qualifiers(dest_type, &self.typedef_map) {
             return Ok(curr_val.to_owned());
         }
 
@@ -302,8 +303,17 @@ impl<'ctx> Generator<'ctx> {
     ) -> Result<(), CE> {
         if self.global_variable_map.contains_key(var_name) {
             return Err(CE::duplicated_global_variable(var_name.to_string(), span));
-        } else if self.function_map.contains_key(var_name) {
+        } else if self.function_map.contains_key(var_name)
+            || self.typedef_map.contains_key(var_name)
+        {
             return Err(CE::duplicated_symbol(var_name.to_string(), span));
+        }
+
+        if var_type.storage_class_specifier == StorageClassSpecifier::Typedef {
+            let mut true_type = var_type.clone();
+            true_type.storage_class_specifier = StorageClassSpecifier::Auto;
+            self.typedef_map.insert(var_name.to_owned(), true_type);
+            return Ok(());
         }
 
         let llvm_type = self.convert_llvm_type(&var_type.basic_type.base_type);
@@ -317,7 +327,11 @@ impl<'ctx> Generator<'ctx> {
         match ptr_to_init {
             Some(ptr_to_init) => {
                 let (e_t, e_v) = self.gen_expression(&**ptr_to_init)?;
-                e_t.test_cast(&var_type.basic_type.base_type, ptr_to_init.span)?;
+                e_t.test_cast(
+                    &var_type.basic_type.base_type,
+                    ptr_to_init.span,
+                    &self.typedef_map,
+                )?;
                 let value_after_cast =
                     self.cast_value(&e_t, &e_v, &var_type.basic_type.base_type, ptr_to_init.span)?;
 
@@ -340,7 +354,17 @@ impl<'ctx> Generator<'ctx> {
     }
 
     pub(crate) fn convert_llvm_type(&self, base_type: &BaseType) -> BasicTypeEnum<'ctx> {
-        match *base_type {
+        let true_type = match base_type {
+            BaseType::Identifier(typedef_name) => {
+                if let Some(true_type) = self.typedef_map.get(typedef_name) {
+                    &true_type.basic_type.base_type
+                } else {
+                    panic!("typedef not found: {}", typedef_name); // TODO
+                }
+            }
+            _ => base_type,
+        };
+        match *true_type {
             BaseType::Bool => self.context.bool_type().as_basic_type_enum(),
             BaseType::SignedInteger(IntegerType::Char) => {
                 self.context.i8_type().as_basic_type_enum()
