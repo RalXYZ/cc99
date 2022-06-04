@@ -303,7 +303,7 @@ impl<'ctx> Generator<'ctx> {
             },
             UnaryOperationEnum::LogicalNot => match expr_type {
                 BaseType::SignedInteger(_) => {
-                    let llvm_type = self.convert_llvm_type(&expr_type);
+                    let llvm_type = self.convert_llvm_type(&expr_type, span)?;
                     let result_int = self.builder.build_int_compare(
                         IntPredicate::EQ,
                         llvm_type.into_int_type().const_int(0_u64, true),
@@ -311,7 +311,7 @@ impl<'ctx> Generator<'ctx> {
                         "logical_not_result_int",
                     );
 
-                    let llvm_type = self.convert_llvm_type(&BaseType::Bool);
+                    let llvm_type = self.convert_llvm_type(&BaseType::Bool, span)?;
                     Ok((
                         BaseType::Bool,
                         self.builder

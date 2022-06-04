@@ -205,10 +205,10 @@ impl<'ctx> Generator<'ctx> {
 
         for param in func_param {
             params.push(param.to_owned());
-            llvm_params.push(self.convert_llvm_type(&param.base_type));
+            llvm_params.push(self.convert_llvm_type(&param.base_type, span)?);
         }
 
-        let llvm_func_ty = self.gen_return_type(ret_type, &llvm_params, is_variadic)?;
+        let llvm_func_ty = self.gen_return_type(ret_type, &llvm_params, is_variadic, span)?;
 
         let linkage = match storage_class {
             StorageClassSpecifier::Static => Some(Linkage::Internal),
@@ -233,6 +233,7 @@ impl<'ctx> Generator<'ctx> {
         in_type: &BT,
         param_types: &[BasicTypeEnum<'ctx>],
         is_variadic: bool,
+        span: Span,
     ) -> Result<FunctionType<'ctx>, CE> {
         let param_types_meta = param_types
             .iter()
@@ -245,7 +246,7 @@ impl<'ctx> Generator<'ctx> {
                 .void_type()
                 .fn_type(&param_types_meta, is_variadic)),
             _ => {
-                let basic_type = self.convert_llvm_type(&in_type.base_type);
+                let basic_type = self.convert_llvm_type(&in_type.base_type, span)?;
                 Ok(basic_type.fn_type(&param_types_meta, is_variadic))
             }
         }
@@ -262,7 +263,7 @@ impl<'ctx> Generator<'ctx> {
             return Ok(curr_val.to_owned());
         }
 
-        let llvm_type = self.convert_llvm_type(dest_type);
+        let llvm_type = self.convert_llvm_type(dest_type, span)?;
 
         Ok(self.builder.build_cast(
             self.gen_cast_llvm_instruction(curr_type, dest_type, span)?,
@@ -324,7 +325,7 @@ impl<'ctx> Generator<'ctx> {
             return Ok(());
         }
 
-        let llvm_type = self.convert_llvm_type(&var_type.basic_type.base_type);
+        let llvm_type = self.convert_llvm_type(&var_type.basic_type.base_type, span)?;
         let global_value = self.module.add_global(llvm_type, None, var_name);
         global_value.set_linkage(Linkage::Common);
 
@@ -361,18 +362,22 @@ impl<'ctx> Generator<'ctx> {
         Ok(())
     }
 
-    pub(crate) fn convert_llvm_type(&self, base_type: &BaseType) -> BasicTypeEnum<'ctx> {
+    pub(crate) fn convert_llvm_type(
+        &self,
+        base_type: &BaseType,
+        span: Span,
+    ) -> Result<BasicTypeEnum<'ctx>, CE> {
         let true_type = match base_type {
             BaseType::Identifier(typedef_name) => {
                 if let Some(true_type) = self.typedef_map.get(typedef_name) {
                     &true_type.base_type
                 } else {
-                    panic!("typedef not found: {}", typedef_name); // TODO
+                    return Err(CE::missing_typedef(typedef_name.to_string(), span));
                 }
             }
             _ => base_type,
         };
-        match *true_type {
+        Ok(match *true_type {
             BaseType::Bool => self.context.bool_type().as_basic_type_enum(),
             BaseType::SignedInteger(IntegerType::Char) => {
                 self.context.i8_type().as_basic_type_enum()
@@ -407,7 +412,7 @@ impl<'ctx> Generator<'ctx> {
             BaseType::Float => self.context.f32_type().as_basic_type_enum(),
             BaseType::Double => self.context.f64_type().as_basic_type_enum(),
             BaseType::Pointer(ref basic_type) => self
-                .convert_llvm_type(&basic_type.base_type)
+                .convert_llvm_type(&basic_type.base_type, span)?
                 .ptr_type(AddressSpace::Generic)
                 .as_basic_type_enum(),
             BaseType::Array(ref basic_type, ref size) => size
@@ -421,15 +426,16 @@ impl<'ctx> Generator<'ctx> {
                         .get_zero_extended_constant()
                         .unwrap() as u32
                 })
-                .fold(self.convert_llvm_type(&basic_type.base_type), |acc, len| {
-                    acc.array_type(len).as_basic_type_enum()
-                })
+                .fold(
+                    self.convert_llvm_type(&basic_type.base_type, span)?,
+                    |acc, len| acc.array_type(len).as_basic_type_enum(),
+                )
                 .as_basic_type_enum(),
             BaseType::Struct(ref name, ref members) => {
                 let mut member_types = Vec::new();
                 if members.is_some() {
                     for x in members.clone().unwrap() {
-                        member_types.push(self.convert_llvm_type(&x.member_type.base_type));
+                        member_types.push(self.convert_llvm_type(&x.member_type.base_type, span)?);
                     }
                 } else {
                     member_types = self
@@ -438,8 +444,8 @@ impl<'ctx> Generator<'ctx> {
                         .unwrap()
                         .iter()
                         .map(|x| x.member_type.clone())
-                        .map(|x| self.convert_llvm_type(&x.base_type))
-                        .collect();
+                        .map(|x| self.convert_llvm_type(&x.base_type, span))
+                        .collect::<Result<Vec<_>, _>>()?;
                 }
                 self.context
                     .struct_type(member_types.as_slice(), false)
@@ -447,6 +453,6 @@ impl<'ctx> Generator<'ctx> {
             }
             BaseType::Void => self.context.i8_type().as_basic_type_enum(),
             _ => panic!(),
-        }
+        })
     }
 }

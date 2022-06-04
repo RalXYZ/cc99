@@ -44,8 +44,15 @@ impl<'ctx> Generator<'ctx> {
                 None => builder.position_at_end(func_entry),
             }
 
+            let llvm_type = match self.convert_llvm_type(&func_param[i].0.base_type, span) {
+                Ok(t) => t,
+                Err(e) => {
+                    errors.push(e);
+                    continue;
+                }
+            };
             let alloca = builder.build_alloca(
-                self.convert_llvm_type(&func_param[i].0.base_type),
+                llvm_type,
                 func_param[i]
                     .1
                     .as_ref()
@@ -147,7 +154,8 @@ impl<'ctx> Generator<'ctx> {
         if let DeclarationEnum::Declaration(ref var_type, ref identifier, ref expr) = decl.node {
             let llvm_type = self.convert_llvm_type(
                 &self.extend_struct_type(var_type.basic_type.base_type.to_owned(), decl.span)?,
-            );
+                decl.span,
+            )?;
             let p_val = self
                 .builder
                 .build_alloca(llvm_type, &identifier.to_owned().unwrap());
