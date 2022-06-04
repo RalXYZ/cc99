@@ -193,7 +193,9 @@ impl<'ctx> Generator<'ctx> {
         if self.function_map.contains_key(func_name) {
             return Err(CE::duplicated_function(func_name.to_string(), span));
         }
-        if self.global_variable_map.contains_key(func_name) {
+        if self.global_variable_map.contains_key(func_name)
+            || self.typedef_map.contains_key(func_name)
+        {
             return Err(CE::redefinition_symbol(func_name.to_string(), span));
         }
 
@@ -310,8 +312,14 @@ impl<'ctx> Generator<'ctx> {
         }
 
         if var_type.storage_class_specifier == StorageClassSpecifier::Typedef {
-            let mut true_type = var_type.clone();
-            true_type.storage_class_specifier = StorageClassSpecifier::Auto;
+            let mut true_type = var_type.basic_type.clone();
+            if let BaseType::Identifier(type_name) = &true_type.base_type {
+                if self.typedef_map.contains_key(type_name) {
+                    true_type = self.typedef_map[type_name].clone();
+                } else {
+                    return Err(CE::missing_typedef(type_name.to_string(), span));
+                }
+            }
             self.typedef_map.insert(var_name.to_owned(), true_type);
             return Ok(());
         }
@@ -357,7 +365,7 @@ impl<'ctx> Generator<'ctx> {
         let true_type = match base_type {
             BaseType::Identifier(typedef_name) => {
                 if let Some(true_type) = self.typedef_map.get(typedef_name) {
-                    &true_type.basic_type.base_type
+                    &true_type.base_type
                 } else {
                     panic!("typedef not found: {}", typedef_name); // TODO
                 }

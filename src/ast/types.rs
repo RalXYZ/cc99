@@ -111,11 +111,11 @@ impl<'ctx> BasicType {
 }
 
 impl<'ctx> BaseType {
-    fn cast_rank(&self, typedef_map: &HashMap<String, Type>) -> i32 {
+    fn cast_rank(&self, typedef_map: &HashMap<String, BasicType>) -> i32 {
         let true_self = match *self {
             BaseType::Identifier(ref name) => {
                 if let Some(typedef) = typedef_map.get(name) {
-                    &typedef.basic_type.base_type
+                    &typedef.base_type
                 } else {
                     unreachable!()
                 }
@@ -144,7 +144,7 @@ impl<'ctx> BaseType {
     pub(crate) fn upcast(
         lhs: &BaseType,
         rhs: &BaseType,
-        typedef_map: &HashMap<String, Type>,
+        typedef_map: &HashMap<String, BasicType>,
     ) -> Result<BaseType, CE> {
         if lhs.cast_rank(typedef_map) >= rhs.cast_rank(typedef_map) {
             Ok(lhs.clone())
@@ -156,12 +156,12 @@ impl<'ctx> BaseType {
     pub(crate) fn equal_discarding_qualifiers(
         &self,
         rhs: &BaseType,
-        typedef_map: &HashMap<String, Type>,
+        typedef_map: &HashMap<String, BasicType>,
     ) -> bool {
         let true_self = match *self {
             BaseType::Identifier(ref name) => {
                 if let Some(typedef) = typedef_map.get(name) {
-                    &typedef.basic_type.base_type
+                    &typedef.base_type
                 } else {
                     unreachable!()
                 }
@@ -171,7 +171,7 @@ impl<'ctx> BaseType {
         let true_rhs = match *rhs {
             BaseType::Identifier(ref name) => {
                 if let Some(typedef) = typedef_map.get(name) {
-                    &typedef.basic_type.base_type
+                    &typedef.base_type
                 } else {
                     unreachable!()
                 }
@@ -198,12 +198,12 @@ impl<'ctx> BaseType {
         &self,
         dest: &BaseType,
         span: Span,
-        typedef_map: &HashMap<String, Type>,
+        typedef_map: &HashMap<String, BasicType>,
     ) -> Result<(), CE> {
         let true_self = match *self {
             BaseType::Identifier(ref name) => {
                 if let Some(typedef) = typedef_map.get(name) {
-                    &typedef.basic_type.base_type
+                    &typedef.base_type
                 } else {
                     unreachable!()
                 }
@@ -213,7 +213,7 @@ impl<'ctx> BaseType {
         let true_dest = match *dest {
             BaseType::Identifier(ref name) => {
                 if let Some(typedef) = typedef_map.get(name) {
-                    &typedef.basic_type.base_type
+                    &typedef.base_type
                 } else {
                     unreachable!()
                 }

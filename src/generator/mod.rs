@@ -1,6 +1,5 @@
 use crate::ast::BasicType as BT;
 use crate::ast::StructMember;
-use crate::ast::Type;
 use codespan_reporting::files::SimpleFiles;
 use inkwell::basic_block::BasicBlock;
 use inkwell::builder::Builder;
@@ -43,5 +42,5 @@ pub struct Generator<'ctx> {
     // hashset for global variable
     global_variable_map: HashMap<String, (BT, PointerValue<'ctx>)>,
     // hashset for typedef
-    typedef_map: HashMap<String, Type>,
+    typedef_map: HashMap<String, BT>,
 }

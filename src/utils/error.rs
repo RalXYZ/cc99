@@ -255,6 +255,19 @@ impl CompileErr {
         }
     }
 
+    pub fn missing_typedef(name: String, span: Span) -> CompileErr {
+        CompileErr {
+            code: "E021".to_string(),
+            message: format!("missing typedef `{}`", name),
+            label: format!(
+                "typedef name `{}` accessed here, but cannot be found in scope",
+                name
+            ),
+            span,
+            notes: None,
+        }
+    }
+
     pub fn to_diagnostic<FileId>(&self, file_id: FileId) -> Diagnostic<FileId> {
         Diagnostic::error()
             .with_message(self.message.clone())

@@ -192,7 +192,7 @@ impl<'ctx> Generator<'ctx> {
         let true_l_t = match l_t.base_type {
             BaseType::Identifier(ref name) => {
                 if let Some(typedef) = self.typedef_map.get(name) {
-                    &typedef.basic_type
+                    typedef
                 } else {
                     unreachable!()
                 }
