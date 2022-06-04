@@ -267,7 +267,7 @@ impl CompileErr {
             notes: None,
         }
     }
-    
+
     pub fn invalid_size_of_type(type_name: String, span: Span) -> CompileErr {
         CompileErr {
             code: "E021".to_string(),
@@ -277,7 +277,7 @@ impl CompileErr {
             notes: None,
         }
     }
-    
+
     pub fn to_diagnostic<FileId>(&self, file_id: FileId) -> Diagnostic<FileId> {
         Diagnostic::error()
             .with_message(self.message.clone())
