@@ -77,7 +77,6 @@ impl<'ctx> Generator<'ctx> {
                                 )
                             }
                             BaseType::Struct(ref name, ref members) => {
-                                dbg!(declaration.node.clone());
                                 if members.is_some() {
                                     if self
                                         .global_struct_map
@@ -92,18 +91,11 @@ impl<'ctx> Generator<'ctx> {
                                         .insert(name.clone().unwrap(), members.clone().unwrap());
                                     Ok(())
                                 } else {
-                                    let members =
-                                        self.global_struct_map.get(name.as_ref().unwrap());
-                                    if members.is_none() {
-                                        return Err(CE::struct_not_found(
-                                            name.clone().unwrap(),
-                                            declaration.span,
-                                        ));
-                                    }
-                                    let members = members.unwrap().clone();
                                     let mut type_info = type_info.clone();
-                                    type_info.basic_type.base_type =
-                                        BaseType::Struct(name.clone(), Some(members));
+                                    type_info.basic_type.base_type = self.extend_struct_type(
+                                        type_info.basic_type.base_type.to_owned(),
+                                        declaration.span,
+                                    )?;
                                     self.gen_global_variable(
                                         &type_info,
                                         identifier.as_ref().unwrap(),
@@ -401,10 +393,21 @@ impl<'ctx> Generator<'ctx> {
                     acc.array_type(len).as_basic_type_enum()
                 })
                 .as_basic_type_enum(),
-            BaseType::Struct(ref _name, ref members) => {
+            BaseType::Struct(ref name, ref members) => {
                 let mut member_types = Vec::new();
-                for x in members.clone().unwrap() {
-                    member_types.push(self.convert_llvm_type(&x.member_type.base_type));
+                if members.is_some() {
+                    for x in members.clone().unwrap() {
+                        member_types.push(self.convert_llvm_type(&x.member_type.base_type));
+                    }
+                } else {
+                    member_types = self
+                        .global_struct_map
+                        .get(name.clone().unwrap().as_str())
+                        .unwrap()
+                        .iter()
+                        .map(|x| x.member_type.clone())
+                        .map(|x| self.convert_llvm_type(&x.base_type))
+                        .collect();
                 }
                 self.context
                     .struct_type(member_types.as_slice(), false)

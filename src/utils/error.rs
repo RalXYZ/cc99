@@ -238,6 +238,23 @@ impl CompileErr {
         }
     }
 
+    pub fn struct_member_not_found(
+        struct_name: String,
+        member_name: String,
+        span: Span,
+    ) -> CompileErr {
+        CompileErr {
+            code: "E020".to_string(),
+            message: format!("struct member `{}` not found", member_name),
+            label: format!(
+                "struct member `{}` accessed here, but cannot be found in struct `{}`",
+                member_name, struct_name,
+            ),
+            span,
+            notes: None,
+        }
+    }
+
     pub fn to_diagnostic<FileId>(&self, file_id: FileId) -> Diagnostic<FileId> {
         Diagnostic::error()
             .with_message(self.message.clone())

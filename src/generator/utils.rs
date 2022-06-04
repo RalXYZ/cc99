@@ -1,3 +1,4 @@
+use crate::ast::{BaseType, Span};
 use crate::generator::Generator;
 use crate::utils::CompileErr as CE;
 
@@ -18,5 +19,19 @@ impl<'ctx> Generator<'ctx> {
         let config = term::Config::default();
 
         term::emit(&mut writer.lock(), &config, &self.files, &diagnostic).expect("unreachable");
+    }
+
+    pub(crate) fn extend_struct_type(&self, t: BaseType, span: Span) -> Result<BaseType, CE> {
+        match t {
+            BaseType::Struct(ref name, ref _members) => {
+                let members = self.global_struct_map.get(name.as_ref().unwrap());
+                if members.is_none() {
+                    return Err(CE::struct_not_found(name.clone().unwrap(), span));
+                }
+                let members = members.unwrap().clone();
+                Ok(BaseType::Struct(name.clone(), Some(members)))
+            }
+            _ => Ok(t),
+        }
     }
 }

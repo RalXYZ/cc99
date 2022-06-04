@@ -145,7 +145,9 @@ impl<'ctx> Generator<'ctx> {
 
     pub(crate) fn gen_decl_in_fn(&mut self, decl: &Declaration) -> Result<(), CE> {
         if let DeclarationEnum::Declaration(ref var_type, ref identifier, ref expr) = decl.node {
-            let llvm_type = self.convert_llvm_type(&var_type.basic_type.base_type);
+            let llvm_type = self.convert_llvm_type(
+                &self.extend_struct_type(var_type.basic_type.base_type.to_owned(), decl.span)?,
+            );
             let p_val = self
                 .builder
                 .build_alloca(llvm_type, &identifier.to_owned().unwrap());

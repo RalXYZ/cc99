@@ -36,6 +36,13 @@ impl<'ctx> Generator<'ctx> {
             ExpressionEnum::FunctionCall(ref name, ref args) => {
                 self.gen_function_call(name, args, expr.span)
             }
+            ExpressionEnum::MemberOfObject(ref obj, ref member) => {
+                let (t, p_v) = self.gen_member_of_object(obj, member, expr.span)?;
+                Ok((
+                    t.base_type,
+                    self.builder.build_load(p_v, "member_of_object"),
+                ))
+            }
             ExpressionEnum::CharacterConstant(ref value) => Ok((
                 BaseType::SignedInteger(IntegerType::Char),
                 self.context
@@ -815,6 +822,10 @@ impl<'ctx> Generator<'ctx> {
                     unreachable!()
                 }
             }
+            ExpressionEnum::MemberOfObject(ref id_expr, ref member_id) => {
+                let (t, p_v) = self.gen_member_of_object(id_expr, member_id, lhs.span)?;
+                Ok((t, p_v))
+            }
             _ => panic!(),
         }
     }
@@ -883,6 +894,41 @@ impl<'ctx> Generator<'ctx> {
             }
         } else {
             unreachable!()
+        }
+    }
+
+    pub(crate) fn gen_member_of_object(
+        &self,
+        obj: &Expression,
+        member: &String,
+        span: Span,
+    ) -> Result<(BasicType, PointerValue<'ctx>), CE> {
+        let (t, p_v) = self.get_lvalue(obj)?;
+        if let BaseType::Struct(ref name, _) = t.base_type {
+            let members = self
+                .global_struct_map
+                .get(name.clone().unwrap().as_str())
+                .unwrap();
+            let idx = members
+                .iter()
+                .map(|x| x.clone().member_name)
+                .position(|x| x == *member);
+            if idx.is_none() {
+                Err(CE::struct_member_not_found(
+                    name.clone().unwrap().to_string(),
+                    member.to_string(),
+                    span,
+                ))
+            } else {
+                Ok((
+                    members.get(idx.unwrap()).unwrap().member_type.clone(),
+                    self.builder
+                        .build_struct_gep(p_v, idx.unwrap() as u32, "member_of_object")
+                        .unwrap(),
+                ))
+            }
+        } else {
+            unimplemented!()
         }
     }
 }
