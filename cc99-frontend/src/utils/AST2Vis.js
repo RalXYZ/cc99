@@ -248,7 +248,7 @@ function parseBasicType(node) {
     attrs.type = "double";
   } else if (basic_type.hasOwnProperty("Point")) {
     attrs.type = "point";
-    const bt = basic_type.hasOwnProperty("Point");
+    const bt = basic_type.Point;
     attrs.basic_type = parseBasicType(bt);
   } else if (basic_type.hasOwnProperty("Array")) {
     attrs.type = "array";
