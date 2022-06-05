@@ -1,8 +1,3 @@
-//
-// Created by ChenXuzheng on 2022/3/28.
-//
-
-// 标准库中使用了__restrict关键词，限制Pointer aliasing，但是我们目前先不实现这个c99关键词？
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

@@ -4,7 +4,7 @@ import "ace-builds/src-noconflict/mode-c_cpp";
 import "ace-builds/src-noconflict/ext-language_tools";
 import "ace-builds/src-noconflict/ext-searchbox";
 
-import "ace-builds/src-noconflict/theme-xcode";
+import "ace-builds/src-noconflict/theme-github";
 
 function Editor(props) {
   const { code, setCode } = props;

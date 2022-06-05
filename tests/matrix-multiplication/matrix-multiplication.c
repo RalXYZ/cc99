@@ -1,29 +1,32 @@
-//
-// Created by ChenXuzheng on 2022/3/28.
-//
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
-// 标准库中使用了__restrict关键词，限制Pointer aliasing，但是我们目前先不实现这个c99关键词？
-extern int scanf (const char *__format, ...);
-extern int printf (const char *__format, ...);
 
-//TODO 实现macro宏
-//int MAX_ROW =25;
-//int MAX_COL =25;
-
-int a[25][25],b[25][25],c[25][25];
+int **a,**b,**c;
 int a_row,a_col,b_row,b_col,c_row,c_col;
+
+int **init_matrix_ptr(int row,int col){
+    int **tmp=malloc(sizeof(int*)*row);
+    for(int i=0;i<row;i++){
+        tmp[i]= malloc(sizeof(int)*col);
+    }
+    return tmp;
+}
 
 int main(){
     scanf("%d %d",&a_row,&a_col);
+    a= init_matrix_ptr(a_row,a_col);
     for(int i=0;i<a_row;i++){
         for(int j=0;j<a_col;j++){
-            scanf("%d",&a[i][j]);
+            scanf("%d",a[i]+j);
         }
     }
     scanf("%d %d",&b_row,&b_col);
+    b=init_matrix_ptr(b_row,b_col);
     for(int i=0;i<b_row;i++){
         for(int j=0;j<b_col;j++){
-            scanf("%d",&b[i][j]);
+            scanf("%d",b[i]+j);
         }
     }
 
@@ -34,7 +37,7 @@ int main(){
 
     c_row = a_row;
     c_col = b_col;
-
+    c=init_matrix_ptr(c_row,c_col);
     for(int i=0;i<c_row;i++){
         for(int j=0;j<c_col;j++){
             c[i][j] = 0;
