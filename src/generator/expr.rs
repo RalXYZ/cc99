@@ -39,10 +39,12 @@ impl<'ctx> Generator<'ctx> {
             }
             ExpressionEnum::MemberOfObject(ref obj, ref member) => {
                 let (t, p_v) = self.gen_member_of_object(obj, member, expr.span)?;
-                Ok((
-                    t.base_type,
-                    self.builder.build_load(p_v, "member_of_object"),
-                ))
+                let val = if let BaseType::Array(_, _) = t.base_type {
+                    p_v.as_basic_value_enum()
+                } else {
+                    self.builder.build_load(p_v, "member_of_object")
+                };
+                Ok((t.base_type, val))
             }
             ExpressionEnum::CharacterConstant(ref value) => Ok((
                 BaseType::SignedInteger(IntegerType::Char),
@@ -229,9 +231,10 @@ impl<'ctx> Generator<'ctx> {
                         None => Vec::new(),
                     },
                 };
-                if m.is_empty() {
-                    return Err(CE::invalid_size_of_type("struct".to_string(), *span));
-                }
+                // TODO Do we need this ?
+                // if m.is_empty() {
+                //     return Err(CE::invalid_size_of_type("struct".to_string(), *span));
+                // }
                 Ok(m.iter().fold(0, |mut v, i| {
                     v = v + self
                         .calculate_size_of(&i.member_type.base_type, span)
