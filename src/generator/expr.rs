@@ -130,10 +130,10 @@ impl<'ctx> Generator<'ctx> {
                 }
                 // println!("{}", l_pv.get_type().print_to_string().to_string());
                 let (res_t, mut idx_int_val_vec) =
-                    self.process_arr_subscript(&l_t, idx_vec.clone(), expr.span)?;
+                    self.process_arr_subscript(&l_t, idx_vec, expr.span)?;
                 //Pointer
                 if let BaseType::Pointer(_) = l_t.base_type {
-                    while idx_int_val_vec.len() > 0 {
+                    while !idx_int_val_vec.is_empty() {
                         l_pv = unsafe {
                             self.builder.build_gep(
                                 l_pv,
@@ -142,7 +142,7 @@ impl<'ctx> Generator<'ctx> {
                             )
                         };
                         idx_int_val_vec.remove(0);
-                        if idx_int_val_vec.len() > 0 {
+                        if !idx_int_val_vec.is_empty() {
                             l_pv = self
                                 .builder
                                 .build_load(l_pv, "dereference")
@@ -214,7 +214,7 @@ impl<'ctx> Generator<'ctx> {
                     .iter()
                     .map(|expr| self.gen_expression(expr).unwrap().1.into_int_value())
                     .fold(1, |mut v, i| {
-                        v = v * (i.get_zero_extended_constant().unwrap() as u32);
+                        v *= i.get_zero_extended_constant().unwrap() as u32;
                         v
                     });
                 Ok(self.calculate_size_of(&arr_bt.base_type, span)? * t)
@@ -236,7 +236,7 @@ impl<'ctx> Generator<'ctx> {
                 //     return Err(CE::invalid_size_of_type("struct".to_string(), *span));
                 // }
                 Ok(m.iter().fold(0, |mut v, i| {
-                    v = v + self
+                    v += self
                         .calculate_size_of(&i.member_type.base_type, span)
                         .unwrap();
                     v
@@ -261,7 +261,7 @@ impl<'ctx> Generator<'ctx> {
     fn process_arr_subscript(
         &self,
         l_t: &BasicType,
-        idx_vec: Vec<Expression>,
+        idx_vec: &[Expression],
         span: Span,
     ) -> Result<(BasicType, Vec<IntValue<'ctx>>), CE> {
         let true_l_t = match l_t.base_type {
@@ -947,7 +947,7 @@ impl<'ctx> Generator<'ctx> {
         &self,
         t: &BasicType,
         mut pv: PointerValue<'ctx>,
-        idx_vec: &Vec<Expression>,
+        idx_vec: &[Expression],
         span: &Span,
     ) -> Result<(BasicType, PointerValue<'ctx>), CE> {
         //if type is pointer, get_variable will get the address of pointer, not the pointer point to!
@@ -959,16 +959,16 @@ impl<'ctx> Generator<'ctx> {
                 .into_pointer_value()
         }
         let (res_t, mut idx_int_val_vec) =
-            self.process_arr_subscript(&t, idx_vec.clone(), *span)?;
+            self.process_arr_subscript(t, idx_vec, *span)?;
         //Pointer
         if let BaseType::Pointer(_) = t.base_type {
-            while idx_int_val_vec.len() > 0 {
+            while !idx_int_val_vec.is_empty() {
                 pv = unsafe {
                     self.builder
                         .build_gep(pv, [idx_int_val_vec[0]].as_ref(), "ptr_subscript")
                 };
                 idx_int_val_vec.remove(0);
-                if idx_int_val_vec.len() > 0 {
+                if !idx_int_val_vec.is_empty() {
                     pv = self
                         .builder
                         .build_load(pv, "dereference")
@@ -1067,18 +1067,18 @@ impl<'ctx> Generator<'ctx> {
                 .iter()
                 .map(|x| x.clone().member_name)
                 .position(|x| x == *member);
-            if idx.is_none() {
-                Err(CE::struct_member_not_found(
-                    name.clone().unwrap().to_string(),
-                    member.to_string(),
-                    span,
+            if let Some(idx) =idx {
+                Ok((
+                    members.get(idx).unwrap().member_type.clone(),
+                    self.builder
+                        .build_struct_gep(p_v, idx as u32, "member_of_object")
+                        .unwrap(),
                 ))
             } else {
-                Ok((
-                    members.get(idx.unwrap()).unwrap().member_type.clone(),
-                    self.builder
-                        .build_struct_gep(p_v, idx.unwrap() as u32, "member_of_object")
-                        .unwrap(),
+                Err(CE::struct_member_not_found(
+                    name.clone().unwrap(),
+                    member.to_string(),
+                    span,
                 ))
             }
         } else {
