@@ -260,11 +260,6 @@ impl<'ctx> Generator<'ctx> {
             self.cast_value(&e_t, &e_v, &func_return_type, expr.as_ref().unwrap().span)?;
         self.builder.build_return(Some(&return_val));
 
-        let func_block = self
-            .context
-            .append_basic_block(self.current_function.as_ref().unwrap().0, "after_ret");
-        self.builder.position_at_end(func_block);
-
         Ok(())
     }
 }
