@@ -925,43 +925,13 @@ impl<'ctx> Generator<'ctx> {
             }
             ExpressionEnum::ArraySubscript(ref id_expr, ref idx_vec) => {
                 if let ExpressionEnum::Identifier(ref id) = id_expr.node {
-                    let (t, mut pv) = self.get_variable(id, lhs.span)?;
-                    //if type is pointer, get_variable will get the address of pointer, not the pointer point to!
-                    //So if we want get the point to address, we need extra load action!
-                    if let BaseType::Pointer(_) = t.base_type {
-                        pv = self
-                            .builder
-                            .build_load(pv, "dereference")
-                            .into_pointer_value()
-                    }
-                    let (res_t, mut idx_int_val_vec) =
-                        self.process_arr_subscript(&t, idx_vec.clone(), lhs.span)?;
-                    //Pointer
-                    if let BaseType::Pointer(_) = t.base_type {
-                        while idx_int_val_vec.len() > 0 {
-                            pv = unsafe {
-                                self.builder.build_gep(
-                                    pv,
-                                    [idx_int_val_vec[0]].as_ref(),
-                                    "ptr_subscript",
-                                )
-                            };
-                            idx_int_val_vec.remove(0);
-                            if idx_int_val_vec.len() > 0 {
-                                pv = self
-                                    .builder
-                                    .build_load(pv, "dereference")
-                                    .into_pointer_value()
-                            }
-                        }
-                        Ok((res_t, pv))
-                    } else {
-                        //array
-                        Ok((res_t, unsafe {
-                            self.builder
-                                .build_gep(pv, idx_int_val_vec.as_ref(), "arr_subscript")
-                        }))
-                    }
+                    let (t, pv) = self.get_variable(id, lhs.span)?;
+                    self.gen_array_subscript(&t, pv, idx_vec, &lhs.span)
+                } else if let ExpressionEnum::MemberOfObject(ref id_expr, ref member_id) =
+                    id_expr.node
+                {
+                    let (t, pv) = self.gen_member_of_object(id_expr, member_id, lhs.span)?;
+                    self.gen_array_subscript(&t, pv, idx_vec, &lhs.span)
                 } else {
                     unreachable!()
                 }
@@ -973,7 +943,47 @@ impl<'ctx> Generator<'ctx> {
             _ => panic!(),
         }
     }
-
+    fn gen_array_subscript(
+        &self,
+        t: &BasicType,
+        mut pv: PointerValue<'ctx>,
+        idx_vec: &Vec<Expression>,
+        span: &Span,
+    ) -> Result<(BasicType, PointerValue<'ctx>), CE> {
+        //if type is pointer, get_variable will get the address of pointer, not the pointer point to!
+        //So if we want get the point to address, we need extra load action!
+        if let BaseType::Pointer(_) = t.base_type {
+            pv = self
+                .builder
+                .build_load(pv, "dereference")
+                .into_pointer_value()
+        }
+        let (res_t, mut idx_int_val_vec) =
+            self.process_arr_subscript(&t, idx_vec.clone(), *span)?;
+        //Pointer
+        if let BaseType::Pointer(_) = t.base_type {
+            while idx_int_val_vec.len() > 0 {
+                pv = unsafe {
+                    self.builder
+                        .build_gep(pv, [idx_int_val_vec[0]].as_ref(), "ptr_subscript")
+                };
+                idx_int_val_vec.remove(0);
+                if idx_int_val_vec.len() > 0 {
+                    pv = self
+                        .builder
+                        .build_load(pv, "dereference")
+                        .into_pointer_value()
+                }
+            }
+            Ok((res_t, pv))
+        } else {
+            //array
+            Ok((res_t, unsafe {
+                self.builder
+                    .build_gep(pv, idx_int_val_vec.as_ref(), "arr_subscript")
+            }))
+        }
+    }
     fn gen_function_call(
         &self,
         name: &Expression,
