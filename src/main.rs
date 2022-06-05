@@ -9,7 +9,7 @@ use inkwell::{context::Context, OptimizationLevel};
 use std::fs;
 use std::io::{stdin, Read};
 use std::path::Path;
-use std::process::Command;
+use std::process::{Command, Output};
 
 mod ast;
 mod generator;
@@ -176,25 +176,52 @@ fn main() {
                 }
                 if !args.assemble {
                     // generate binary
-                    let clang_result = Command::new("clang")
-                        .arg(basename.to_string() + ".o")
-                        .arg("-o")
-                        .arg(output_file.as_str())
-                        .arg("-no-pie")
-                        .output()
-                        .expect("Unable to generate binary");
-                    if !clang_result.status.success() {
-                        eprintln!("{}", String::from_utf8_lossy(&clang_result.stderr));
-                        std::process::exit(1);
-                    }
-
+                    let object_file = basename.to_string() + ".o";
+                    link(&object_file, &output_file, Compiler::Clang)
+                        .map_err(|_| link(&object_file, &output_file, Compiler::GNU))
+                        .map_or_else(
+                            |e| {
+                                if let Err(e) = e {
+                                    eprintln!("{}", e);
+                                    std::process::exit(1);
+                                }
+                            },
+                            |output| {
+                                if !output.status.success() {
+                                    eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+                                    std::process::exit(1);
+                                }
+                            },
+                        );
                     // remove tmp files
-                    fs::remove_file(basename.to_string() + ".o").unwrap_or_else(|_| {
-                        eprintln!("Unable to remove file {}", basename.to_string() + ".o");
+                    fs::remove_file(&object_file).unwrap_or_else(|_| {
+                        eprintln!("Unable to remove file {}", object_file);
                         std::process::exit(1);
                     });
                 }
             }
         }
+    }
+}
+
+#[derive(Debug)]
+enum Compiler {
+    GNU,
+    Clang,
+}
+
+fn link(source_file: &str, target_file: &str, compiler: Compiler) -> Result<Output, String> {
+    let args = vec!["-o", target_file, source_file];
+    let output = match compiler {
+        Compiler::GNU => Command::new("gcc").args(args).output(),
+        Compiler::Clang => Command::new("clang").arg("-no-pie").args(args).output(),
+    };
+    match output {
+        Ok(output) => Ok(output),
+        Err(e) => Err(format!(
+            "Failed to link using {:?}: {}",
+            compiler,
+            e.to_string()
+        )),
     }
 }
