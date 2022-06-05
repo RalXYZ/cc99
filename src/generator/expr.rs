@@ -958,8 +958,7 @@ impl<'ctx> Generator<'ctx> {
                 .build_load(pv, "dereference")
                 .into_pointer_value()
         }
-        let (res_t, mut idx_int_val_vec) =
-            self.process_arr_subscript(t, idx_vec, *span)?;
+        let (res_t, mut idx_int_val_vec) = self.process_arr_subscript(t, idx_vec, *span)?;
         //Pointer
         if let BaseType::Pointer(_) = t.base_type {
             while !idx_int_val_vec.is_empty() {
@@ -1067,7 +1066,7 @@ impl<'ctx> Generator<'ctx> {
                 .iter()
                 .map(|x| x.clone().member_name)
                 .position(|x| x == *member);
-            if let Some(idx) =idx {
+            if let Some(idx) = idx {
                 Ok((
                     members.get(idx).unwrap().member_type.clone(),
                     self.builder
