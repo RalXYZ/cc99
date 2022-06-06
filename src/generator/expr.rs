@@ -46,7 +46,7 @@ impl<'ctx> Generator<'ctx> {
                 };
                 Ok((t.base_type, val))
             }
-            ExpressionEnum::MemberOfPointer(ref ptr, ref member) =>{
+            ExpressionEnum::MemberOfPointer(ref ptr, ref member) => {
                 let (t, p_v) = self.gen_member_of_pointer(ptr, member, expr.span)?;
                 let val = if let BaseType::Array(_, _) = t.base_type {
                     p_v.as_basic_value_enum()
@@ -949,7 +949,7 @@ impl<'ctx> Generator<'ctx> {
                 let (t, p_v) = self.gen_member_of_object(id_expr, member_id, lhs.span)?;
                 Ok((t, p_v))
             }
-            ExpressionEnum::MemberOfPointer(ref id_expr,ref member_id) => {
+            ExpressionEnum::MemberOfPointer(ref id_expr, ref member_id) => {
                 let (t, p_v) = self.gen_member_of_pointer(id_expr, member_id, lhs.span)?;
                 Ok((t, p_v))
             }
@@ -1098,15 +1098,14 @@ impl<'ctx> Generator<'ctx> {
         }
     }
 
-
     pub(crate) fn gen_member_of_pointer(
         &self,
         ptr: &Expression,
         member: &String,
         span: Span,
     ) -> Result<(BasicType, PointerValue<'ctx>), CE> {
-        let (ptr_type,ptr_value) = self.gen_expression(ptr)?;
-        if let BaseType::Pointer(struct_type)= ptr_type {
+        let (ptr_type, ptr_value) = self.gen_expression(ptr)?;
+        if let BaseType::Pointer(struct_type) = ptr_type {
             if let BaseType::Struct(ref name, _) = struct_type.base_type {
                 let members = self
                     .global_struct_map
@@ -1120,7 +1119,11 @@ impl<'ctx> Generator<'ctx> {
                     Ok((
                         members.get(idx).unwrap().member_type.clone(),
                         self.builder
-                            .build_struct_gep(ptr_value.into_pointer_value(), idx as u32, "member_of_pointer")
+                            .build_struct_gep(
+                                ptr_value.into_pointer_value(),
+                                idx as u32,
+                                "member_of_pointer",
+                            )
                             .unwrap(),
                     ))
                 } else {
@@ -1130,11 +1133,11 @@ impl<'ctx> Generator<'ctx> {
                         span,
                     ))
                 }
-        } else {
-                Err(CE::get_member_from_not_struct(member.clone(),span))
+            } else {
+                Err(CE::get_member_from_not_struct(member.clone(), span))
             }
         } else {
-            Err(CE::invalid_dereference(member.clone(),span))
+            Err(CE::invalid_dereference(member.clone(), span))
         }
     }
 }
