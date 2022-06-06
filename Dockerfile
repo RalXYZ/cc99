@@ -5,7 +5,7 @@ COPY . .
 ENV LLVM_SYS_130_PREFIX /usr
 RUN apt install libz-dev -y
 RUN cargo build --package cc99 --bin cc99 --release
-RUN cd cc99-frontend && npm install && npm run build && mv build /srv && mv /srv/build /srv/cc99
+RUN cd web/web-frontend && npm install && npm run build && mv build /srv && mv /srv/build /srv/cc99
 
 
 FROM golang:1.18-bullseye as prod
@@ -18,12 +18,12 @@ RUN apt update
 # and so that source changes don't invalidate our downloaded layer
 ENV GO111MODULE=on \
     GOPROXY=https://goproxy.cn,direct
-COPY ./cc99-backend/go.mod go.mod
-COPY ./cc99-backend/go.sum go.sum
+COPY ./web/web-backend/go.mod go.mod
+COPY ./web/web-backend/go.sum go.sum
 RUN go mod download
 RUN go mod tidy
 # src code
-COPY ./cc99-backend .
+COPY ./web/web-backend .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64  go build -o cc99-backend .
 RUN chmod +x cc99-backend
 
