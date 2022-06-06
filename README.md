@@ -196,7 +196,7 @@ You can use arrays and pointers as you like, since we already support most of ar
 
   ~~~c
   int array[10][10];
-  int **ptr = array; //inlegal!!
+  int **ptr = array; // illegal!!
   ~~~
 
   - Best Practices for multidimensional pointer
@@ -244,13 +244,13 @@ However, we don't support to **access variable from pointer** currently, which m
 ~~~c
 struct course c;
 struct course *ptr = &c;
-char *t = ptr->name; //inlegal! Don't support
+char *t = ptr->name; // illegal!
 ~~~
 
 And also, we don't support **struct initial list**
 
 ~~~c
-struct course c = {"123",123,....}//inlegal! Don't support 
+struct course c = {"123",123,....} // illegal! 
 ~~~
 
 ### Type Cast
