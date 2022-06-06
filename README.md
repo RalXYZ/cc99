@@ -4,7 +4,7 @@
 
 cc99 can be used on Linux, Mac, even windows (unofficial support), anyone can build from source code or download binary file to have a try!
 
-
+![cc99](https://raw.githubusercontent.com/RalXYZ/repo-pictures/main/cc99/cc99.png)  
 
 ## Supported Syntax
 
@@ -206,12 +206,12 @@ You can use arrays and pointers as you like, since we already support most of ar
   int ***p;
   p = malloc(sizeof(int**) * 10);
   for(int i = 0; i < 10; i++){
-  	p[i] = malloc(sizeof(int*) * 10);
+      p[i] = malloc(sizeof(int*) * 10);
   }
   for(int i = 0; i < 10; i++){
-  	for(int j = 0; j < 10; j++){
-  		p[i][j] = malloc(sizeof(int) * 10);
-  	}
+      for(int j = 0; j < 10; j++){
+          p[i][j] = malloc(sizeof(int) * 10);
+      }
   }
   p[i][j][k] = 123;
   ~~~
@@ -296,11 +296,11 @@ You can use explicit type cast to convert high rank to low rank
 
   ~~~c
   int main(){
-  	int s = sum(1, 2); // legal, all funcitons will hoist to top
-  	int e = d + 10;    // legal, all global variables will hoist to top
+      int s = sum(1, 2); // legal, all funcitons will hoist to top
+      int e = d + 10;    // legal, all global variables will hoist to top
   }
   int sum(int a, int b){
-  	return a + b;
+      return a + b;
   }
   int d = 10;
   ~~~
