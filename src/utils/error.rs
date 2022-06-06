@@ -268,6 +268,20 @@ impl CompileErr {
         }
     }
 
+    pub fn get_member_from_not_struct(member:String, span: Span) -> CompileErr {
+        CompileErr {
+            code: "E022".to_string(),
+            message: format!("can't get a member `{}` from not a struct", member),
+            label: format!(
+              "can't get a member `{}` from not a struct",
+                member
+            ),
+            span,
+            notes: None,
+        }
+    }
+
+
     pub fn invalid_size_of_type(type_name: String, span: Span) -> CompileErr {
         CompileErr {
             code: "E021".to_string(),
