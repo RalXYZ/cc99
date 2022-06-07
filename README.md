@@ -239,15 +239,15 @@ int main(){
 }
 ~~~
 
-However, we don't support to **access variable from pointer** currently, which means the following code is illegal currently:  
+In addition, we also support **access variable from pointer**, which means the following code is legal:  
 
 ~~~c
 struct course c;
 struct course *ptr = &c;
-char *t = ptr->name; // illegal!
+char *t = ptr->name; 
 ~~~
 
-And also, we don't support **struct initial list**
+But, we don't support **struct initial list** now!
 
 ~~~c
 struct course c = {"123",123,....} // illegal! 
