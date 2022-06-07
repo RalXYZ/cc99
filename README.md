@@ -48,7 +48,7 @@ There are three ways to get cc99:
 
 1. Download from [releases](https://github.com/RalXYZ/cc99/releases). We just provide Linux (x86_64) and MacOS (Intel chip) version. As you know, they can cover almost all of develop situations.
 
-2. Build with [Docker](https://www.docker.com/). We provide a `Dockerfile` at root directory wihich can build cc99. It includes dir, web-frontend, web-backend into a Ubuntu image. You can get your own image by following steps:
+2. Build with [Docker](https://www.docker.com/). We provide a `Dockerfile` at root directory which can build cc99. It includes dir, web-frontend, web-backend into a Ubuntu image. You can get your own image by following steps:
 
   ~~~bash
   git clone https://github.com/RalXYZ/cc99.git
@@ -262,7 +262,7 @@ In standard c syntax, it use truncation to deal it, like following
   int b = a; // lose information but allowed
   ~~~
 
-But in cc99, every basic type has a rank, and we deny **implicit type cast** from a lower rank to a higher rank. Here is the rank table:
+But in cc99, every basic type has a rank, and we deny **implicit type cast** from a high rank to a low rank. Here is the rank table:
 
 | Name                          | Rank |
 | ----------------------------- | ---- |
